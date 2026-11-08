@@ -5,6 +5,8 @@
 这是用 **Godot 4** 重写的版本，目标是同一套代码发布到电脑、手机和网页。
 最早的网页原型保存在 [`prototype/散页.html`](prototype/散页.html)（直接用浏览器打开就能玩完整版）。
 
+> **非官方粉丝作品**：这是一个个人做着玩的非盈利小游戏，和 Anthropic 没有任何关系，也没有得到 Anthropic 的认可或赞助。主角「小克」的形象参考了 Claude 的橙色吉祥物，相关商标和形象归 Anthropic 所有。
+
 ![游戏截图](docs/screenshot.png)
 
 ## 怎么运行
