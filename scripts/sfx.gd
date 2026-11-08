@@ -165,6 +165,12 @@ func _build() -> void:
 	for i in 6:
 		_tone(523 * pow(2.0, [0, 7, 12, 16, 19, 24][i] / 12.0), 0.6, SINE, 0.06, -1.0, i * 0.09)
 	lib.page = _stream()
+	_new(0.55)
+	for i in 4:
+		_tone(392 * pow(2.0, [0, 4, 7, 12][i] / 12.0), 0.25, TRI, 0.07, -1.0, i * 0.07)
+	lib.buy = _stream()
+	_new(0.46); _tone(523, 0.4, TRI, 0.06, 784); lib.beacon = _stream()
+	_new(1.46); _tone(70, 1.4, SAW, 0.12, 40); _noise(1.2, 0.15, 300, 0.5); lib.roar = _stream()
 
 ## 背景低音：四个缓慢起伏的振荡器，低通后循环（10 秒一圈，首尾相接）
 func _ambient() -> AudioStreamWAV:
