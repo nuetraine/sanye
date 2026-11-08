@@ -84,7 +84,7 @@ func dim() -> void:
 
 func _draw_hud(c: CanvasItem) -> void:
 	cv = c
-	if S == "play" or S == "menu" or S == "codex":
+	if S == "play" or S == "menu" or S == "codex" or S == "words":
 		draw_hud_play()
 		if touch_mode and S == "play":
 			draw_touch_ui()
@@ -92,6 +92,8 @@ func _draw_hud(c: CanvasItem) -> void:
 			draw_menu()
 		elif S == "codex":
 			draw_codex()
+		elif S == "words":
+			draw_words_panel()
 	elif S == "ending":
 		draw_ending()
 	elif S == "title":
@@ -128,6 +130,7 @@ func draw_hud_play() -> void:
 	text_r("暗潮" if dark else "星息", W - 46, 2, 9, C_RED if dark else C_GOLD, C_SH)
 	digits("%d:%02d" % [int(left / 60), int(fmod(left, 60))], W - 44, 6, C_RED if dark else C_TXT, C_SH)
 	draw_minimap(W - 46, 15, 42)
+	draw_sentence_hud()
 	text_r("书页 %d/3" % P.bound, W - 4, 59, 9, C_TEAL, C_SH)
 	# 首领血条
 	if serp and (serp.st == "fight" or serp.st == "rise"):
@@ -165,7 +168,7 @@ func draw_hud_play() -> void:
 				for w in range(-t, t + 1):
 					pset(roundf(axp + cos(a) * (2 - t) - sin(a) * w * 0.7), roundf(ayp + sin(a) * (2 - t) + cos(a) * w * 0.7), col)
 	# 提示条
-	var ty := H - 14.0
+	var ty := H - 30.0
 	for i in range(toasts.size() - 1, -1, -1):
 		var t: Dictionary = toasts[i]
 		var a := minf(1.0, minf(t.t * 2, (t.max - t.t) * 6))
@@ -175,6 +178,58 @@ func draw_hud_play() -> void:
 			ty -= 13
 	if S == "play" and near_kiln():
 		text("「E」工坊" if not touch_mode else "点这里 · 工坊", W / 2.0, H / 2.0 + 18, 9, C_GOLD, C_SH, 0.8 + 0.2 * sin(T * 4))
+
+## 左下角的小句子：每格一个字，金色字发光
+func draw_sentence_hud() -> void:
+	for i in P.slots.size():
+		var x := 4 + i * 13
+		var y := H - 16
+		var s = P.slots[i]
+		box(x, y, 12, 12, Color(0.03, 0.03, 0.08, 0.7), Pal.rc(GOLD if s != null and s.gold else RUIN, 5 if s != null else 3))
+		if s != null:
+			text(s.c, x + 6, y + 1, 8, C_GOLD if s.gold else kind_col(s.c), C_SH)
+	if not touch_mode and P.slots.size() > 0:
+		text_l("F", 6 + P.slots.size() * 13, H - 14, 7, C_DIM, C_SH)
+
+func kind_col(c: String) -> Color:
+	match char_kind(c):
+		"形": return C_TXT
+		"动": return C_TEAL
+		_: return C_CLAY
+
+func draw_words_panel() -> void:
+	dim()
+	box(10, 8, 300, 164, C_PANEL, Pal.rc(ORE, 4))
+	text("句子", W / 2.0, 11, 12, C_GOLD, C_SH, 1.0, true)
+	for i in P.slots.size():
+		var r := slot_rect(i)
+		var s = P.slots[i]
+		var line := Pal.rc(GOLD, 5) if s != null and s.gold else (Pal.rc(ORE, 5) if i == word_sel else Pal.rc(RUIN, 5))
+		box(r.position.x, r.position.y, r.size.x, r.size.y, Pal.rc(SPACE, 2), line)
+		if s != null:
+			text(s.c, r.position.x + 13, r.position.y + 4, 15, C_GOLD if s.gold else kind_col(s.c), C_SH, 1.0, true)
+			text(char_kind(s.c), r.position.x + 13, r.position.y + 27, 7, C_DIM, null)
+	# 效果说明
+	var y := 72.0
+	var shown := 0
+	for l in loadout_lines():
+		for ln in wrap_text(l, 8, 280):
+			if shown < 6:
+				text(ln, W / 2.0, y, 8, C_TEAL if l.begins_with("成词") else (C_DIM if l.begins_with("（") else C_TXT), C_SH)
+			y += 9
+			shown += 1
+	# 背包
+	text_l("背包（点一下填进句子的空格）", 20, 125, 8, C_DIM, null)
+	for i in mini(P.bag.size(), 14):
+		var r := bag_rect(i)
+		var w = P.bag[i]
+		box(r.position.x, r.position.y, r.size.x, r.size.y, Pal.rc(SPACE, 2), Pal.rc(GOLD if w.gold else RUIN, 5))
+		text(w.c, r.position.x + 9, r.position.y + 2, 11, C_GOLD if w.gold else kind_col(w.c), C_SH)
+	if P.bag.is_empty():
+		text_l("（空）", 22, 139, 8, C_DIM, null)
+	var known_w: Array = save.words
+	var hint := "在炉灯边可以点句子里的字把它取下来" if near_kiln() else "在外面只能往空格里填字，回炉灯才能重排"
+	text("%s · 已发现的词 %d/%d · %s" % [hint, known_w.size(), WD.words.size(), "点外面关闭" if touch_mode else "F 关闭"], W / 2.0, 159, 7, C_DIM, C_SH)
 
 func draw_minimap(x: int, y: int, s: int) -> void:
 	box(x, y, s, s, C_PANEL, C_LINE)
@@ -229,27 +284,29 @@ func draw_menu() -> void:
 	text_l("页尘", 232, 21, 9, C_DIM, C_SH)
 	for i in SHOP.size():
 		var it := SHOP[i]
-		var y := 44 + i * 17
+		var y := 39 + i * 15
 		var lv := shop_lvl(it)
 		var full: bool = it.k != "beacon" and lv >= it.max
 		var cost := 0 if full else shop_cost(it)
 		var can := not full and P.dust >= cost
 		if i == menu_sel:
-			rect(40, y - 1, 240, 16, Pal.rc(RUIN, 3))
+			rect(40, y - 1, 240, 15, Pal.rc(RUIN, 3))
 		digits(str(i + 1), 44, y + 4, C_GOLD, C_SH)
 		var nm: String = it.name
-		if it.k == "beacon":
+		if it.k == "forge":
+			nm += "（背包 %d 字）" % P.bag.size()
+		elif it.k == "beacon":
 			nm += " ×%d" % P.beacons if P.beacons else ""
 		else:
 			nm += " " + "●".repeat(lv) + "○".repeat(int(it.max) - lv)
-		text_l(nm, 52, y - 1, 10, C_TXT, C_SH)
-		text_l(it.desc, 60, y + 8, 7, C_DIM, null)
+		text_l(nm, 52, y, 10, C_TXT, C_SH)
 		if full:
 			text_r("已满", 276, y + 2, 9, C_DIM, C_SH)
 		else:
 			digits(str(cost), 262 - str(cost).length() * 4, y + 4, C_TXT if can else C_RED, C_SH)
 			icon(ICO_PAGE, 265, y + 4, Pal.rc(ORE, 5 if can else 3))
-	text("点击打造 · 关闭：点外面" if touch_mode else "数字键 / 点击 打造 · E 关闭", W / 2.0, 148, 9, C_DIM, C_SH)
+	text(SHOP[clampi(menu_sel, 0, SHOP.size() - 1)].desc, W / 2.0, 144, 9, C_TEAL, C_SH)
+	text("点击打造 · 关闭：点外面" if touch_mode else "数字键 / 点击 打造 · E 关闭", W / 2.0, 155, 8, C_DIM, C_SH)
 
 func draw_codex() -> void:
 	dim()
@@ -343,7 +400,7 @@ func draw_title() -> void:
 	draw_clawd(cv, W / 2.0, 100 + by, 3, int(T * 3) % 2, roundi(sin(T * 0.7)), fmod(T, 3.3) < 0.15)
 	text("一只小陶灵，在碎掉的宇宙图书馆里拾回文字", W / 2.0, 124, 10, C_TXT, C_SH)
 	text("点击开始", W / 2.0, 144, 11, C_GOLD, C_SH, 0.6 + 0.4 * sin(T * 3))
-	text("WASD 移动 · 鼠标射击 · 空格冲刺 · E 工坊 · Q 吃余烬 · B 信标 · Tab 图鉴", W / 2.0, 164, 8, C_DIM, C_SH)
+	text("WASD 移动 · 鼠标射击 · 空格冲刺 · E 工坊 · F 句子 · Q 余烬 · B 信标 · Tab 图鉴", W / 2.0, 164, 8, C_DIM, C_SH)
 	if int(save.clears):
 		text("已通关 %d 次" % int(save.clears), W / 2.0, 5, 8, C_GOLD, C_SH)
 

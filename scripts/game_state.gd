@@ -98,6 +98,10 @@ class Creature:
 	var seg: Array[Vector2] = []
 	var burst_t := 4.0
 	var ha := 0.0
+	var burn := 0.0
+	var burn_t := 0.0
+	var slow := 0.0
+	var calm := 0.0
 
 class EBullet:
 	var x := 0.0
@@ -119,7 +123,27 @@ class Bullet:
 	var vx := 0.0
 	var vy := 0.0
 	var life := 0.75
+	var max_life := 0.75
 	var dmg := 1
+	# 字句效果
+	var mat := 13
+	var big := false
+	var small := false
+	var carve_r := 2.3
+	var pierce := 0
+	var ret := false
+	var returning := false
+	var home := 0.0
+	var split := 0
+	var burn := 0.0
+	var frost := 0.0
+	var grav := 0.0
+	var calm := 0.0
+	var orbit := 0.0
+	var orb_a := 0.0
+	var sp := 265.0
+	var hit: Array = []
+	var w := {}
 
 class Pick:
 	var x := 0.0
@@ -129,6 +153,8 @@ class Pick:
 	var k := "dust"
 	var v := 1
 	var age := 0.0
+	var wc := ""
+	var gold := false
 
 class Part:
 	var x := 0.0
@@ -170,6 +196,9 @@ class PlayerState:
 	var carry: Array[int] = []
 	var bound := 0
 	var glaze := 0.0
+	var bag: Array = []        # 背包里的字 {"c": "穿", "gold": false}
+	var slots: Array = []      # 句槽，空位为 null
+	var shot_i := 0
 
 # ---------- 状态 ----------
 var S := "title"
@@ -206,6 +235,9 @@ var chime_t := 0.0
 var zone_name := ""
 var zone_t := 0.0
 var R0 := RandomNumberGenerator.new()
+var WD := {}                 # data/words.json
+var LO := {}                 # 当前句子算出的字弹配置
+var word_sel := -1
 var PAGES: Array[Dictionary] = []
 var UP := {"kiln": 0, "bolt": 0, "shell": 0, "glaze": 0, "puff": 0}
 var BEA: Array[Beacon] = []
@@ -218,16 +250,16 @@ var menu_sel := 0
 var codex_sel := 0
 var end_t := 0.0
 var free_mode := false
-var save := {"codex": [], "clears": 0}
+var save := {"codex": [], "clears": 0, "words": []}
 const SAVE_PATH := "user://sanye-save.json"
 var SHOP: Array[Dictionary] = [
 	{"k": "beacon", "name": "信标", "desc": "一座小火塔，放下后周围变暖（B 放置）", "cost": [25], "max": 99},
 	{"k": "kiln", "name": "炉火", "desc": "炉灯暖圈变大，修补裂缝更快", "cost": [35, 70, 120], "max": 3},
-	{"k": "bolt", "name": "字弹", "desc": "一次射出更多字弹，射速更快", "cost": [45, 100], "max": 2},
+	{"k": "bolt", "name": "句槽", "desc": "句子多一格（最多 5 格）", "cost": [45, 100], "max": 2},
 	{"k": "shell", "name": "陶壳", "desc": "生命上限 +1，并补满", "cost": [40, 90], "max": 2},
 	{"k": "glaze", "name": "保温釉", "desc": "在外面体温流失 -20%", "cost": [30, 75], "max": 2},
 	{"k": "puff", "name": "喷气孔", "desc": "冲刺冷却减半", "cost": [50], "max": 1},
-
+	{"k": "forge", "name": "炼字", "desc": "用页尘炼出一个随机的字", "cost": [30], "max": 999},
 ]
 
 # 画图鉴肖像时：不按摄像机裁剪，可选单色剪影
@@ -616,6 +648,13 @@ func try_buy(i: int) -> void:
 	P.dust -= c
 	match it.k:
 		"beacon": P.beacons += 1
+		"forge":
+			var keys: Array = WD.chars.keys()
+			give_word(keys[randi() % keys.size()], randf() < float(WD.gold_chance))
+		"bolt":
+			UP.bolt += 1
+			P.slots.append(null)
+			calc_loadout()
 		"shell":
 			UP.shell += 1
 			P.maxhp += 1
@@ -623,14 +662,248 @@ func try_buy(i: int) -> void:
 		_: UP[it.k] += 1
 	Sfx.play("buy")
 	burst(0, -6, 24, GOLD, 6, 50, 0.9)
-	toast("打造：" + it.name + ("（按 B 放置）" if it.k == "beacon" else " Lv%d" % shop_lvl(it)), C_GOLD)
+	if it.k != "forge":
+		toast("打造：" + it.name + ("（按 B 放置）" if it.k == "beacon" else " Lv%d" % shop_lvl(it)), C_GOLD)
 
 func shop_lvl(it: Dictionary) -> int:
+	if it.k == "forge":
+		return 0
 	return P.beacons if it.k == "beacon" else UP[it.k]
 
 func shop_cost(it: Dictionary) -> int:
 	var cs: Array = it.cost
-	return cs[mini(shop_lvl(it), cs.size() - 1)] if it.k != "beacon" else cs[0]
+	return cs[mini(shop_lvl(it), cs.size() - 1)] if it.k != "beacon" and it.k != "forge" else cs[0]
+
+# ---------- 字句构筑 ----------
+func load_words() -> void:
+	var d = JSON.parse_string(FileAccess.get_file_as_string("res://data/words.json"))
+	WD = d if d is Dictionary else {"chars": {}, "words": {}, "drop": {}, "gold_chance": 0.05, "forge_cost": 30, "start_slots": 3, "start_words": []}
+	P.slots.clear()
+	for i in int(WD.start_slots):
+		P.slots.append(null)
+	var sw: Array = WD.start_words
+	for i in sw.size():
+		P.slots[i] = {"c": sw[i], "gold": false}
+	calc_loadout()
+
+## 句子面板的布局（state 和 hud 共用）
+func slot_rect(i: int) -> Rect2:
+	var n := P.slots.size()
+	return Rect2(W / 2.0 - n * 15 + i * 30 + 2, 34, 26, 26)
+
+func bag_rect(i: int) -> Rect2:
+	return Rect2(22 + i * 20, 136, 18, 18)
+
+func upd_words_panel() -> void:
+	if pressed(KEY_F) or pressed(KEY_ESCAPE) or pressed(KEY_TAB):
+		S = "play"
+		return
+	if not click_q:
+		return
+	var mp := pointer()
+	for i in P.slots.size():
+		if slot_rect(i).has_point(mp):
+			if P.slots[i] == null:
+				word_sel = i
+			elif not near_kiln():
+				toast("只能在炉灯边把字取下来。在外面只能往空格里填。", C_DIM)
+			else:
+				P.bag.append(P.slots[i])
+				P.slots[i] = null
+				word_sel = i
+				Sfx.play("ping")
+				calc_loadout()
+			return
+	for i in P.bag.size():
+		if bag_rect(i).has_point(mp):
+			var tgt := word_sel if word_sel >= 0 and word_sel < P.slots.size() and P.slots[word_sel] == null else P.slots.find(null)
+			if tgt < 0:
+				toast("句子满了。回炉灯把不要的字取下来。" if not near_kiln() else "先点句子里的一个字把它取下来。", C_DIM)
+				return
+			P.slots[tgt] = P.bag[i]
+			P.bag.remove_at(i)
+			word_sel = -1
+			Sfx.play("beacon")
+			calc_loadout()
+			return
+	if mp.y > 160 or mp.y < 10 or mp.x < 10 or mp.x > 310:
+		S = "play"
+
+func char_kind(c: String) -> String:
+	return WD.chars[c].kind if WD.chars.has(c) else ""
+
+## 拾到 / 炼出一个字：有空格就自动填进去，否则放进背包
+func give_word(c: String, gold: bool) -> void:
+	var w := {"c": c, "gold": gold}
+	var placed := false
+	for i in P.slots.size():
+		if P.slots[i] == null:
+			P.slots[i] = w
+			placed = true
+			break
+	if not placed:
+		P.bag.append(w)
+	Sfx.play("page" if gold else "beacon")
+	var tag := "金色字" if gold else "字"
+	toast("拾到%s「%s」（%s）：%s" % [tag, c, char_kind(c), WD.chars[c].desc], C_GOLD if gold else C_TEAL, 4.5)
+	tip("word", "字会填进屏幕左下角的句子里，句子决定字弹的效果。按 F（或点左下角的句子）可以查看和调整。")
+	calc_loadout()
+
+## 根据句槽里的字，算出字弹的样子和效果
+func calc_loadout() -> void:
+	var lo := {"shape": "", "shape_lv": 0, "mods": {}, "words": [], "gold": false}
+	for s in P.slots:
+		if s == null:
+			continue
+		var lv := 2 if s.gold else 1
+		if s.gold:
+			lo.gold = true
+		var k := char_kind(s.c)
+		if k == "形":
+			if lo.shape == "":
+				lo.shape = s.c
+				lo.shape_lv = lv
+		elif k != "":
+			lo.mods[s.c] = int(lo.mods.get(s.c, 0)) + lv
+	for i in P.slots.size() - 1:
+		var a = P.slots[i]
+		var b = P.slots[i + 1]
+		if a == null or b == null:
+			continue
+		var wd: String = a.c + b.c
+		if WD.words.has(wd) and not lo.words.has(wd):
+			lo.words.append(wd)
+			var known_w: Array = save.words
+			if not known_w.has(wd):
+				known_w.append(wd)
+				persist()
+				Sfx.play("page")
+				shk = 3
+				toast("成词「%s」！%s" % [wd, WD.words[wd]], C_GOLD, 5)
+	LO = lo
+
+func mod(c: String) -> int:
+	return int(LO.mods.get(c, 0))
+
+func has_word(w: String) -> bool:
+	return (LO.words as Array).has(w)
+
+## 一句话描述当前字弹（给句子面板用）
+func loadout_lines() -> Array:
+	var out := []
+	if LO.shape != "":
+		out.append("「%s」%s" % [LO.shape, WD.chars[LO.shape].desc])
+	for c in LO.mods:
+		out.append("「%s」%s%s" % [c, WD.chars[c].desc, "（×%d）" % LO.mods[c] if LO.mods[c] > 1 else ""])
+	for w in LO.words:
+		out.append("成词「%s」%s" % [w, WD.words[w]])
+	var shapes := 0
+	for sl in P.slots:
+		if sl != null and char_kind(sl.c) == "形":
+			shapes += 1
+	if shapes > 1:
+		out.append("（一句话只有第一个「形」字算数，后面的形字只用来成词）")
+	if out.is_empty():
+		out.append("句子是空的：普通字弹。")
+	return out
+
+## 按句子射出一轮字弹
+func fire_sentence() -> float:
+	var sp := 265.0
+	var life := 0.75
+	var dmg := P.dmg
+	var cd := 0.2
+	var carve_r := 2.3
+	var n := 1
+	var spread := 0.0
+	var big := false
+	var orbit := 0.0
+	var slv: int = LO.shape_lv
+	match LO.shape:
+		"针":
+			sp *= 1.45 + 0.25 * (slv - 1)
+			life = 0.8
+		"雨":
+			n = 3 if slv == 1 else 5
+			spread = 0.2
+			cd *= 1.25
+		"石":
+			sp *= 0.65
+			dmg += slv
+			carve_r = 4.5
+			cd *= 1.4
+			big = true
+		"环":
+			orbit = 0.9 * slv
+	if has_word("穿针"):
+		sp *= 1.2
+	var mat := GOLD
+	if mod("火"):
+		mat = EMBER
+	elif mod("霜"):
+		mat = ICE
+	elif mod("重"):
+		mat = GRAV
+	elif mod("静"):
+		mat = JELLY
+	for k in n:
+		var a := (k - (n - 1) / 2.0) * spread
+		var dx := P.ax * cos(a) - P.ay * sin(a)
+		var dy := P.ax * sin(a) + P.ay * cos(a)
+		var b := Bullet.new()
+		b.x = P.x + dx * 5
+		b.y = P.y + dy * 5
+		b.vx = dx * sp + P.vx * 0.3
+		b.vy = dy * sp + P.vy * 0.3
+		b.sp = sp
+		b.life = life + orbit
+		b.max_life = life
+		b.dmg = dmg
+		b.carve_r = carve_r
+		b.big = big
+		b.mat = mat
+		b.orbit = orbit
+		b.orb_a = atan2(dy, dx) + k * TAU / n
+		b.pierce = 999 if has_word("穿针") else mod("穿")
+		b.ret = mod("回") > 0
+		b.home = mod("寻") * 5.0
+		b.split = mod("裂")
+		b.burn = mod("火") * 1.5
+		b.frost = mod("霜") * 1.5
+		b.grav = mod("重")
+		b.calm = mod("静") * 3.0
+		for w in LO.words:
+			b.w[w] = true
+		PB.append(b)
+	# 字弹音高跟着句子里的字走：一句话就是一小段旋律
+	var chars := []
+	for s in P.slots:
+		if s != null:
+			chars.append(s.c)
+	var pitch := 1.0 + randf() * 0.09
+	if not chars.is_empty():
+		var ks: Array = WD.chars.keys()
+		var semi: int = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26][ks.find(chars[P.shot_i % chars.size()]) % 12]
+		pitch = pow(2.0, (semi - 7) / 12.0)
+	P.shot_i += 1
+	Sfx.play("shoot", pitch)
+	return cd
+
+func spawn_small(x: float, y: float, a: float, src: Bullet) -> void:
+	var b := Bullet.new()
+	b.x = x
+	b.y = y
+	b.vx = cos(a) * 200
+	b.vy = sin(a) * 200
+	b.life = 0.35
+	b.max_life = 0.35
+	b.dmg = 1
+	b.small = true
+	b.mat = src.mat
+	b.burn = src.burn
+	b.frost = src.frost
+	b.hit = src.hit.duplicate()
+	PB.append(b)
 
 func upd_tide(dt: float) -> void:
 	var ph := fposmod(tide_t, 150.0)
@@ -745,22 +1018,9 @@ func upd_player(dt: float) -> void:
 	P.fire_cd -= dt
 	var firing := mouse_down or touch_fire or (_autoplay and _ap_fire)
 	if firing and P.fire_cd <= 0 and S == "play":
-		P.fire_cd = 0.15 if UP.bolt >= 2 else 0.2
-		var n: int = UP.bolt + 1
-		for k in n:
-			var spr := (k - (n - 1) / 2.0) * 0.13
-			var dx := P.ax * cos(spr) - P.ay * sin(spr)
-			var dy := P.ax * sin(spr) + P.ay * cos(spr)
-			var b := Bullet.new()
-			b.x = P.x + dx * 5
-			b.y = P.y + dy * 5
-			b.vx = dx * 265 + P.vx * 0.3
-			b.vy = dy * 265 + P.vy * 0.3
-			b.dmg = P.dmg
-			PB.append(b)
+		P.fire_cd = fire_sentence()
 		P.vx -= P.ax * 5
 		P.vy -= P.ay * 5
-		Sfx.play("shoot", 1.0 + randf() * 0.09)
 	# 体温
 	var wz := warm_zone(P.x, P.y)
 	var in_kiln := wz == 2
@@ -957,12 +1217,28 @@ func upd_creatures(dt: float) -> void:
 		var d := maxf(0.0001, sqrt(dx * dx + dy * dy))
 		if d > 700 and c.t != "moth" and c.t != "serp":
 			continue
+		# 字句效果：灼烧、减速、安静
+		c.slow -= dt
+		c.calm -= dt
+		if c.burn > 0:
+			c.burn -= dt
+			c.burn_t -= dt
+			if c.burn_t <= 0:
+				c.burn_t = 0.5
+				part(c.x, c.y - 2, (randf() - 0.5) * 10, -15, 0.5, EMBER, 5, true)
+				if c.t != "clam" or c.st == "open":
+					c.hp -= 1
+					c.flash = 0.08
+					if c.hp <= 0:
+						kill(c, true)
+						continue
+		var cdt := dt * (0.4 if c.slow > 0 else 1.0)
 		match c.t:
 			"hush":
 				c.vx = cos(c.age * 0.31 + c.ph) * 7 + (c.hx - c.x) * 0.02
 				c.vy = sin(c.age * 0.23 + c.ph * 2) * 5 - 2.5 * (0.5 + 0.5 * sin(c.age * 2.2 + c.ph)) + (c.hy - c.y) * 0.02
-				c.x += c.vx * dt
-				c.y += c.vy * dt
+				c.x += c.vx * cdt
+				c.y += c.vy * cdt
 				if d < c.r + 5 and c.cd <= 0 and S == "play":
 					P.warm = maxf(0.0, P.warm - 14)
 					P.vx += dx / d * 70
@@ -982,25 +1258,25 @@ func upd_creatures(dt: float) -> void:
 				if c.flee > 0:
 					ex = -dx
 					ey = -dy
-				c.flee -= dt
+				c.flee -= cdt
 				var el := maxf(0.0001, sqrt(ex * ex + ey * ey))
-				c.vx += (ex / el * sp - c.vx) * dt * 1.5
-				c.vy += (ey / el * sp - c.vy) * dt * 1.5
-				c.x += c.vx * dt
-				c.y += c.vy * dt
-				c.tm -= dt
+				c.vx += (ex / el * sp - c.vx) * cdt * 1.5
+				c.vy += (ey / el * sp - c.vy) * cdt * 1.5
+				c.x += c.vx * cdt
+				c.y += c.vy * cdt
+				c.tm -= cdt
 				if c.tm <= 0:
 					c.tm = 5 + randf() * 4
 					add_pick(c.x, c.y, "dust", -c.vx * 0.3, -c.vy * 0.3)
 			"moth":
 				if c.st == "burn":
-					c.tm -= dt
+					c.tm -= cdt
 					if c.tm <= 0:
 						kill(c, true)
-					c.x += sin(c.age * 20) * 20 * dt
+					c.x += sin(c.age * 20) * 20 * cdt
 				else:
-					var tx := P.x
-					var ty := P.y
+					var tx := P.x if c.calm <= 0 else c.x + cos(c.ph) * 50
+					var ty := P.y if c.calm <= 0 else c.y + sin(c.ph) * 50
 					var best := 230.0
 					for b in BEA:
 						var bd := Vector2(b.x - c.x, b.y - c.y).length()
@@ -1014,10 +1290,10 @@ func upd_creatures(dt: float) -> void:
 					var j := sin(c.age * 7 + c.ph) * 0.9
 					var ux := (ex * cos(j) - ey * sin(j)) / el
 					var uy := (ex * sin(j) + ey * cos(j)) / el
-					c.vx += (ux * c.sp - c.vx) * dt * 2.6
-					c.vy += (uy * c.sp - c.vy) * dt * 2.6
-					c.x += c.vx * dt
-					c.y += c.vy * dt
+					c.vx += (ux * c.sp - c.vx) * cdt * 2.6
+					c.vy += (uy * c.sp - c.vy) * cdt * 2.6
+					c.x += c.vx * cdt
+					c.y += c.vy * cdt
 					if Vector2(c.x, c.y).length() < kiln_r() - 4:
 						burst(c.x, c.y, 8, EMBER, 5, 30, 0.5)
 						kill(c, false)
@@ -1025,16 +1301,16 @@ func upd_creatures(dt: float) -> void:
 						if c.dead:
 							break
 						if Vector2(b.x - c.x, b.y - c.y).length() < 6:
-							b.hp -= dt * 0.5
+							b.hp -= cdt * 0.5
 							c.vx *= -0.5
 							c.vy *= -0.5
-							c.sing += dt
+							c.sing += cdt
 							if c.sing > 1.2:
 								burst(c.x, c.y, 6, EMBER, 5, 25, 0.4)
 								kill(c, true)
 					if c.dead:
 						pass
-					elif d < c.r + 4 and S == "play" and P.inv <= 0:
+					elif d < c.r + 4 and S == "play" and P.inv <= 0 and c.calm <= 0:
 						hurt_player(1, c.x, c.y)
 						kill(c, false)
 			"leech":
@@ -1046,24 +1322,24 @@ func upd_creatures(dt: float) -> void:
 				var hx := float(c.home.x) if alive else c.hx
 				var hy := float(c.home.y) if alive else c.hy
 				if c.st == "orbit":
-					c.ang += c.w * dt
-					c.x += (hx + cos(c.ang) * c.orR - c.x) * minf(1.0, dt * 4)
-					c.y += (hy + sin(c.ang) * c.orR - c.y) * minf(1.0, dt * 4)
-					if d < 115 and c.cd <= 0 and S == "play":
+					c.ang += c.w * cdt
+					c.x += (hx + cos(c.ang) * c.orR - c.x) * minf(1.0, cdt * 4)
+					c.y += (hy + sin(c.ang) * c.orR - c.y) * minf(1.0, cdt * 4)
+					if d < 115 and c.cd <= 0 and c.calm <= 0 and S == "play":
 						c.st = "wind"
 						c.tm = 0.75
 						Sfx.play("note", pow(2.0, [0, 3, 5, 7, 10][randi() % 5] / 12.0))
 				elif c.st == "wind":
-					c.tm -= dt
+					c.tm -= cdt
 					if c.tm <= 0:
 						c.st = "lunge"
 						c.tm = 0.55
 						c.vx = dx / d * 215
 						c.vy = dy / d * 215
 				elif c.st == "lunge":
-					c.tm -= dt
-					c.x += c.vx * dt
-					c.y += c.vy * dt
+					c.tm -= cdt
+					c.x += c.vx * cdt
+					c.y += c.vy * cdt
 					if rock_at(c.x, c.y) and c.tm < 0.45:
 						c.tm = 0
 						burst(c.x, c.y, 6, ROCK, 4, 30, 0.4, false)
@@ -1077,39 +1353,39 @@ func upd_creatures(dt: float) -> void:
 						c.st = "orbit"
 						c.cd = 1.6
 					else:
-						c.x += ex / el * 55 * dt
-						c.y += ey / el * 55 * dt
+						c.x += ex / el * 55 * cdt
+						c.y += ey / el * 55 * cdt
 				if d < c.r + 4:
 					hurt_player(1, c.x, c.y)
 			"clam":
-				c.tm -= dt
+				c.tm -= cdt
 				if c.st == "grow":
-					c.open = maxf(0.0, c.open - dt * 3)
+					c.open = maxf(0.0, c.open - cdt * 3)
 					if c.tm <= 0:
 						c.st = "open"
 						c.tm = 2.6
 				elif c.st == "open":
-					c.open = minf(1.0, c.open + dt * 3)
+					c.open = minf(1.0, c.open + cdt * 3)
 					if c.tm <= 0:
 						c.st = "grow"
 						c.tm = 3.5 + randf() * 2
 				elif c.st == "empty":
-					c.open = maxf(0.0, c.open - dt * 2)
+					c.open = maxf(0.0, c.open - cdt * 2)
 					if c.tm <= 0:
 						c.st = "grow"
 						c.tm = 2
 						c.hp = DEF.clam.hp
 			"grav":
-				c.x += (cos(c.age * 0.2 + c.ph) * 6 + (c.hx - c.x) * 0.03) * dt
-				c.y += (sin(c.age * 0.17 + c.ph) * 6 + (c.hy - c.y) * 0.03) * dt
+				c.x += (cos(c.age * 0.2 + c.ph) * 6 + (c.hx - c.x) * 0.03) * cdt
+				c.y += (sin(c.age * 0.17 + c.ph) * 6 + (c.hy - c.y) * 0.03) * cdt
 				for p in PK:
 					var ex := c.x - p.x
 					var ey := c.y - p.y
 					var el := sqrt(ex * ex + ey * ey)
 					if el < 95 and el > 0.5:
 						var f := 160 * (1 - el / 95)
-						p.vx += ex / el * f * dt
-						p.vy += ey / el * f * dt
+						p.vx += ex / el * f * cdt
+						p.vy += ey / el * f * cdt
 						if el < 5:
 							p.k = "eaten"
 							if d < 200:
@@ -1119,24 +1395,24 @@ func upd_creatures(dt: float) -> void:
 			"mite":
 				var ta := atan2(dy, dx)
 				var da := fposmod(ta - c.ang + PI, TAU) - PI
-				c.ang += clampf(da, -1.5 * dt, 1.5 * dt)
-				if d < 230:
-					c.vx += (dx / d * 26 - c.vx) * dt
-					c.vy += (dy / d * 26 - c.vy) * dt
+				c.ang += clampf(da, -1.5 * cdt, 1.5 * cdt)
+				if d < 230 and c.calm <= 0:
+					c.vx += (dx / d * 26 - c.vx) * cdt
+					c.vy += (dy / d * 26 - c.vy) * cdt
 				else:
 					c.vx *= 0.98
 					c.vy *= 0.98
-				c.x += c.vx * dt
-				c.y += c.vy * dt
+				c.x += c.vx * cdt
+				c.y += c.vy * cdt
 				if rock_at(c.x, c.y):
-					c.x -= c.vx * dt * 2
-					c.y -= c.vy * dt * 2
+					c.x -= c.vx * cdt * 2
+					c.y -= c.vy * cdt * 2
 					c.vx *= -0.5
 					c.vy *= -0.5
 				if d < c.r + 4:
 					hurt_player(1, c.x, c.y)
 			"serp":
-				upd_serp(c, dt, d)
+				upd_serp(c, cdt, d)
 		if c.t != "clam" and c.t != "leech" and c.t != "serp" and not c.dead:
 			var r := rock_at(c.x, c.y)
 			if r:
@@ -1250,8 +1526,30 @@ func kill(c: Creature, drop: bool) -> void:
 			add_pick(c.x, c.y, "dust", cos(c.na) * 30, sin(c.na) * 30)
 		Sfx.play("ember")
 		burst(c.x, c.y, 12, EMBER, 6, 40, 0.6)
+		if randf() < float(WD.drop.get("clam", 0.0)):
+			var keys: Array = WD.chars.keys()
+			var p := Pick.new()
+			p.x = c.x
+			p.y = c.y
+			p.vx = cos(c.na) * 30
+			p.vy = sin(c.na) * 30
+			p.k = "word"
+			p.wc = keys[randi() % keys.size()]
+			p.gold = randf() < float(WD.gold_chance)
+			PK.append(p)
 		return
 	c.dead = c.t != "serp"
+	if drop and randf() < float(WD.drop.get(c.t, 0.0)):
+		var keys: Array = WD.chars.keys()
+		var p := Pick.new()
+		p.x = c.x
+		p.y = c.y
+		p.vx = (randf() - 0.5) * 30
+		p.vy = (randf() - 0.5) * 30
+		p.k = "word"
+		p.wc = keys[randi() % keys.size()]
+		p.gold = c.t == "serp" or randf() < float(WD.gold_chance)
+		PK.append(p)
 	if drop:
 		P.kills += 1
 		Sfx.play("kill")
@@ -1329,28 +1627,102 @@ func carve(r: Rock, x: float, y: float, rad: float) -> int:
 func upd_bullets(dt: float) -> void:
 	for b in PB:
 		b.life -= dt
-		for c in cr:
-			if c.t == "grav" and not c.dead:
-				var ex := c.x - b.x
-				var ey := c.y - b.y
-				var el := sqrt(ex * ex + ey * ey)
-				if el < 95 and el > 1:
-					var f := 2400 * pow(1 - el / 95, 2)
-					b.vx += ex / el * f * dt
-					b.vy += ey / el * f * dt
+		# 环：先绕着小克转
+		if b.orbit > 0:
+			b.orbit -= dt
+			b.orb_a += 7.0 * dt
+			b.x = P.x + cos(b.orb_a) * 14
+			b.y = P.y + sin(b.orb_a) * 14
+			if b.orbit <= 0:
+				b.vx = P.ax * b.sp
+				b.vy = P.ay * b.sp
+				b.life = b.max_life
+		else:
+			for c in cr:
+				if c.t == "grav" and not c.dead:
+					var ex := c.x - b.x
+					var ey := c.y - b.y
+					var el := sqrt(ex * ex + ey * ey)
+					if el < 95 and el > 1:
+						var f := 2400 * pow(1 - el / 95, 2)
+						b.vx += ex / el * f * dt
+						b.vy += ey / el * f * dt
+			# 寻：拐向附近的敌人
+			if b.home > 0 and not b.returning:
+				var best: Creature = null
+				var bd := 110.0
+				for c in cr:
+					if c.dead or b.hit.has(c) or (c.t == "serp" and c.st != "fight"):
+						continue
+					var cd := Vector2(c.x - b.x, c.y - b.y).length()
+					if cd < bd:
+						bd = cd
+						best = c
+				if best:
+					var v := Vector2(b.vx, b.vy)
+					var want := Vector2(best.x - b.x, best.y - b.y).angle()
+					var turn := clampf(angle_difference(v.angle(), want), -b.home * dt, b.home * dt)
+					v = v.rotated(turn)
+					b.vx = v.x
+					b.vy = v.y
+			# 回：飞到一半折返
+			if b.ret and not b.returning and b.life < b.max_life * 0.45:
+				b.returning = true
+				b.hit.clear()
+			if b.returning:
+				var to := Vector2(P.x - b.x, P.y - b.y)
+				var v := to.normalized() * b.sp * 0.9
+				b.vx = v.x
+				b.vy = v.y
+				b.life = maxf(b.life, 0.1)
+				if to.length() < 7:
+					if b.w.has("回环") and not b.w.has("_looped"):
+						b.w["_looped"] = true
+						b.returning = false
+						b.ret = false
+						b.orbit = 0.9
+						b.orb_a = (-to).angle()
+						b.life = b.max_life + 0.9
+					else:
+						b.life = -1
+				if b.w.has("重回"):
+					for p in PK:
+						if Vector2(p.x - b.x, p.y - b.y).length() < 30 and p.k != "eaten":
+							p.vx = (P.x - p.x) * 6
+							p.vy = (P.y - p.y) * 6
+			# 重：吸引页尘
+			if b.grav > 0:
+				var rr := 22.0 + 10.0 * b.grav
+				for p in PK:
+					var ex := b.x - p.x
+					var ey := b.y - p.y
+					var el := sqrt(ex * ex + ey * ey)
+					if el < rr and el > 1 and p.k != "eaten":
+						p.vx += ex / el * 400 * dt
+						p.vy += ey / el * 400 * dt
 		for s in 2:
 			if b.life <= 0:
 				break
-			b.x += b.vx * dt / 2
-			b.y += b.vy * dt / 2
+			if b.orbit <= 0:
+				b.x += b.vx * dt / 2
+				b.y += b.vy * dt / 2
 			var r := rock_at(b.x, b.y)
 			if r:
-				carve(r, b.x, b.y, 2.3)
+				carve(r, b.x, b.y, b.carve_r)
+				if b.w.has("火石"):
+					var r2 := rock_at(b.x, b.y)
+					carve(r if r2 == null else r2, b.x, b.y, 6.0)
+					burst(b.x, b.y, 14, EMBER, 6, 60, 0.5)
+					shk = maxf(shk, 2)
+				if (b.w.has("裂石") or b.split > 0) and not b.small:
+					var back := atan2(-b.vy, -b.vx)
+					for i in 3:
+						spawn_small(b.x - b.vx * 0.02, b.y - b.vy * 0.02, back + (i - 1) * 0.7, b)
 				b.life = 0
 				Sfx.play("rock")
 				break
 			for c in cr:
-				if c.dead:
+				if c.dead or b.hit.has(c):
 					continue
 				if c.t == "serp":
 					if c.st == "sleep" or c.st == "dead":
@@ -1359,9 +1731,10 @@ func upd_bullets(dt: float) -> void:
 							burst(b.x, b.y, 3, SERP, 5, 20, 0.3)
 						continue
 					if Vector2(b.x - c.x, b.y - c.y).length() < c.r + 1:
-						hurt_c(c, b.dmg, b.x, b.y)
-						b.life = 0
-						break
+						bullet_hit(b, c)
+						if b.life <= 0:
+							break
+						continue
 					var blk := false
 					for sg in c.seg:
 						if Vector2(b.x - sg.x, b.y - sg.y).length() < 5:
@@ -1373,7 +1746,7 @@ func upd_bullets(dt: float) -> void:
 						Sfx.play("ping")
 						break
 					continue
-				if Vector2(b.x - c.x, b.y - c.y).length() < c.r + 1.5:
+				if Vector2(b.x - c.x, b.y - c.y).length() < c.r + (2.5 if b.big else 1.5):
 					if c.t == "mite":
 						var hx := b.x - c.x
 						var hy := b.y - c.y
@@ -1387,11 +1760,11 @@ func upd_bullets(dt: float) -> void:
 							burst(b.x, b.y, 4, MIRROR, 6, 30, 0.3)
 							tip("mite", "镜螨把字弹弹回来了！绕到它背后打粉色的软肉。")
 							break
-					hurt_c(c, b.dmg, b.x, b.y)
-					b.life = 0
-					break
-		if b.life <= 0:
-			burst(b.x, b.y, 2, CLAY, 5, 20, 0.2)
+					bullet_hit(b, c)
+					if b.life <= 0:
+						break
+		if b.life <= 0 and not b.returning:
+			burst(b.x, b.y, 2, b.mat, 5, 20, 0.2)
 	PB = PB.filter(func(b): return b.life > 0)
 	for b in EB:
 		b.life -= dt
@@ -1403,6 +1776,33 @@ func upd_bullets(dt: float) -> void:
 			hurt_player(1, b.x, b.y)
 			b.life = 0
 	EB = EB.filter(func(b): return b.life > 0)
+
+## 字弹命中生物：伤害 + 句子里的效果
+func bullet_hit(b: Bullet, c: Creature) -> void:
+	if c.t == "clam" and c.st != "open" and b.burn > 0:
+		c.st = "open"
+		c.tm = 1.5
+		c.open = 1.0
+		tip("fireclam", "「火」把冰核贝烫开了！")
+	hurt_c(c, b.dmg, b.x, b.y)
+	if b.burn > 0:
+		c.burn = maxf(c.burn, b.burn)
+	if b.frost > 0:
+		c.slow = maxf(c.slow, b.frost)
+		burst(c.x, c.y, 4, ICE, 6, 20, 0.4)
+	if b.calm > 0:
+		c.calm = maxf(c.calm, b.calm)
+		if c.t == "leech" and c.st != "orbit":
+			c.st = "back"
+	if b.split > 0 and not b.small:
+		var a := atan2(b.vy, b.vx)
+		for i in 3 * b.split:
+			spawn_small(b.x, b.y, a + (i - (3 * b.split - 1) / 2.0) * 0.5, b)
+	b.hit.append(c)
+	if b.pierce > 0:
+		b.pierce -= 1
+	else:
+		b.life = 0
 
 func upd_beacons(dt: float) -> void:
 	for b in BEA:
@@ -1431,7 +1831,9 @@ func upd_pickups(dt: float) -> void:
 		p.x += p.vx * dt
 		p.y += p.vy * dt
 		if d < 6 and p.age > 0.3 and S == "play":
-			if p.k == "dust":
+			if p.k == "word":
+				give_word(p.wc, p.gold)
+			elif p.k == "dust":
 				P.dust += p.v
 				P.dust_total += p.v
 				if T - chime_t > 0.9:
@@ -1444,7 +1846,7 @@ func upd_pickups(dt: float) -> void:
 				Sfx.play("ember")
 				tip("ember", "拾到余烬：体温低时按 Q 吞下它。")
 			continue
-		if p.age < 90:
+		if p.age < 90 or p.k == "word":
 			keep.append(p)
 	PK = keep
 

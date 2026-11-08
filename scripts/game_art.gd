@@ -280,6 +280,15 @@ func draw_pickups() -> void:
 		if not on_screen(p.x, p.y):
 			continue
 		var tw := sin(T * 8 + p.age * 3) > 0
+		if p.k == "word":
+			# 一小张发光的纸片，金色字会闪
+			var m := GOLD if p.gold else PAPER
+			for dy in range(-2, 3):
+				for dx in range(-2, 2):
+					wp(p.x + dx, p.y + dy, m, 6 if (dx + dy + int(T * 6)) % 4 == 0 and p.gold else 5)
+			wp(p.x - 1, p.y - 1, ORE, 6)
+			wp(p.x, p.y + 1, ORE, 5 if tw else 4)
+			continue
 		if p.k == "dust":
 			wp(p.x, p.y, ORE, 6 if tw else 5)
 			if tw:
@@ -294,9 +303,16 @@ func draw_pickups() -> void:
 func draw_bullets() -> void:
 	for b in PB:
 		var l := maxf(0.0001, Vector2(b.vx, b.vy).length())
-		for k in 4:
-			wp(b.x - b.vx / l * k, b.y - b.vy / l * k, CLAY if k else GOLD, 6 - k)
-		wp(b.x + 0.5, b.y + 0.5, GOLD, 5)
+		var tail := 2 if b.small else 4
+		for k in tail:
+			wp(b.x - b.vx / l * k, b.y - b.vy / l * k, CLAY if k else b.mat, 6 - k)
+		wp(b.x + 0.5, b.y + 0.5, b.mat, 5)
+		if b.big:
+			wp(b.x + 1, b.y, b.mat, 5)
+			wp(b.x, b.y + 1, b.mat, 4)
+			wp(b.x + 1, b.y + 1, b.mat, 4)
+		if LO.get("gold", false) and int(T * 20 + b.x) % 5 == 0:
+			wp(b.x - 1, b.y - 1, GOLD, 6)
 	for b in EB:
 		var fl := sin(T * 14 + b.x) > 0
 		wp(b.x, b.y, b.m, 6)

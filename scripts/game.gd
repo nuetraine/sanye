@@ -56,6 +56,7 @@ func _ready() -> void:
 	TRX.resize(400)
 	TRY.resize(400)
 	load_save()
+	load_words()
 	var t0 := Time.get_ticks_msec()
 	new_world()
 	print("world generated in %d ms, rocks=%d" % [Time.get_ticks_msec() - t0, rocks.size()])
@@ -113,6 +114,9 @@ func _input(e: InputEvent) -> void:
 			elif near_kiln() and absf(pos.x - W / 2.0) < 24 and absf(pos.y - (H / 2.0 + 24)) < 10:
 				kind = "btn"
 				jp[KEY_E] = true
+			elif pos.x < 4 + P.slots.size() * 13 and pos.y > H - 18:
+				kind = "btn"
+				jp[KEY_F] = true
 			elif pos.x < W / 2.0:
 				kind = "move"
 			touches[e.index] = {"kind": kind, "start": pos, "pos": pos}
@@ -166,9 +170,9 @@ func step(dt: float) -> void:
 				S = "play"
 				toast("找回三张失落之页，带回炉灯装订。", C_GOLD, 5)
 				if touch_mode:
-					toast("左边拖动移动 · 右边按住射击 · 右下角冲刺", C_DIM, 6)
+					toast("左边拖动移动 · 右边按住射击 · 右下角冲刺 · 点左下角的句子换字", C_DIM, 6)
 				else:
-					toast("WASD 移动 · 鼠标瞄准、左键射击 · 空格冲刺 · Q 吃余烬", C_DIM, 6)
+					toast("WASD 移动 · 鼠标射击 · 空格冲刺 · Q 吃余烬 · F 句子", C_DIM, 6)
 		"play":
 			gt += dt
 			tide_t += dt
@@ -182,25 +186,30 @@ func step(dt: float) -> void:
 			check_discover()
 			if S == "play" and pressed(KEY_TAB):
 				S = "codex"
+			elif S == "play" and pressed(KEY_F):
+				S = "words"
+				word_sel = -1
+		"words":
+			upd_words_panel()
 		"menu":
-			for i in range(1, 7):
+			for i in range(1, SHOP.size() + 1):
 				if pressed(KEY_0 + i):
 					try_buy(i - 1)
 			if pressed(KEY_W) or pressed(KEY_UP):
-				menu_sel = (menu_sel + 5) % 6
+				menu_sel = (menu_sel + SHOP.size() - 1) % SHOP.size()
 			if pressed(KEY_S) or pressed(KEY_DOWN):
-				menu_sel = (menu_sel + 1) % 6
+				menu_sel = (menu_sel + 1) % SHOP.size()
 			if pressed(KEY_ENTER) or pressed(KEY_SPACE):
 				try_buy(menu_sel)
 			var mp := pointer()
-			var mi := floori((mp.y - 44) / 17.0)
+			var mi := floori((mp.y - 38) / 15.0)
 			var closed := pressed(KEY_E) or pressed(KEY_ESCAPE) or pressed(KEY_TAB)
-			if mp.x > 40 and mp.x < 280 and mi >= 0 and mi < 6:
+			if mp.x > 40 and mp.x < 280 and mi >= 0 and mi < SHOP.size():
 				if mouse_moved or click_q:
 					menu_sel = mi
 				if click_q:
 					try_buy(mi)
-			elif click_q and (mp.y > 145 or mp.x < 36 or mp.x > 284 or mp.y < 14):
+			elif click_q and (mp.y > 152 or mp.x < 36 or mp.x > 284 or mp.y < 10):
 				closed = true
 			if closed:
 				S = "play"
@@ -275,7 +284,7 @@ func present() -> void:
 	ent_painter.queue_redraw()
 	hud_painter.queue_redraw()
 
-var _shots := {1.0: "title", 5.0: "play", 7.0: "menu", 9.0: "codex", 13.0: "tide", 17.0: "serp", 23.0: "ending"}
+var _shots := {1.0: "title", 3.9: "fire", 4.6: "words", 5.2: "play", 7.0: "menu", 9.0: "codex", 13.0: "tide", 17.0: "serp", 23.0: "ending"}
 
 func _autoplay_step(dt: float) -> void:
 	_ap_t += dt
@@ -289,6 +298,19 @@ func _autoplay_step(dt: float) -> void:
 		click_q = true
 	elif S == "intro" and _ap_t > 1.5:
 		intro_t = 99
+	if _once(2.0):
+		P.slots = [{"c": "雨", "gold": false}, {"c": "火", "gold": false}, {"c": "石", "gold": true}]
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--sentence="):
+				P.slots = []
+				for ch in a.substr(11):
+					P.slots.append({"c": ch, "gold": false})
+		P.bag = [{"c": "穿", "gold": false}, {"c": "针", "gold": false}, {"c": "回", "gold": false}, {"c": "环", "gold": false}]
+		calc_loadout()
+	if _once(4.2):
+		jp[KEY_F] = true
+	if _once(4.9):
+		jp[KEY_F] = true
 	if _once(6.0):
 		P.dust = 120
 		P.x = 0
