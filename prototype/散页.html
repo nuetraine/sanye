@@ -1,0 +1,740 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
+<title>散页 Unbound</title>
+<style>
+/* 单屏游戏：全屏画布，太空单一暗色世界 */
+:root{--bg:#020208;--fg:#f0e6d6;color-scheme:dark}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);overflow:hidden}
+canvas{position:fixed;left:0;top:0;display:block;cursor:crosshair}
+</style>
+<canvas id="c"></canvas>
+<script>
+(()=>{
+'use strict';
+// ================= 基础设定 =================
+const W=320,H=180,N=W*H,TAU=Math.PI*2;
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const low=document.createElement('canvas');low.width=W;low.height=H;const lctx=low.getContext('2d');
+const img=lctx.createImageData(W,H);const OUT=new Uint32Array(img.data.buffer);let out=OUT;
+const TMP=new Uint32Array(N);
+const GW=80,GH=45;const glowC=document.createElement('canvas');glowC.width=GW;glowC.height=GH;const gctx=glowC.getContext('2d');
+const gimg=gctx.createImageData(GW,GH);const GACC=new Float32Array(GW*GH*3);
+const BAY=new Float32Array([0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v=>(v+0.5)/16));
+const bay=(x,y)=>BAY[(y&3)*4+(x&3)];
+
+// 限定调色板：每种材质 7 阶
+const M={SPACE:0,ROCK:1,ORE:2,EMBER:3,CLAY:4,JELLY:5,MOTH:6,LEECH:7,ICE:8,GRAV:9,MIRROR:10,SERP:11,PAPER:12,GOLD:13,RUIN:14,WINE:15};
+const RAMPS=[
+ ['#020208','#060714','#0b0d22','#131634','#1d2048','#2b2f63','#454a8a'],
+ ['#07060c','#14121f','#241f33','#383049','#524662','#73647f','#a493a8'],
+ ['#06121a','#0f2f3f','#1a5466','#2f8a98','#5fc4c8','#aeeee8','#f2fffc'],
+ ['#1a0904','#46170a','#83300f','#c55516','#f08a2a','#ffc66a','#fff2c8'],
+ ['#1c0a06','#4a1c10','#7e3420','#b4533a','#d97757','#f0a07e','#ffd9c2'],
+ ['#060a1c','#0f1d42','#1b3a6e','#2f63a0','#5b97cf','#a4cff0','#eef8ff'],
+ ['#0c0808','#251a1c','#433034','#6a4b4f','#94706e','#c09c94','#ecd8cc'],
+ ['#060c06','#132412','#22401c','#3a6626','#5f9334','#9cc45a','#e0f2a6'],
+ ['#06101a','#10283c','#1f4a66','#357896','#62acc4','#a8dcea','#effcff'],
+ ['#040208','#0e0718','#1c0e30','#33195a','#55308c','#8a5cc4','#d4b8ff'],
+ ['#0a0a0e','#1c1d26','#34363f','#555865','#82879a','#b7bccc','#f0f3fa'],
+ ['#12040e','#300a26','#561445','#87246a','#bc3f8e','#e57cb6','#ffd0e8'],
+ ['#0e0c08','#28231a','#4a4232','#77694f','#a8977a','#d6c8a8','#fbf4e2'],
+ ['#140a02','#3a1e06','#6e3a0a','#b06410','#e8981e','#ffd062','#fff6d0'],
+ ['#04040a','#090a14','#10121f','#181b2d','#22263d','#2e3350','#3e4466'],
+ ['#100406','#2a0a10','#4a1018','#701a22','#9a2a2c','#c4463c','#e87a62'],
+];
+const RAMP32=new Uint32Array(RAMPS.length*7),RAMPRGB=new Float32Array(RAMPS.length*7*3);
+RAMPS.forEach((r,m)=>r.forEach((h,i)=>{const v=parseInt(h.slice(1),16),R=v>>16,G=(v>>8)&255,B=v&255;
+ RAMP32[m*7+i]=(255<<24)|(B<<16)|(G<<8)|R;RAMPRGB[(m*7+i)*3]=R;RAMPRGB[(m*7+i)*3+1]=G;RAMPRGB[(m*7+i)*3+2]=B;}));
+const col32=h=>{const v=parseInt(h.slice(1),16);return (255<<24)|((v&255)<<16)|(((v>>8)&255)<<8)|(v>>16)};
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;const lerp=(a,b,k)=>a+(b-a)*k;
+const RC=(m,l)=>RAMP32[m*7+(l<0?0:l>6?6:l|0)];
+
+// ================= 噪声 =================
+function h1(i){i=Math.imul(i^0x27d4eb2d,0x165667b1);i^=i>>>15;i=Math.imul(i,0x85ebca6b);i^=i>>>13;i=Math.imul(i,0xc2b2ae35);i^=i>>>16;return (i>>>0)/4294967296}
+function h2(x,y){return h1(Math.imul(x,374761393)+Math.imul(y,668265263))}
+function n1(x){const i=Math.floor(x),f=x-i,u=f*f*(3-2*f);return h1(i)*(1-u)+h1(i+1)*u}
+function n2(x,y){const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy,u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);
+ const a=h2(ix,iy),b=h2(ix+1,iy),c=h2(ix,iy+1),d=h2(ix+1,iy+1);return (a*(1-u)+b*u)*(1-v)+(c*(1-u)+d*u)*v}
+function fbm(x,y){return n2(x,y)*0.5+n2(x*2.03,y*2.03)*0.25+n2(x*4.1,y*4.1)*0.15+n2(x*8.3,y*8.3)*0.1}
+function mulberry(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const R0=mulberry(20261108);const rnd=()=>Math.random();
+
+// ================= 文字（系统字体点阵化） =================
+const tc=document.createElement('canvas'),tctx=tc.getContext('2d',{willReadFrequently:true}),tcache=new Map();
+const FONTS='"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","WenQuanYi Micro Hei",sans-serif';
+function ptext(str,size,bold){const key=str+'|'+size+'|'+bold;let t=tcache.get(key);if(t)return t;
+ const font=(bold?'700 ':'500 ')+size+'px '+FONTS;
+ tctx.font=font;const w=Math.ceil(tctx.measureText(str).width)+2,h=Math.ceil(size*1.35)+2;tc.width=w;tc.height=h;
+ tctx.font=font;tctx.textBaseline='top';tctx.fillStyle='#fff';tctx.fillText(str,1,1);
+ const d=tctx.getImageData(0,0,w,h).data,mask=new Uint8Array(w*h);for(let i=0;i<w*h;i++)mask[i]=d[i*4+3]>110?1:0;
+ t={w,h,mask};tcache.set(key,t);return t}
+let TQ=[];
+function drawText(str,cx,y,size,c,sh,alpha=1,bold=false){if(alpha<=0)return;if(size<13&&out===OUT){TQ.push({str,cx,y,size,c,sh,alpha,bold});return}const t=ptext(str,size,bold),x0=Math.round(cx-t.w/2);y=Math.round(y);
+ for(const pass of[0,1]){const ox=pass?0:1,oy=pass?0:1,cc=pass?c:sh;if(cc==null)continue;
+  for(let yy=0;yy<t.h;yy++){const py=y+yy+oy;if(py<0||py>=H)continue;for(let xx=0;xx<t.w;xx++){if(!t.mask[yy*t.w+xx])continue;const px=x0+xx+ox;if(px<0||px>=W)continue;
+   if(alpha<1&&BAY[(py&3)*4+(px&3)]>alpha)continue;out[py*W+px]=cc}}}}
+function drawTextL(str,x,y,size,c,sh,alpha=1,bold=false){drawText(str,x+ptext(str,size,bold).w/2,y,size,c,sh,alpha,bold)}
+function drawTextR(str,x,y,size,c,sh,alpha=1,bold=false){drawText(str,x-ptext(str,size,bold).w/2,y,size,c,sh,alpha,bold)}
+const DIG={'0':'111101101101111','1':'010110010010111','2':'111001111100111','3':'111001111001111','4':'101101111001001','5':'111100111001111','6':'111100111101111','7':'111001001001001','8':'111101111101111','9':'111101111001111','m':'000000110111101','/':'001001010100100',':':'000010000010000','+':'000010111010000','x':'000101010101000','.':'000000000000010','-':'000000111000000','s':'000011010001110'};
+function drawDigits(s,x,y,c,sh){for(const ch of s){const g=DIG[ch];if(g){for(let i=0;i<15;i++)if(g[i]==='1'){const px=x+i%3,py=y+((i/3)|0);if(sh!=null&&px+1<W&&py+1<H&&px+1>=0&&py+1>=0)out[(py+1)*W+px+1]=sh;if(px>=0&&px<W&&py>=0&&py<H)out[py*W+px]=c}}x+=4}}
+const wrapCache=new Map();
+function wrapText(str,size,maxW){const key=str+'|'+size+'|'+maxW;let r=wrapCache.get(key);if(r)return r;
+ tctx.font='500 '+size+'px '+FONTS;r=[];let line='';
+ for(const ch of str){const t=line+ch;if(line&&tctx.measureText(t).width>maxW&&!'，。、；：！？）」』…'.includes(ch)){r.push(line);line=ch}else line=t}
+ if(line)r.push(line);wrapCache.set(key,r);return r}
+const C_TXT=col32('#fff1d6'),C_SH=col32('#07060f'),C_DIM=col32('#9aa3c0'),C_GOLD=col32('#ffd27a'),C_TEAL=col32('#aeeee8'),C_RED=col32('#ff7a6a'),C_CLAY=col32('#f0a07e'),C_PANEL=col32('#0a0b18'),C_LINE=col32('#3a3f66');
+function rect(x,y,w,h,c){const xa=Math.max(0,x|0),xb=Math.min(W,(x+w)|0),ya=Math.max(0,y|0),yb=Math.min(H,(y+h)|0);for(let yy=ya;yy<yb;yy++)for(let xx=xa;xx<xb;xx++)out[yy*W+xx]=c}
+function box(x,y,w,h,fill,line){if(fill!=null)rect(x,y,w,h,fill);rect(x,y,w,1,line);rect(x,y+h-1,w,1,line);rect(x,y,1,h,line);rect(x+w-1,y,1,h,line)}
+function dimScreen(){TQ=[];for(let i=0;i<N;i++){const c=out[i];out[i]=(((c>>>2)&0x3f3f3f)+((c>>>3)&0x1f1f1f))|0xff000000}}
+function pset(x,y,c){if(x>=0&&x<W&&y>=0&&y<H)out[y*W+x]=c}
+
+// ================= 渲染小工具 =================
+let ox=0,oy=0,NOLIGHT=false;
+function glowAdd(sx,sy,m,l,g){const gx=sx>>2,gy=sy>>2;if(gx<0||gx>=GW||gy<0||gy>=GH)return;const k=(gy*GW+gx)*3,ri=(m*7+clamp(l|0,0,6))*3;GACC[k]+=RAMPRGB[ri]*g;GACC[k+1]+=RAMPRGB[ri+1]*g;GACC[k+2]+=RAMPRGB[ri+2]*g}
+function wp(wx,wy,m,l){const sx=Math.floor(wx)-ox,sy=Math.floor(wy)-oy;if(sx>=0&&sx<W&&sy>=0&&sy<H)out[sy*W+sx]=RC(m,l)}
+function we(wx,wy,m,l,g=0.5){const sx=Math.floor(wx)-ox,sy=Math.floor(wy)-oy;if(sx>=0&&sx<W&&sy>=0&&sy<H){out[sy*W+sx]=RC(m,l);glowAdd(sx,sy,m,l,g)}}
+const onScreen=(x,y,m=20)=>x-ox>-m&&x-ox<W+m&&y-oy>-m&&y-oy<H+m;
+// 有体积的小球：用光源方向做明暗（伪 3D）
+const SUNV=(()=>{const v=[-0.55,-0.5,0.67],l=Math.hypot(...v);return v.map(a=>a/l)})();
+function ball(cx,cy,r,m,base,sh,emit=0,alpha=1){const R=Math.ceil(r);
+ for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){const d2=dx*dx+dy*dy;if(d2>r*r)continue;const sx=Math.floor(cx)+dx-ox,sy=Math.floor(cy)+dy-oy;if(sx<0||sx>=W||sy<0||sy>=H)continue;
+  if(alpha<1&&bay(sx,sy)>alpha)continue;
+  const nx=dx/r,ny=dy/r,nz=Math.sqrt(Math.max(0,1-nx*nx-ny*ny));const L=nx*SUNV[0]+ny*SUNV[1]+nz*SUNV[2];
+  const l=Math.floor(base+(L-0.55)*3.2+bay(sx,sy)-0.5)+sh;out[sy*W+sx]=RC(m,l);if(emit)glowAdd(sx,sy,m,l,emit)}}
+
+// ================= 声音（WebAudio 程序化） =================
+let AC=null,MG=null,muted=false,AMBG=null,TIDEG=null,duckK=1;
+function ensureAudio(){if(AC){if(AC.state==='suspended')AC.resume();return}try{AC=new(window.AudioContext||window.webkitAudioContext)();MG=AC.createGain();MG.gain.value=0.55;MG.connect(AC.destination);startAmb()}catch(e){AC=null}}
+function tone(f,d,type='sine',v=0.12,f2=null,delay=0){if(!AC||muted)return;const t=AC.currentTime+delay;const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);
+ g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+0.008);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(MG);o.start(t);o.stop(t+d+0.05)}
+let NBUF=null;
+function noise(d,v,fc=1200,q=1,delay=0,type='bandpass'){if(!AC||muted)return;if(!NBUF){NBUF=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const a=NBUF.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1}
+ const t=AC.currentTime+delay,s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();s.buffer=NBUF;f.type=type;f.frequency.value=fc;f.Q.value=q;
+ g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+d);s.connect(f);f.connect(g);g.connect(MG);s.start(t,Math.random()*0.5);s.stop(t+d+0.05)}
+function startAmb(){const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=380;AMBG=AC.createGain();AMBG.gain.value=0.05;lp.connect(AMBG);AMBG.connect(MG);
+ [55,82.4,110.2,164.8].forEach((f,i)=>{const o=AC.createOscillator();o.type=i%2?'triangle':'sine';o.frequency.value=f;o.detune.value=(i-1.5)*6;const g=AC.createGain();g.gain.value=i>1?0.35:0.8;o.connect(g);g.connect(lp);o.start();
+  const lf=AC.createOscillator(),lg=AC.createGain();lf.frequency.value=0.05+i*0.03;lg.gain.value=0.3;lf.connect(lg);lg.connect(g.gain);lf.start()});
+ TIDEG=AC.createGain();TIDEG.gain.value=0;TIDEG.connect(MG);const o=AC.createOscillator();o.type='sawtooth';o.frequency.value=36.7;const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=160;o.connect(f);f.connect(TIDEG);o.start();
+ const o2=AC.createOscillator();o2.type='sawtooth';o2.frequency.value=38.1;o2.connect(f);o2.start()}
+const PENTA=[523.3,587.3,659.3,784,880,1046.5,1174.7,1318.5];let chimeI=0,chimeT=0;
+const SFX={
+ shoot(){tone(880+rnd()*80,0.07,'square',0.035,520)},
+ hit(){noise(0.06,0.12,2400,2)},
+ rock(){noise(0.05,0.08,700,1.5)},
+ dust(){if(T-chimeT>0.9)chimeI=0;chimeT=T;tone(PENTA[Math.min(7,chimeI++)],0.18,'sine',0.05)},
+ ember(){tone(330,0.25,'triangle',0.08,660)},
+ dash(){noise(0.22,0.14,900,0.7);tone(180,0.15,'sine',0.06,90)},
+ hurt(){tone(220,0.25,'square',0.08,70);noise(0.15,0.15,500,1)},
+ kill(){tone(660,0.08,'square',0.05,1320);noise(0.12,0.1,3000,1)},
+ ping(){tone(2400,0.12,'sine',0.05,1800)},
+ cold(){tone(1600,0.4,'sine',0.04,400)},
+ buy(){[0,4,7,12].forEach((s,i)=>tone(392*Math.pow(2,s/12),0.25,'triangle',0.07,null,i*0.07))},
+ page(){[0,7,12,16,19,24].forEach((s,i)=>tone(523*Math.pow(2,s/12),0.6,'sine',0.06,null,i*0.09))},
+ warn(){tone(110,1.2,'sawtooth',0.05,55)},
+ roar(){tone(70,1.4,'sawtooth',0.12,40);noise(1.2,0.15,300,0.5)},
+ note(){tone(392*Math.pow(2,[0,3,5,7,10][(rnd()*5)|0]/12),0.3,'sine',0.04)},
+ eat(){tone(260,0.12,'square',0.05,200);tone(392,0.3,'triangle',0.06,523,0.08)},
+ beacon(){tone(523,0.4,'triangle',0.06,784)},
+ die(){[0,-3,-7,-12].forEach((s,i)=>tone(330*Math.pow(2,s/12),0.4,'triangle',0.08,null,i*0.12))},
+};
+
+// ================= 输入 =================
+const keys=new Set(),jp=new Set();let mouse={x:W/2+30,y:H/2,down:false},clickQ=false;
+let dpr=1,VS=1,VX=0,VY=0;
+function resize(){dpr=window.devicePixelRatio||1;cv.width=Math.floor(innerWidth*dpr);cv.height=Math.floor(innerHeight*dpr);cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';
+ const s=Math.min(cv.width/W,cv.height/H);VS=s>=2?Math.floor(s):s;VX=Math.floor((cv.width-W*VS)/2);VY=Math.floor((cv.height-H*VS)/2)}
+addEventListener('resize',resize);resize();
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['tab',' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();if(!keys.has(k))jp.add(k);keys.add(k);ensureAudio()});
+addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+cv.addEventListener('mousemove',e=>{mouse.x=(e.clientX*dpr-VX)/VS;mouse.y=(e.clientY*dpr-VY)/VS});
+cv.addEventListener('mousedown',e=>{mouse.x=(e.clientX*dpr-VX)/VS;mouse.y=(e.clientY*dpr-VY)/VS;if(e.button===0){mouse.down=true;clickQ=true}if(e.button===2)jp.add('rclick');ensureAudio()});
+addEventListener('mouseup',e=>{if(e.button===0)mouse.down=false});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+addEventListener('blur',()=>{keys.clear();mouse.down=false});
+const kd=k=>keys.has(k);
+
+// ================= 世界 =================
+const WR=1350;
+const ZN=(x,y)=>{const d=Math.hypot(x,y),a=Math.atan2(y,x);if(d<480)return 'shallow';if(Math.abs(a)<0.95)return 'leech';if(a>1.45&&a<3.05)return 'nursery';if(a<-0.7&&a>-2.45)return 'echo';return 'drift'};
+const ZNAME={shallow:'浅页带',leech:'蛭环',nursery:'坍缩苗圃',echo:'回声深处',drift:'冷寂漂流区'};
+const PAGES=[
+ {id:0,x:Math.cos(0.12)*1080,y:Math.sin(0.12)*1080,name:'论寒冷',state:'free'},
+ {id:1,x:Math.cos(2.25)*1050,y:Math.sin(2.25)*1050,name:'论引力',state:'free'},
+ {id:2,x:0,y:-1110,name:'论回声',state:'sealed'},
+];
+const PAGE_TXT=[
+ '「寒冷不是热的缺席，而是一切停止说话的声音。」——体温上限 +30，保温 +15%',
+ '「万物彼此吸引，因为它们都想被读到。」——字弹伤害 +1',
+ '「宇宙说出的第一个字还在回响，它叫『在』。」',
+];
+// ---- 小行星：逐像素可破坏，法线由距离场算出 ----
+let rocks=[];const GRID=new Map(),GC=64;
+const gkey=(gx,gy)=>(gx+100)*1000+(gy+100);
+function gridAdd(r){for(let gy=Math.floor((r.y-r.c)/GC);gy<=Math.floor((r.y+r.c)/GC);gy++)for(let gx=Math.floor((r.x-r.c)/GC);gx<=Math.floor((r.x+r.c)/GC);gx++){const k=gkey(gx,gy);let a=GRID.get(k);if(!a){a=[];GRID.set(k,a)}a.push(r)}}
+function gridDel(r){for(const a of GRID.values()){const i=a.indexOf(r);if(i>=0)a.splice(i,1)}}
+function rockAt(x,y){const a=GRID.get(gkey(Math.floor(x/GC),Math.floor(y/GC)));if(!a)return null;
+ for(const r of a){const i=Math.floor(x)-r.x0,j=Math.floor(y)-r.y0;if(i<0||j<0||i>=r.S||j>=r.S)continue;if(r.m[j*r.S+i])return r}return null}
+function makeRock(x,y,R,zone){
+ const c=R+3,S=2*c+1,m=new Uint8Array(S*S),alb=new Float32Array(S*S);const sx=R0()*100,sy=R0()*100;
+ const oreP=zone==='nursery'?0.95:zone==='leech'?0.96:0.968,embP=zone==='drift'?0.8:zone==='shallow'?0.82:0.86;
+ let cnt=0;
+ for(let j=0;j<S;j++)for(let i=0;i<S;i++){const dx=i-c,dy=j-c,d=Math.hypot(dx,dy);if(d>R+1.5)continue;
+  const ux=d?dx/d:1,uy=d?dy/d:0;const rad=Math.min(R+1,R*(0.74+0.34*n2(ux*1.3+sx,uy*1.3+sy)+0.1*n2(ux*4+sx,uy*4+sy)));
+  if(d>=rad)continue;const wx=x+dx,wy=y+dy;let v=1;
+  const vein=1-Math.abs(2*fbm(wx*0.09+sx,wy*0.09)-1);if(vein>oreP&&n2(wx*0.08,wy*0.08+sy)>0.45)v=2;
+  if(v===1&&n2(wx*0.17+sy,wy*0.17)>embP+0.1*(1-d/rad)&&d<rad-1.5)v=3;
+  m[j*S+i]=v;cnt++;alb[j*S+i]=0.7+0.34*fbm(wx*0.21,wy*0.21)-0.12*(n2(wx*0.09+5,wy*0.09)>0.68?1:0)}
+ const r={x,y,R,c,S,x0:Math.round(x)-c,y0:Math.round(y)-c,m,alb,NX:new Float32Array(S*S),NY:new Float32Array(S*S),NZ:new Float32Array(S*S),D:new Float32Array(S*S),cnt,zone,tint:zone==='echo'?M.MIRROR:M.ROCK};
+ calcNormals(r);return r}
+function calcNormals(r){const{S,m,D,NX,NY,NZ}=r;const INF=99;
+ for(let k=0;k<S*S;k++)D[k]=m[k]?INF:0;
+ for(let j=1;j<S-1;j++)for(let i=1;i<S-1;i++){const k=j*S+i;if(!D[k])continue;D[k]=Math.min(D[k],D[k-1]+1,D[k-S]+1,D[k-S-1]+1.41,D[k-S+1]+1.41)}
+ for(let j=S-2;j>0;j--)for(let i=S-2;i>0;i--){const k=j*S+i;if(!D[k])continue;D[k]=Math.min(D[k],D[k+1]+1,D[k+S]+1,D[k+S+1]+1.41,D[k+S-1]+1.41)}
+ const h=k=>Math.sqrt(Math.min(D[k],10))*2.6;
+ for(let j=1;j<S-1;j++)for(let i=1;i<S-1;i++){const k=j*S+i;if(!m[k])continue;const gx=h(k+1)-h(k-1),gy=h(k+S)-h(k-S);const l=Math.hypot(gx,gy,2.2);NX[k]=-gx/l;NY[k]=-gy/l;NZ[k]=2.2/l}}
+let dirtyRocks=new Set();
+function carve(r,x,y,rad){const ci=Math.floor(x)-r.x0,cj=Math.floor(y)-r.y0,R=Math.ceil(rad);let got=0;
+ for(let j=cj-R;j<=cj+R;j++)for(let i=ci-R;i<=ci+R;i++){if(i<1||j<1||i>=r.S-1||j>=r.S-1)continue;const k=j*r.S+i;const v=r.m[k];if(!v)continue;
+  if((i-ci)**2+(j-cj)**2>rad*rad)continue;r.m[k]=0;r.cnt--;got++;const wx=r.x0+i+0.5,wy=r.y0+j+0.5;
+  const ang=Math.atan2(wy-r.y,wx-r.x);
+  if(v===2&&rnd()<0.6)addPick(wx,wy,'dust',Math.cos(ang)*20,Math.sin(ang)*20);
+  else if(v===3&&rnd()<0.11)addPick(wx,wy,'ember',Math.cos(ang)*16,Math.sin(ang)*16);
+  else if(v===1&&rnd()<0.025)addPick(wx,wy,'dust',Math.cos(ang)*15,Math.sin(ang)*15);
+  if(rnd()<0.5)part(wx,wy,(rnd()-0.5)*40+Math.cos(ang)*20,(rnd()-0.5)*40+Math.sin(ang)*20,0.5,v===2?M.ORE:v===3?M.EMBER:r.tint,v>1?5:3,v>1)}
+ if(got){if(r.cnt<10){rocks.splice(rocks.indexOf(r),1);gridDel(r);for(let k=0;k<r.S*r.S;k++)if(r.m[k]&&rnd()<0.5)part(r.x0+k%r.S,r.y0+(k/r.S|0),(rnd()-0.5)*30,(rnd()-0.5)*30,0.8,r.tint,3,0)}else dirtyRocks.add(r)}
+ return got}
+function genRocks(){rocks=[];GRID.clear();
+ const ok=(x,y,R)=>{const d=Math.hypot(x,y);if(d<120+R||d>WR-30)return false;for(const p of PAGES)if(Math.hypot(x-p.x,y-p.y)<62+R)return false;
+  for(const o of rocks)if(Math.hypot(x-o.x,y-o.y)<R+o.R+16)return false;return true};
+ for(let t=0;t<5000&&rocks.length<200;t++){const a=R0()*TAU,d=Math.sqrt(R0())*WR,x=Math.cos(a)*d,y=Math.sin(a)*d,z=ZN(x,y);
+  if(z==='echo'&&R0()<0.45)continue;
+  const R=z==='nursery'?6+R0()*14:z==='shallow'?8+R0()*18:z==='leech'?11+R0()*24:z==='echo'?9+R0()*18:10+R0()*28;
+  if(ok(x,y,R))rocks.push(makeRock(x,y,Math.round(R),z))}
+ // 回声茧周围一圈白石
+ for(let k=0;k<9;k++){const a=k/9*TAU+0.3,x=PAGES[2].x+Math.cos(a)*120,y=PAGES[2].y+Math.sin(a)*120;if(Math.hypot(x,y)<WR-20)rocks.push(makeRock(x,y,7+(k%3)*3,'echo'))}
+ rocks.forEach(gridAdd)}
+
+// ---- 远景：星云、星层、图书馆残骸、远处小行星 ----
+const NW=720,NH=600;const NEB=new Uint32Array(NW*NH),NEBD=new Uint32Array(NW*NH);
+(function genNeb(){for(let y=0;y<NH;y++)for(let x=0;x<NW;x++){const b=bay(x,y);
+ const a=fbm(x*0.007,y*0.007),c2=fbm(x*0.011+40,y*0.011+9),hot=Math.max(0,1-Math.hypot(x-170,y-120)/360);
+ let m=M.SPACE,l=Math.pow(Math.max(0,a-0.35)*2.3,1.6)*4.2;
+ if(c2>0.56&&c2>a){m=M.ORE;l=(c2-0.56)*9}
+ if(hot>0.45&&hot*1.4>l*0.45){m=M.WINE;l=(hot-0.45)*4.5}
+ const li=Math.floor(l+b-0.5);NEB[y*NW+x]=li<=0?RAMP32[0]:RC(m,Math.min(li,m===M.SPACE?4:2));NEBD[y*NW+x]=li<=1?RAMP32[0]:RC(m===M.WINE?M.SPACE:m,Math.min(li-1,2))}})();
+const STARS=[0.04,0.1,0.2].map((p,li)=>{const a=[];for(let i=0;i<150-li*30;i++)a.push({x:R0()*720,y:R0()*420,b:R0(),p,m:R0()<0.2?M.GOLD:R0()<0.5?M.ICE:M.PAPER,ph:R0()*TAU});return a});
+const RUINS=[];for(let i=0;i<11;i++){const w=26+R0()*46,h=12+R0()*34;const books=[];for(let k=0;k<w*h/6;k++)books.push(R0());RUINS.push({x:(R0()-0.5)*900,y:(R0()-0.5)*900,w:Math.round(w),h:Math.round(h),books,lit:R0(),tilt:R0()<0.5})}
+const FAR=[];for(let i=0;i<70;i++)FAR.push({x:(R0()-0.5)*1700,y:(R0()-0.5)*1700,r:1.5+R0()*4.5});
+
+// ================= 生物定义 =================
+const DEF={
+ hush:{name:'静默水母',tag:'浮游 · 无害但冰冷',hp:3,r:6,dust:3,ember:0,lore:'以声音为食的透明钟形生物。它们漂过的地方，连星星的嗡鸣都会停下来。碰到它会冷到陶心，体温骤降。'},
+ folio:{name:'书鳐',tag:'迁徙 · 温顺',hp:8,r:7,dust:10,ember:0,lore:'大散页之后，有些书没有死。它们学会了扇动封皮，在星海里成群迁徙，边飞边抖落不想要的段落——那就是页尘。'},
+ clam:{name:'冰核贝',tag:'固着 · 可采集',hp:2,r:5,dust:2,ember:3,lore:'冰壳里裹着一粒火。没人知道它们从哪儿学会了保存温暖，只知道它们每隔一会儿要张嘴喘口气——那时射中火珠，就能取到余烬。'},
+ moth:{name:'蚀字蛾',tag:'群居 · 暗潮时出没',hp:1,r:3,dust:1,ember:0,lore:'啃食一切写着字的东西。暗潮来临时成群出现，扑向光——也扑向你，因为你身上全是字。炉火太烫，它们不敢靠近。'},
+ leech:{name:'轨道蛭',tag:'伏击 · 绕石而居',hp:4,r:5,dust:5,ember:0.3,lore:'一生绕着一颗石头转，像在念一句咒语。看到路过的小陶灵会停下、发红、然后直线扑来。躲开那一下就好。'},
+ mite:{name:'镜螨',tag:'反射 · 只能打背面',hp:4,r:5,dust:8,ember:0,lore:'背着一面磨得发亮的壳，会把你说过的话原样还给你——正面射它，字弹会被弹回来。它转身很慢，绕到背后打那块粉色软肉。'},
+ grav:{name:'引力胎',tag:'幼体黑洞 · 贪吃',hp:10,r:6,dust:16,ember:0,lore:'还没长大的黑洞幼体，正处在什么都想往嘴里塞的年纪。会把你、你的字弹、地上的页尘一起往里拽。'},
+ serp:{name:'回声蛇',tag:'守页者 · 首领',hp:48,r:8,dust:40,ember:4,lore:'吞下所有在虚空里说出口的话，然后一遍遍复述。它走的路，永远是你刚刚走过的路——别回头踩自己的脚印。只有头会受伤。'},
+};
+const ORDER=['hush','folio','clam','moth','leech','mite','grav','serp'];
+let cr=[];
+function mk(t,x,y,o={}){const d=DEF[t];const c=Object.assign({t,x,y,vx:0,vy:0,hp:d.hp,r:d.r,age:rnd()*10,ph:rnd()*TAU,st:'idle',tm:0,cd:0,flash:0,dead:false,hx:x,hy:y},o);cr.push(c);return c}
+
+// ================= 状态 =================
+let S='title',T=0,gt=0,tideT=-35,TIDE=0,SUN=1,AMB=0.08,tides=0,introT=0,endT=0,deadT=0,menuSel=0,codexSel=0,freeMode=false;
+const P={x:0,y:34,vx:0,vy:0,hp:5,maxhp:5,warm:100,maxwarm:100,dust:0,ember:1,beacons:0,carry:[],inv:0,dashCD:0,dashT:0,fireCD:0,ax:1,ay:0,coldT:0,healT:0,deaths:0,dustTotal:0,bound:0,anim:0,moving:false,glaze:0,dmg:1,kills:0};
+const UP={kiln:0,bolt:0,shell:0,glaze:0,puff:0,beacon:0};
+const kilnR=()=>64+24*UP.kiln;
+let PB=[],EB=[],PK=[],PT=[],BEA=[],toasts=[],LIGHTS=[];
+const seen=new Set(),tips=new Set();let cam={x:0,y:20},shk=0;
+let serp=null;const TRX=new Float32Array(400),TRY=new Float32Array(400);let trI=0;
+let save={codex:[],clears:0};try{const s=JSON.parse(localStorage.getItem('sanye-v1')||'null');if(s)save=Object.assign(save,s)}catch(e){}
+function persist(){try{save.codex=[...new Set([...save.codex,...seen])];localStorage.setItem('sanye-v1',JSON.stringify(save))}catch(e){}}
+function toast(s,c=C_TXT,d=3.4){toasts.push({s,c,t:d,max:d});if(toasts.length>3)toasts.shift()}
+function tip(id,s){if(tips.has(id))return;tips.add(id);toast(s,C_TEAL,5)}
+
+function addPick(x,y,k,vx=0,vy=0,v=1){if(PK.length>320)PK.shift();PK.push({x,y,vx:vx+(rnd()-0.5)*14,vy:vy+(rnd()-0.5)*14,k,v,age:0})}
+function part(x,y,vx,vy,life,m,l,emit=0,g=0){if(PT.length>900)PT.shift();PT.push({x,y,vx,vy,life,max:life,m,l,emit,g})}
+function burst(x,y,n,m,l,sp=50,life=0.6,emit=1){for(let i=0;i<n;i++){const a=rnd()*TAU,s=sp*(0.3+rnd());part(x,y,Math.cos(a)*s,Math.sin(a)*s,life*(0.5+rnd()*0.8),m,l,emit)}}
+
+function zoneSpot(t){for(let k=0;k<60;k++){const a=rnd()*TAU,d=Math.sqrt(rnd())*WR,x=Math.cos(a)*d,y=Math.sin(a)*d,z=ZN(x,y);
+  if(d<150||Math.hypot(x-P.x,y-P.y)<230||rockAt(x,y))continue;
+  if(t==='hush'&&d<170)continue;if(t==='folio'&&(d<200||d>950))continue;if(t==='grav'&&z!=='nursery')continue;if(t==='mite'&&!(z==='echo'||(z==='leech'&&d>650)||(z==='drift'&&d>700)))continue;
+  if(Math.hypot(x-PAGES[2].x,y-PAGES[2].y)<150)continue;return{x,y}}return null}
+function spawn(t){
+ if(t==='leech'){const cand=rocks.filter(r=>r.R>=10&&Math.hypot(r.x-P.x,r.y-P.y)>240&&(r.zone==='leech'||(Math.hypot(r.x,r.y)>420&&rnd()<0.25)));if(!cand.length)return;const r=cand[(rnd()*cand.length)|0];
+  const c=mk('leech',r.x+r.R+10,r.y,{home:r,orR:r.R+11,ang:rnd()*TAU,w:(rnd()<0.5?-1:1)*(0.6+rnd()*0.4),st:'orbit',tr:[]});return c}
+ const p=zoneSpot(t);if(!p)return;
+ if(t==='folio'){const ph=rnd()*TAU;for(let i=0;i<3;i++)mk('folio',p.x+i*10,p.y+i*6,{hx:p.x,hy:p.y,ph,off:i,lead:i});return}
+ if(t==='mite')return mk('mite',p.x,p.y,{ang:rnd()*TAU});
+ return mk(t,p.x,p.y)}
+const TARGET={hush:15,folio:9,leech:15,grav:7,mite:10};
+function genClams(){let n=0;const cand=rocks.filter(r=>r.R>=11&&r.zone!=='nursery'&&r.zone!=='echo');
+ for(let t=0;t<200&&n<24;t++){const r=cand[(rnd()*cand.length)|0];if(!r)break;const a=rnd()*TAU;let px=r.x+Math.cos(a)*(r.R+4),py=r.y+Math.sin(a)*(r.R+4);
+  for(let s=0;s<r.R+4;s++){if(rockAt(px-Math.cos(a),py-Math.sin(a)))break;px-=Math.cos(a);py-=Math.sin(a)}
+  if(!rockAt(px-Math.cos(a)*2,py-Math.sin(a)*2))continue;if(Math.hypot(px,py)<140)continue;
+  mk('clam',px+Math.cos(a)*1.5,py+Math.sin(a)*1.5,{na:a,tm:rnd()*5,st:'grow',open:0});n++}}
+function newWorld(){genRocks();cr=[];PB=[];EB=[];PK=[];PT=[];BEA=[];genClams();
+ for(const t in TARGET){let g=0;while(cr.filter(c=>c.t===t).length<TARGET[t]&&g++<60)spawn(t)}
+ // 守页的生物：第一页周围一窝轨道蛭，第二页旁边两只引力胎
+ for(let i=0;i<4;i++)mk('leech',PAGES[0].x,PAGES[0].y,{hx:PAGES[0].x,hy:PAGES[0].y,orR:i<2?30:46,ang:i*1.6,w:(i%2?-1:1)*0.7,st:'orbit',tr:[],guard:1});
+ for(const a of[0.4,2.6])mk('grav',PAGES[1].x+Math.cos(a)*55,PAGES[1].y+Math.sin(a)*55);
+ serp=mk('serp',PAGES[2].x,PAGES[2].y,{st:'sleep',seg:[],burstT:4});for(let i=0;i<18;i++)serp.seg.push({x:PAGES[2].x,y:PAGES[2].y+i*2})}
+newWorld();
+
+// ================= 游戏逻辑 =================
+function hurtPlayer(n,sx,sy){if(P.inv>0||S!=='play')return;P.hp-=n;P.inv=1.1;shk=Math.max(shk,4);SFX.hurt();
+ const dx=P.x-sx,dy=P.y-sy,d=Math.hypot(dx,dy)||1;P.vx+=dx/d*120;P.vy+=dy/d*120;burst(P.x,P.y,10,M.CLAY,4,60,0.5,0);
+ if(P.hp<=0)playerDie()}
+function playerDie(){S='dead';deadT=0;P.deaths++;SFX.die();burst(P.x,P.y,40,M.CLAY,4,90,1.2,0);
+ const lose=Math.floor(P.dust/2);P.dust-=lose;for(let i=0;i<Math.min(lose,40);i++)addPick(P.x,P.y,'dust',(rnd()-0.5)*80,(rnd()-0.5)*80,Math.max(1,Math.round(lose/Math.min(lose,40))));
+ for(const id of P.carry){PAGES[id].state='free';PAGES[id].x=P.x+(rnd()-0.5)*20;PAGES[id].y=P.y+(rnd()-0.5)*20}P.carry=[];
+ if(serp&&serp.st!=='sleep'&&serp.st!=='dead')resetSerp()}
+function respawn(){S='play';P.x=0;P.y=34;P.vx=P.vy=0;P.hp=P.maxhp;P.warm=Math.max(60,P.warm);P.inv=2;cam.x=0;cam.y=30;toast('小克碎成了陶片……又在炉灯里重新烧好了。',C_CLAY);if(P.deaths===1)toast('掉落的页尘和书页留在了原地，回去捡吧。',C_DIM)}
+function resetSerp(){serp.st='sleep';serp.hp=DEF.serp.hp;serp.x=PAGES[2].x;serp.y=PAGES[2].y;for(const s of serp.seg){s.x=serp.x;s.y=serp.y}EB=[]}
+
+function updTide(dt){const ph=((tideT%150)+150)%150;const dark=tideT>0&&ph>=112,warnz=tideT>0&&ph>=100&&ph<112;
+ const tgt=dark?1:0;TIDE+=(tgt-TIDE)*Math.min(1,dt*0.8);SUN=1-0.88*TIDE;if(warnz)SUN*=0.8+0.2*Math.sin(T*9)*Math.sin(T*3.3);
+ if(warnz&&!updTide.w){updTide.w=true;SFX.warn();toast('残烛在打寒颤……暗潮快来了。',C_GOLD);tip('tide','暗潮里会冷得更快，蚀字蛾会扑向光。躲回炉灯，或放下信标——扑上去的蛾子会被烫死。')}
+ if(dark&&!updTide.d){updTide.d=true;tides++;toast('暗潮 · 第 '+tides+' 次',C_RED,3)}
+ if(!dark&&updTide.d){updTide.d=false;updTide.w=false;toast('残烛又亮了。活下来了。',C_GOLD);P.ember+=1;for(const c of cr)if(c.t==='moth'){c.st='burn';c.tm=rnd()*2.5}}
+ if(TIDEG)TIDEG.gain.setTargetAtTime(TIDE*0.05,AC.currentTime,0.5);
+ if(dark){updTide.sp=(updTide.sp||0)-dt;if(updTide.sp<=0){updTide.sp=Math.max(1.3,2.6-tides*0.25);const n=cr.filter(c=>c.t==='moth').length;
+  if(n<26+tides*6){const a=rnd()*TAU,d=200+rnd()*40,x=P.x+Math.cos(a)*d,y=P.y+Math.sin(a)*d;if(Math.hypot(x,y)>kilnR()+30){const k=3+((rnd()*2+tides)|0);for(let i=0;i<k;i++)mk('moth',x+(rnd()-0.5)*20,y+(rnd()-0.5)*20,{sp:58+rnd()*22+tides*4})}}}}}
+
+function warmZone(x,y){if(Math.hypot(x,y)<kilnR())return 2;for(const b of BEA)if(Math.hypot(x-b.x,y-b.y)<56)return 1;return 0}
+function updPlayer(dt){
+ let ix=(kd('d')||kd('arrowright')?1:0)-(kd('a')||kd('arrowleft')?1:0),iy=(kd('s')||kd('arrowdown')?1:0)-(kd('w')||kd('arrowup')?1:0);const il=Math.hypot(ix,iy);if(il){ix/=il;iy/=il}
+ P.moving=il>0;
+ // 瞄准
+ const psx=P.x-ox,psy=P.y-oy;let ax=mouse.x-psx,ay=mouse.y-psy;const al=Math.hypot(ax,ay);if(al>2){P.ax=ax/al;P.ay=ay/al}
+ const ACC=235;P.vx+=ix*ACC*dt;P.vy+=iy*ACC*dt;const drag=P.dashT>0?0.6:2.35;P.vx*=Math.exp(-drag*dt);P.vy*=Math.exp(-drag*dt);
+ // 引力胎
+ for(const c of cr)if(c.t==='grav'&&!c.dead){const dx=c.x-P.x,dy=c.y-P.y,d=Math.hypot(dx,dy);if(d<95&&d>1){const f=175*Math.pow(1-d/95,1.2);P.vx+=dx/d*f*dt;P.vy+=dy/d*f*dt}}
+ // 世界边缘
+ const pd=Math.hypot(P.x,P.y);if(pd>WR){P.vx-=P.x/pd*260*dt;P.vy-=P.y/pd*260*dt;tip('edge','再往外是彻底的寂静，连光都不肯去。')}
+ // 冲刺
+ P.dashCD-=dt;P.dashT-=dt;
+ if((jp.has(' ')||jp.has('shift')||jp.has('rclick'))&&P.dashCD<=0){const dx=il?ix:P.ax,dy=il?iy:P.ay;P.vx=dx*250;P.vy=dy*250;P.dashT=0.22;P.inv=Math.max(P.inv,0.28);P.dashCD=UP.puff?0.75:1.3;SFX.dash();
+  for(let i=0;i<10;i++)part(P.x-dx*4,P.y-dy*4,-dx*60+(rnd()-0.5)*50,-dy*60+(rnd()-0.5)*50,0.5,M.CLAY,5,1)}
+ // 移动 + 与岩石碰撞
+ const steps=Math.ceil(Math.hypot(P.vx,P.vy)*dt/2)||1;
+ for(let s=0;s<steps;s++){P.x+=P.vx*dt/steps;P.y+=P.vy*dt/steps;collideP()}
+ if(il&&rnd()<0.5)part(P.x-ix*5+(rnd()-0.5)*3,P.y-iy*4+3,-ix*25+(rnd()-0.5)*10,-iy*25+(rnd()-0.5)*10,0.35,M.PAPER,3,0);
+ P.anim+=dt*(il?10:3);
+ // 射击
+ P.fireCD-=dt;
+ if(mouse.down&&P.fireCD<=0&&S==='play'){P.fireCD=UP.bolt>=2?0.15:0.2;const n=UP.bolt===0?1:UP.bolt===1?2:3;
+  for(let k=0;k<n;k++){const sp=(k-(n-1)/2)*0.13,c=Math.cos(sp),s=Math.sin(sp),dx=P.ax*c-P.ay*s,dy=P.ax*s+P.ay*c;PB.push({x:P.x+dx*5,y:P.y+dy*5,vx:dx*265+P.vx*0.3,vy:dy*265+P.vy*0.3,life:0.75,dmg:P.dmg,g:(rnd()*8)|0})}
+  P.vx-=P.ax*5;P.vy-=P.ay*5;SFX.shoot()}
+ // 体温
+ const wz=warmZone(P.x,P.y);
+ if(wz){P.warm=Math.min(P.maxwarm,P.warm+(wz===2?24:16)*dt)}
+ else{const drain=0.8*(1+pd/800)*(1+1.3*TIDE)*(1-0.2*UP.glaze)*(1-P.glaze);P.warm=Math.max(0,P.warm-drain*dt)}
+ if(P.warm<=0){P.coldT+=dt;if(P.coldT>=3){P.coldT=0;P.hp--;shk=3;SFX.hurt();toast('好冷……陶身裂了一道缝。',C_TEAL);if(P.hp<=0)playerDie()}}else P.coldT=0;
+ if(P.warm<25)tip('cold','体温太低了！按 Q 吞一颗余烬，或者回到火边。');
+ if(wz===2){P.healT+=dt;if(P.healT>=Math.max(3,7-UP.kiln*1.5)&&P.hp<P.maxhp){P.healT=0;P.hp++;burst(P.x,P.y,6,M.GOLD,5,30,0.6,1)}}else P.healT=0;
+ // 余烬
+ if(jp.has('q')){if(P.ember>0){P.ember--;P.warm=Math.min(P.maxwarm,P.warm+35);SFX.eat();burst(P.x,P.y,14,M.EMBER,5,40,0.7,1)}else toast('没有余烬了。打开冰核贝、敲碎橙色的矿脉都能找到。',C_DIM)}
+ // 信标
+ if(jp.has('b')){if(P.beacons>0){if(Math.hypot(P.x,P.y)<kilnR())toast('炉灯旁边不需要信标。',C_DIM);else{P.beacons--;BEA.push({x:P.x,y:P.y+2,hp:10,age:0});SFX.beacon();toast('信标点亮了：一小圈温暖。',C_GOLD)}}else toast('还没有信标。去炉灯工坊打造（E）。',C_DIM)}
+ // 炉灯：装订书页 / 工坊
+ const nearK=Math.hypot(P.x,P.y)<kilnR();
+ if(nearK&&P.carry.length){for(const id of P.carry){PAGES[id].state='bound';P.bound++;bindPage(id)}P.carry=[]}
+ if(jp.has('e')){if(nearK){S='menu';menuSel=0;SFX.beacon()}else toast('要在炉灯的暖圈里才能打开工坊。',C_DIM)}
+ if(nearK)tip('kiln','这里是炉灯。站在暖圈里会回暖、慢慢修补裂缝。按 E 打开工坊。');
+ // 页
+ for(const p of PAGES)if(p.state==='free'&&Math.hypot(p.x-P.x,p.y-P.y)<11){p.state='carried';P.carry.push(p.id);SFX.page();shk=2;burst(p.x,p.y,30,M.ORE,6,60,1,1);
+  toast('拾到失落之页 ·「'+p.name+'」',C_TEAL,4);toast('带回炉灯装订它。',C_DIM,4)}
+ P.inv-=dt;
+ TRX[trI]=P.x;TRY[trI]=P.y;trI=(trI+1)%400}
+function collideP(){const r=4.5;let px=0,py=0,n=0;
+ for(let k=0;k<12;k++){const a=k/12*TAU,sx=P.x+Math.cos(a)*r,sy=P.y+Math.sin(a)*r;if(rockAt(sx,sy)){px-=Math.cos(a);py-=Math.sin(a);n++}}
+ if(n){const l=Math.hypot(px,py)||1;const nx=px/l,ny=py/l;P.x+=nx*0.9;P.y+=ny*0.9;const vn=P.vx*nx+P.vy*ny;if(vn<0){P.vx-=1.4*vn*nx;P.vy-=1.4*vn*ny}}}
+function bindPage(id){SFX.page();shk=5;burst(0,-4,60,M.ORE,6,90,1.6,1);
+ toast('装订：失落之页「'+PAGES[id].name+'」',C_GOLD,5);toast(PAGE_TXT[id],C_TEAL,6);
+ if(id===0){P.maxwarm+=30;P.warm=P.maxwarm;P.glaze+=0.15}
+ if(id===1){P.dmg+=1}
+ if(id===2){S='ending';endT=0;save.clears++;persist()}
+ else if(P.bound<3)toast('还剩 '+(3-P.bound)+' 页。',C_DIM,4)}
+
+function updCreatures(dt){
+ for(const c of cr){if(c.dead)continue;c.age+=dt;c.flash-=dt;c.cd-=dt;const D=DEF[c.t];
+  const dx=P.x-c.x,dy=P.y-c.y,d=Math.hypot(dx,dy)||1;
+  if(d>700&&c.t!=='serp'&&c.t!=='moth')continue;// 远处的生物先睡着
+  switch(c.t){
+  case 'hush':{c.vx=Math.cos(c.age*0.31+c.ph)*7+(c.hx-c.x)*0.02;c.vy=Math.sin(c.age*0.23+c.ph*2)*5-2.5*(0.5+0.5*Math.sin(c.age*2.2+c.ph))+(c.hy-c.y)*0.02;
+   c.x+=c.vx*dt;c.y+=c.vy*dt;if(d<c.r+5&&c.cd<=0&&S==='play'){P.warm=Math.max(0,P.warm-14);P.vx+=dx/d*70;P.vy+=dy/d*70;c.cd=1.2;SFX.cold();burst(P.x,P.y,10,M.JELLY,5,30,0.7,1);tip('hush','被静默水母碰到了，体温 -14。')}
+   if(d<60)duckK=Math.min(duckK,0.35+d/60*0.65);break}
+  case 'folio':{const tx=c.hx+Math.cos(c.age*0.21+c.ph)*130+Math.cos(c.off*2.1)*12,ty=c.hy+Math.sin(c.age*0.33+c.ph)*90+Math.sin(c.off*2.1)*10;
+   let sp=c.flee>0?95:30;c.flee=(c.flee||0)-dt;let ex=tx-c.x,ey=ty-c.y;if(c.flee>0){ex=-dx;ey=-dy}const el=Math.hypot(ex,ey)||1;
+   c.vx+=(ex/el*sp-c.vx)*dt*1.5;c.vy+=(ey/el*sp-c.vy)*dt*1.5;c.x+=c.vx*dt;c.y+=c.vy*dt;
+   c.tm-=dt;if(c.tm<=0){c.tm=5+rnd()*4;addPick(c.x,c.y,'dust',-c.vx*0.3,-c.vy*0.3)}break}
+  case 'moth':{if(c.st==='burn'){c.tm-=dt;if(c.tm<=0){kill(c,true)}c.x+=Math.sin(c.age*20)*20*dt;break}
+   let tx=P.x,ty=P.y,best=230;for(const b of BEA){const bd=Math.hypot(b.x-c.x,b.y-c.y);if(bd<best){best=bd;tx=b.x;ty=b.y}}
+   const ex=tx-c.x,ey=ty-c.y,el=Math.hypot(ex,ey)||1;const j=Math.sin(c.age*7+c.ph)*0.9;const ca=Math.cos(j),sa=Math.sin(j);
+   const ux=(ex*ca-ey*sa)/el,uy=(ex*sa+ey*ca)/el;c.vx+=(ux*c.sp-c.vx)*dt*2.6;c.vy+=(uy*c.sp-c.vy)*dt*2.6;c.x+=c.vx*dt;c.y+=c.vy*dt;
+   if(Math.hypot(c.x,c.y)<kilnR()-4){burst(c.x,c.y,8,M.EMBER,5,30,0.5,1);kill(c,false);break}
+   for(const b of BEA)if(Math.hypot(b.x-c.x,b.y-c.y)<6){b.hp-=dt*0.5;c.vx*=-0.5;c.vy*=-0.5;c.sing=(c.sing||0)+dt;if(c.sing>1.2){burst(c.x,c.y,6,M.EMBER,5,25,0.4,1);kill(c,true);break}}
+   if(c.dead)break;
+   if(d<c.r+4&&S==='play'&&P.inv<=0){hurtPlayer(1,c.x,c.y);kill(c,false)}break}
+  case 'leech':{c.tr.push(c.x,c.y);if(c.tr.length>28)c.tr.splice(0,2);
+   const hx=c.home&&rocks.includes(c.home)?c.home.x:c.hx,hy=c.home&&rocks.includes(c.home)?c.home.y:c.hy;
+   if(c.st==='orbit'){c.ang+=c.w*dt;const tx=hx+Math.cos(c.ang)*c.orR,ty=hy+Math.sin(c.ang)*c.orR;c.x+=(tx-c.x)*Math.min(1,dt*4);c.y+=(ty-c.y)*Math.min(1,dt*4);
+    if(d<115&&c.cd<=0&&S==='play'){c.st='wind';c.tm=0.75;SFX.note()}}
+   else if(c.st==='wind'){c.tm-=dt;if(c.tm<=0){c.st='lunge';c.tm=0.55;c.vx=dx/d*215;c.vy=dy/d*215}}
+   else if(c.st==='lunge'){c.tm-=dt;c.x+=c.vx*dt;c.y+=c.vy*dt;if(rockAt(c.x,c.y)&&c.tm<0.45){c.tm=0;burst(c.x,c.y,6,M.ROCK,4,30,0.4,0)}if(c.tm<=0){c.st='back'}}
+   else{const tx=hx+Math.cos(c.ang)*c.orR,ty=hy+Math.sin(c.ang)*c.orR,ex=tx-c.x,ey=ty-c.y,el=Math.hypot(ex,ey);if(el<4){c.st='orbit';c.cd=1.6}else{c.x+=ex/el*55*dt;c.y+=ey/el*55*dt}}
+   if(d<c.r+4)hurtPlayer(1,c.x,c.y);break}
+  case 'clam':{c.tm-=dt;if(c.st==='grow'){c.open=Math.max(0,c.open-dt*3);if(c.tm<=0){c.st='open';c.tm=2.6}}
+   else if(c.st==='open'){c.open=Math.min(1,c.open+dt*3);if(c.tm<=0){c.st='grow';c.tm=3.5+rnd()*2}}
+   else if(c.st==='empty'){c.open=Math.max(0,c.open-dt*2);if(c.tm<=0){c.st='grow';c.tm=2;c.hp=DEF.clam.hp}}break}
+  case 'grav':{c.x+=(Math.cos(c.age*0.2+c.ph)*6+(c.hx-c.x)*0.03)*dt;c.y+=(Math.sin(c.age*0.17+c.ph)*6+(c.hy-c.y)*0.03)*dt;
+   for(const p of PK){const ex=c.x-p.x,ey=c.y-p.y,el=Math.hypot(ex,ey);if(el<95&&el>0.5){const f=160*(1-el/95);p.vx+=ex/el*f*dt;p.vy+=ey/el*f*dt;if(el<5&&p.k!=='page'){p.k='eaten';if(d<200)tip('gravEat','引力胎把你的页尘吃掉了！')}}}
+   if(d<c.r+3)hurtPlayer(1,c.x,c.y);break}
+  case 'mite':{const ta=Math.atan2(dy,dx);let da=((ta-c.ang+Math.PI*3)%TAU)-Math.PI;c.ang+=clamp(da,-1.5*dt,1.5*dt);
+   if(d<230){c.vx+=(dx/d*26-c.vx)*dt;c.vy+=(dy/d*26-c.vy)*dt}else{c.vx*=0.98;c.vy*=0.98}
+   c.x+=c.vx*dt;c.y+=c.vy*dt;if(rockAt(c.x,c.y)){c.x-=c.vx*dt*2;c.y-=c.vy*dt*2;c.vx*=-0.5;c.vy*=-0.5}
+   if(d<c.r+4)hurtPlayer(1,c.x,c.y);break}
+  case 'serp':updSerp(c,dt,dx,dy,d);break}
+  if(c.t!=='serp'&&c.t!=='clam'&&c.t!=='leech'){const r=rockAt(c.x,c.y);if(r){const ex=c.x-r.x,ey=c.y-r.y,el=Math.hypot(ex,ey)||1;c.x+=ex/el*1.5;c.y+=ey/el*1.5}}
+ }
+ cr=cr.filter(c=>!c.dead)}
+function updSerp(c,dt,dx,dy,d){
+ if(c.st==='sleep'){if(d<270&&S==='play'){c.st='rise';c.tm=2.2;SFX.roar();shk=8;toast('回声蛇醒了。别踩自己走过的路！',C_RED,4);tip('serp','它会沿着你刚走过的路追来。只有头会受伤。')}return}
+ if(c.st==='dead')return;
+ if(c.st==='rise'){c.tm-=dt;shk=Math.max(shk,2);if(c.tm<=0)c.st='fight';return}
+ const hpk=c.hp/DEF.serp.hp,delay=hpk>0.5?84:62;const k=(trI-delay+400)%400;const tx=TRX[k],ty=TRY[k];
+ const ex=tx-c.x,ey=ty-c.y,el=Math.hypot(ex,ey)||1;const sp=Math.min(el*5,150);c.x+=ex/el*sp*dt;c.y+=ey/el*sp*dt;c.ha=Math.atan2(ey,ex);
+ let px=c.x,py=c.y;for(const s of c.seg){const sx=s.x-px,sy=s.y-py,sl=Math.hypot(sx,sy)||1;if(sl>5.5){s.x=px+sx/sl*5.5;s.y=py+sy/sl*5.5}px=s.x;py=s.y}
+ c.burstT-=dt;if(c.burstT<=0){c.burstT=hpk>0.5?4.6:3.3;const n=hpk>0.5?10:12,o=rnd()*TAU;
+  for(let i=0;i<n;i++){const a=o+i/n*TAU;EB.push({x:c.x,y:c.y,vx:Math.cos(a)*52,vy:Math.sin(a)*52,life:4.5,m:M.SERP})}
+  if(hpk<=0.5)for(const s of [c.seg[6],c.seg[12]]){for(let i=0;i<6;i++){const a=o+i/6*TAU+0.5;EB.push({x:s.x,y:s.y,vx:Math.cos(a)*40,vy:Math.sin(a)*40,life:4,m:M.ORE})}}
+  SFX.roar();c.flash=0.25}
+ if(d<c.r+4)hurtPlayer(hpk>0.5?1:2,c.x,c.y);
+ for(const s of c.seg)if(Math.hypot(P.x-s.x,P.y-s.y)<8)hurtPlayer(1,s.x,s.y);
+ if(Math.hypot(P.x-PAGES[2].x,P.y-PAGES[2].y)>620){resetSerp();toast('回声蛇退回了茧里。',C_DIM)}}
+function hurtC(c,dmg,bx,by){if(c.t==='clam'){if(c.st!=='open'){burst(bx,by,3,M.ICE,6,30,0.25,1);SFX.ping();tip('clam','冰核贝合着壳时打不动。等它张嘴！');return true}}
+ c.hp-=dmg;c.flash=0.12;SFX.hit();if(c.t==='folio'){for(const f of cr)if(f.t==='folio'&&f.hx===c.hx)f.flee=3}
+ if(c.t!=='serp'&&c.t!=='clam'){const dx=c.x-P.x,dy=c.y-P.y,d=Math.hypot(dx,dy)||1;c.x+=dx/d*2;c.y+=dy/d*2}
+ if(c.hp<=0)kill(c,true);return true}
+function kill(c,drop){const D=DEF[c.t];
+ if(c.t==='clam'){c.st='empty';c.tm=45;for(let i=0;i<D.ember;i++)addPick(c.x,c.y,'ember',Math.cos(c.na)*40,Math.sin(c.na)*40);for(let i=0;i<D.dust;i++)addPick(c.x,c.y,'dust',Math.cos(c.na)*30,Math.sin(c.na)*30);SFX.ember();burst(c.x,c.y,12,M.EMBER,6,40,0.6,1);return}
+ c.dead=true;if(drop){P.kills++;SFX.kill();for(let i=0;i<D.dust;i++)addPick(c.x,c.y,'dust',(rnd()-0.5)*50,(rnd()-0.5)*50);if(rnd()<D.ember%1||D.ember>=1)for(let i=0;i<Math.max(1,Math.floor(D.ember));i++)addPick(c.x,c.y,'ember',(rnd()-0.5)*40,(rnd()-0.5)*40)}
+ const m={hush:M.JELLY,folio:M.PAPER,moth:M.MOTH,leech:M.LEECH,mite:M.MIRROR,grav:M.GRAV,serp:M.SERP}[c.t];burst(c.x,c.y,c.t==='serp'?80:14,m,5,c.t==='serp'?110:45,c.t==='serp'?1.6:0.6,1);
+ if(c.t==='folio'&&drop)toast('一本书鳐散成了纸片……',C_DIM);
+ if(c.t==='grav'){burst(c.x,c.y,30,M.GOLD,6,80,0.8,1);shk=4}
+ if(c.t==='serp'){c.dead=false;c.st='dead';shk=12;PAGES[2].state='free';toast('回声蛇散成了一千句回声。',C_GOLD,5);toast('第三页「论回声」从茧里漂了出来。',C_TEAL,5);for(const s of c.seg)burst(s.x,s.y,8,M.SERP,5,50,1,1);EB=[]}}
+
+function updBullets(dt){
+ for(const b of PB){b.life-=dt;
+  for(const c of cr)if(c.t==='grav'&&!c.dead){const ex=c.x-b.x,ey=c.y-b.y,el=Math.hypot(ex,ey);if(el<95&&el>1){const f=2400*Math.pow(1-el/95,2);b.vx+=ex/el*f*dt;b.vy+=ey/el*f*dt}}
+  for(let s=0;s<2&&b.life>0;s++){b.x+=b.vx*dt/2;b.y+=b.vy*dt/2;const r=rockAt(b.x,b.y);if(r){carve(r,b.x,b.y,2.3);b.life=0;SFX.rock();break}
+   for(const c of cr){if(c.dead)continue;
+    if(c.t==='serp'){if(c.st==='sleep'||c.st==='dead'){if(c.st==='sleep'&&Math.hypot(b.x-c.x,b.y-c.y)<14){b.life=0;burst(b.x,b.y,3,M.SERP,5,20,0.3,1)}continue}
+     if(Math.hypot(b.x-c.x,b.y-c.y)<c.r+1){hurtC(c,b.dmg,b.x,b.y);b.life=0;break}
+     let blk=false;for(const sg of c.seg)if(Math.hypot(b.x-sg.x,b.y-sg.y)<5){blk=true;break}if(blk){b.life=0;burst(b.x,b.y,3,M.ORE,5,25,0.3,1);SFX.ping();break}continue}
+    if(Math.hypot(b.x-c.x,b.y-c.y)<c.r+1.5){
+     if(c.t==='mite'){const fx=Math.cos(c.ang),fy=Math.sin(c.ang),hx=(b.x-c.x),hy=(b.y-c.y),hl=Math.hypot(hx,hy)||1;
+      if((fx*hx+fy*hy)/hl>0.2){const sp=Math.hypot(b.vx,b.vy)*0.45;const dx=P.x-c.x,dy=P.y-c.y,dl=Math.hypot(dx,dy)||1;const j=(rnd()-0.5)*0.5;
+       EB.push({x:b.x,y:b.y,vx:(dx/dl*Math.cos(j)-dy/dl*Math.sin(j))*sp,vy:(dx/dl*Math.sin(j)+dy/dl*Math.cos(j))*sp,life:2.5,m:M.CLAY});b.life=0;SFX.ping();burst(b.x,b.y,4,M.MIRROR,6,30,0.3,1);tip('mite','镜螨把字弹弹回来了！绕到它背后打粉色的软肉。');break}}
+     hurtC(c,b.dmg,b.x,b.y);b.life=0;break}}}
+  if(b.life<=0)burst(b.x,b.y,2,M.CLAY,5,20,0.2,1)}
+ PB=PB.filter(b=>b.life>0);
+ for(const b of EB){b.life-=dt;b.x+=b.vx*dt;b.y+=b.vy*dt;if(rockAt(b.x,b.y))b.life=0;if(Math.hypot(b.x-P.x,b.y-P.y)<4.5&&P.inv<=0&&S==='play'){hurtPlayer(1,b.x,b.y);b.life=0}}
+ EB=EB.filter(b=>b.life>0)}
+function updPickups(dt){const mag=40+(P.bound>=1?15:0);
+ for(const p of PK){p.age+=dt;if(p.k==='eaten')continue;p.vx*=Math.exp(-2*dt);p.vy*=Math.exp(-2*dt);
+  const dx=P.x-p.x,dy=P.y-p.y,d=Math.hypot(dx,dy);if(d<mag&&p.age>0.35&&S==='play'){const f=(1-d/mag)*520+60;p.vx+=dx/d*f*dt;p.vy+=dy/d*f*dt}
+  p.x+=p.vx*dt;p.y+=p.vy*dt;
+  if(d<6&&p.age>0.3&&S==='play'){p.k2=p.k;p.k='got';if(p.k2==='dust'){P.dust+=p.v;P.dustTotal+=p.v;SFX.dust();if(P.dust>=25)tip('dust','页尘攒够了，回炉灯按 E 打造东西。')}else{P.ember+=p.v;SFX.ember();tip('ember','拾到余烬：体温低时按 Q 吞下它。')}}}
+ PK=PK.filter(p=>p.k!=='got'&&p.k!=='eaten'&&p.age<90)}
+function updBeacons(dt){for(const b of BEA){b.age+=dt;if(b.hp<=0){burst(b.x,b.y,20,M.GOLD,5,40,0.8,1);toast('一座信标被蚀字蛾啃灭了。',C_RED)}}BEA=BEA.filter(b=>b.hp>0)}
+let spawnT=3;
+function updSpawns(dt){spawnT-=dt;if(spawnT>0)return;spawnT=4;for(const t in TARGET){const n=cr.filter(c=>c.t===t).length;if(n<TARGET[t])spawn(t)}}
+function updParticles(dt){for(const p of PT){p.life-=dt;p.vx*=Math.exp(-1.8*dt);p.vy*=Math.exp(-1.8*dt);p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt}PT=PT.filter(p=>p.life>0)}
+function checkDiscover(){for(const c of cr){if(seen.has(c.t)||c.dead)continue;if(c.t==='serp'&&c.st==='sleep')continue;if(Math.hypot(c.x-P.x,c.y-P.y)<130){seen.add(c.t);toast('新生物 ·「'+DEF[c.t].name+'」  (Tab 图鉴)',C_GOLD,4);SFX.note();persist()}}}
+
+// ---- 工坊 ----
+const SHOP=[
+ {k:'beacon',name:'信标',desc:'一座小火塔，放下后周围变暖（B 放置）',cost:()=>25,max:99,lvl:()=>P.beacons,buy(){P.beacons++}},
+ {k:'kiln',name:'炉火',desc:'炉灯暖圈变大，修补裂缝更快',cost:()=>[35,70,120][UP.kiln],max:3,lvl:()=>UP.kiln,buy(){UP.kiln++}},
+ {k:'bolt',name:'字弹',desc:'一次射出更多字弹，射速更快',cost:()=>[45,100][UP.bolt],max:2,lvl:()=>UP.bolt,buy(){UP.bolt++}},
+ {k:'shell',name:'陶壳',desc:'生命上限 +1，并补满',cost:()=>[40,90][UP.shell],max:2,lvl:()=>UP.shell,buy(){UP.shell++;P.maxhp++;P.hp=P.maxhp}},
+ {k:'glaze',name:'保温釉',desc:'在外面体温流失 -20%',cost:()=>[30,75][UP.glaze],max:2,lvl:()=>UP.glaze,buy(){UP.glaze++}},
+ {k:'puff',name:'喷气孔',desc:'冲刺冷却减半',cost:()=>50,max:1,lvl:()=>UP.puff,buy(){UP.puff++}},
+];
+function tryBuy(i){const it=SHOP[i];if(!it)return;if(it.k!=='beacon'&&it.lvl()>=it.max){toast('已经满级了。',C_DIM);return}const c=it.cost();if(P.dust<c){toast('页尘不够（还差 '+(c-P.dust)+'）。',C_RED);return}
+ P.dust-=c;it.buy();SFX.buy();burst(0,-6,24,M.GOLD,6,50,0.9,1);toast('打造：'+it.name+(it.k==='beacon'?'（按 B 放置）':' Lv'+it.lvl()),C_GOLD)}
+
+// ================= 主更新 =================
+function update(dt){T+=dt;duckK=1;
+ if(S==='title'){cam.x=Math.cos(T*0.05)*60;cam.y=Math.sin(T*0.05)*40;if(clickQ||jp.has('enter')||jp.has(' ')){S='intro';introT=0}}
+ else if(S==='intro'){introT+=dt;if((clickQ||jp.has('enter')||jp.has(' '))&&introT>0.4){introT=introT<15?15:99}if(introT>18.5){S='play';toast('找回三张失落之页，带回炉灯装订。',C_GOLD,5);toast('WASD 移动 · 鼠标瞄准、左键射击 · 空格冲刺',C_DIM,6)}}
+ else if(S==='play'){gt+=dt;tideT+=dt;updTide(dt);updPlayer(dt);updCreatures(dt);updBullets(dt);updPickups(dt);updBeacons(dt);updSpawns(dt);checkDiscover();
+  if(jp.has('tab')){S='codex'}}
+ else if(S==='menu'){for(let i=1;i<=6;i++)if(jp.has(String(i)))tryBuy(i-1);
+  if(jp.has('w')||jp.has('arrowup'))menuSel=(menuSel+5)%6;if(jp.has('s')||jp.has('arrowdown'))menuSel=(menuSel+1)%6;if(jp.has('enter')||jp.has(' '))tryBuy(menuSel);
+  const mi=Math.floor((mouse.y-44)/17);if(mouse.x>40&&mouse.x<280&&mi>=0&&mi<6){if(mouseMoved)menuSel=mi;if(clickQ)tryBuy(mi)}
+  if(jp.has('e')||jp.has('escape')||jp.has('tab'))S='play'}
+ else if(S==='codex'){if(jp.has('w')||jp.has('arrowup'))codexSel=(codexSel+7)%8;if(jp.has('s')||jp.has('arrowdown'))codexSel=(codexSel+1)%8;
+  const mi=Math.floor((mouse.y-34)/16);if(mouse.x>14&&mouse.x<110&&mi>=0&&mi<8&&mouseMoved)codexSel=mi;
+  if(jp.has('tab')||jp.has('escape')||jp.has('e'))S='play'}
+ else if(S==='dead'){deadT+=dt;if(deadT>2.6)respawn()}
+ else if(S==='ending'){endT+=dt;updCreatures(dt);if(endT>7&&(jp.has('enter')||clickQ)){S='play';freeMode=true;toast('自由探索：残烛还在打寒颤，宇宙还有很多散页。',C_DIM,5)}}
+ updParticles(dt);
+ if(S==='play'||S==='dead'||S==='ending'){const tx=S==='ending'?0:P.x+P.ax*14,ty=S==='ending'?-30:P.y+P.ay*10;cam.x+=(tx-cam.x)*Math.min(1,dt*(S==='ending'?1.5:5));cam.y+=(ty-cam.y)*Math.min(1,dt*(S==='ending'?1.5:5))}
+ for(const t of toasts)t.t-=dt;toasts=toasts.filter(t=>t.t>0);
+ shk=Math.max(0,shk-dt*14);
+ for(const r of dirtyRocks)calcNormals(r);dirtyRocks.clear();
+ if(MG&&!muted)MG.gain.setTargetAtTime(0.55*duckK,AC.currentTime,0.2);
+ jp.clear();clickQ=false;mouseMoved=false}
+let mouseMoved=false;cv.addEventListener('mousemove',()=>{mouseMoved=true});
+addEventListener('keydown',e=>{if(e.key.toLowerCase()==='m'){muted=!muted;if(MG)MG.gain.value=muted?0:0.55;toast(muted?'静音':'声音开启',C_DIM,1.5)}});
+
+// ================= 绘制 =================
+function buildLights(){LIGHTS=[];const f=0.92+0.08*Math.sin(T*11)*Math.sin(T*4.3);
+ LIGHTS.push({x:0,y:-2,r:kilnR()*1.8,i:1.25*f});
+ for(const b of BEA)LIGHTS.push({x:b.x,y:b.y-5,r:90,i:0.9*f*(b.hp<3?0.5+0.5*Math.sin(T*20):1)});
+ if(S!=='title'&&S!=='intro')LIGHTS.push({x:P.x,y:P.y,r:62,i:0.75});
+ for(const p of PAGES)if(p.state==='free')LIGHTS.push({x:p.x,y:p.y,r:55,i:0.8});
+ let n=0;for(const b of PB){if(n++>10)break;LIGHTS.push({x:b.x,y:b.y,r:22,i:0.5})}
+ for(const c of cr){if(c.t==='hush'&&Math.abs(c.x-cam.x)<220&&Math.abs(c.y-cam.y)<150)LIGHTS.push({x:c.x,y:c.y,r:34,i:0.35});
+  if(c.t==='serp'&&c.st!=='dead')LIGHTS.push({x:c.x,y:c.y,r:60,i:c.st==='sleep'?0.5:0.7})}}
+function lightAt(x,y){let L=AMB+SUN*0.55;for(const l of LIGHTS){const dx=l.x-x,dy=l.y-y,d2=dx*dx+dy*dy;if(d2<l.r*l.r){const k=1-Math.sqrt(d2)/l.r;L+=l.i*k*k}}return L}
+function shiftAt(x,y){if(NOLIGHT)return 0;const L=lightAt(x,y);return L>=0.5?0:L>=0.33?-1:L>=0.2?-2:-3}
+
+function drawBG(){
+ const nx0=Math.floor(cam.x*0.1)+NW/2-W/2,ny0=Math.floor(cam.y*0.1)+NH/2-H/2;
+ for(let y=0;y<H;y++){const ny=clamp(ny0+y,0,NH-1)*NW;for(let x=0;x<W;x++){const nx=clamp(nx0+x,0,NW-1);out[y*W+x]=(TIDE>0.02&&bay(x,y)<TIDE)?NEBD[ny+nx]:NEB[ny+nx]}}
+ // 残烛：远处那颗垂死的恒星
+ const sx=Math.round(52-cam.x*0.015),sy=Math.round(34-cam.y*0.015),sr=11-3*TIDE;
+ for(let dy=-34;dy<=34;dy++)for(let dx=-34;dx<=34;dx++){const px=sx+dx,py=sy+dy;if(px<0||px>=W||py<0||py>=H)continue;const d=Math.hypot(dx,dy);
+  if(d<sr){const l=Math.floor(6-d/sr*2.5-TIDE*2.5+bay(px,py)*0.9);out[py*W+px]=RC(TIDE>0.5?M.WINE:M.GOLD,l);if(((px+py)&1)===0)glowAdd(px,py,M.GOLD,l,0.25*(1-TIDE*0.7))}
+  else{const cor=(1-(d-sr)/(22+6*Math.sin(Math.atan2(dy,dx)*5+T*0.3)))*(1-TIDE*0.75);if(cor>0&&bay(px,py)<cor*0.55)out[py*W+px]=RC(M.WINE,1+cor*2.5)}}
+ // 星
+ for(const L of STARS)for(const s of L){const x=Math.floor(((s.x-cam.x*s.p)%720+720)%720)-200,y=Math.floor(((s.y-cam.y*s.p)%420+420)%420)-120;if(x<0||x>=W||y<0||y>=H)continue;
+  const tw=s.b*(0.7+0.3*Math.sin(T*2+s.ph))*(1-TIDE*0.5);const l=Math.floor(2+tw*4.5);out[y*W+x]=RC(s.m,l);if(l>=5&&L===STARS[2]){pset(x+1,y,RC(s.m,l-3));pset(x-1,y,RC(s.m,l-3));pset(x,y+1,RC(s.m,l-3));pset(x,y-1,RC(s.m,l-3))}}
+ // 图书馆残骸（远景视差）
+ for(const r of RUINS){const x0=Math.round(r.x-cam.x*0.3+W/2),y0=Math.round(r.y-cam.y*0.3+H/2);if(x0>W||y0>H||x0+r.w<0||y0+r.h<0)continue;let bi=0;
+  for(let y=0;y<r.h;y++)for(let x=0;x<r.w;x++){const px=x0+x+(r.tilt?Math.floor(y*0.25):0),py=y0+y;if(px<0||px>=W||py<0||py>=H)continue;
+   const edge=x===0||y===0||x===r.w-1||y===r.h-1,shelf=y%7===0;let l=edge||shelf?3:1;
+   if(!edge&&!shelf){const b=r.books[(Math.floor(x/2)+Math.floor(y/7)*40)%r.books.length];if(b>0.35)l=1+Math.floor(b*3);if(b>0.985){out[py*W+px]=RC(M.EMBER,3-TIDE*2);continue}}
+   if(((x*13+y*7)%11===0)&&!edge&&r.lit<0.3)continue;out[py*W+px]=RC(M.RUIN,l-TIDE)}}
+ // 远处的碎石
+ for(const f of FAR){const cx=f.x-cam.x*0.55+W/2,cy=f.y-cam.y*0.55+H/2;if(cx<-8||cx>W+8||cy<-8||cy>H+8)continue;const R=Math.ceil(f.r);
+  for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){if(dx*dx+dy*dy>f.r*f.r)continue;const px=Math.floor(cx)+dx,py=Math.floor(cy)+dy;if(px<0||px>=W||py<0||py>=H)continue;
+   const L=(-dx*0.55-dy*0.5)/f.r;out[py*W+px]=RC(M.RUIN,2+L*2.2+bay(px,py)-0.5-TIDE)}}}
+function drawZones(){// 暖圈边缘的虚线
+ const rings=[[0,0,kilnR(),M.GOLD]];for(const b of BEA)rings.push([b.x,b.y,56,M.EMBER]);
+ for(const [x,y,r,m] of rings){if(!onScreen(x,y,r+10))continue;const n=Math.floor(r*TAU/3);for(let i=0;i<n;i++){if(i%3===2)continue;const a=i/n*TAU+T*0.05;wp(x+Math.cos(a)*r,y+Math.sin(a)*r,m,2+(i%3===0?1:0))}
+  const R=Math.ceil(r);for(let dy=-R;dy<=R;dy+=1)for(let dx=-R;dx<=R;dx+=1){const sx=Math.floor(x)+dx-ox,sy=Math.floor(y)+dy-oy;if(sx<0||sx>=W||sy<0||sy>=H)continue;const d=Math.hypot(dx,dy);if(d>=r)continue;
+   if(bay(sx,sy)<0.06*(1-d/r)*(0.5+TIDE))out[sy*W+sx]=RC(M.WINE,2)}}}
+function drawRocks(){const sl=SUNV;
+ for(const r of rocks){if(r.x0-ox>W||r.y0-oy>H||r.x0+r.S-ox<0||r.y0+r.S-oy<0)continue;
+  const ls=LIGHTS.filter(l=>Math.hypot(l.x-r.x,l.y-r.y)<l.r+r.c);const S=r.S;
+  for(let j=0;j<S;j++){const sy=r.y0+j-oy;if(sy<0||sy>=H)continue;for(let i=0;i<S;i++){const k=j*S+i,v=r.m[k];if(!v)continue;const sx=r.x0+i-ox;if(sx<0||sx>=W)continue;
+   const nx=r.NX[k],ny=r.NY[k],nz=r.NZ[k];let L=AMB*0.6+SUN*Math.max(0,nx*sl[0]+ny*sl[1]+nz*sl[2])*0.95;const wx=r.x0+i,wy=r.y0+j;
+   for(const l of ls){const dx=l.x-wx,dy=l.y-wy,d2=dx*dx+dy*dy;if(d2>=l.r*l.r)continue;const d=Math.sqrt(d2),kk=1-d/l.r;const dd=(nx*dx+ny*dy+nz*16)/Math.sqrt(d2+256);L+=l.i*kk*kk*Math.max(0.12,dd)*1.3}
+   let lv=Math.floor(L*r.alb[k]*6.4+bay(sx,sy)-0.5);
+   if(v===2){const p=Math.sin(T*2.2+wx*0.21+wy*0.13);const e=3+(p>0.55?2:p>-0.2?1:0);if(e>=lv){out[sy*W+sx]=RC(M.ORE,e);glowAdd(sx,sy,M.ORE,e,0.18)}else out[sy*W+sx]=RC(M.ORE,lv)}
+   else if(v===3){const e=Math.max(lv,2+(Math.sin(T*1.3+wx*0.3)>0.3?1:0));out[sy*W+sx]=RC(M.EMBER,e);glowAdd(sx,sy,M.EMBER,e,0.12)}
+   else out[sy*W+sx]=RC(r.tint,lv)}}}}
+// ---- 主角：Claude 的橙色小吉祥物 ----
+const CL=['..HHHHHHHHH..','..BBBBBBBBB..','AABBBBBBBBBAA','AABBBBBBBBBAA','..BBBBBBBBB..','..SSSSSSSSS..','..L.L...L.L..','..L.L...L.L..'];
+function drawClawd(sx,sy,s,o={}){const w=13,h=8;const x0=Math.round(sx-w*s/2),y0=Math.round(sy-h*s/2);const lv=o.lv||0,fr=o.fr||0;
+ for(let j=0;j<h;j++)for(let i=0;i<w;i++){const ch=CL[j][i];if(ch==='.')continue;
+  if(ch==='L'&&j===7&&((fr&&(i===2||i===8))||(!fr&&(i===4||i===10))))continue;
+  let l=ch==='H'?5:ch==='S'||ch==='L'?3:ch==='A'?(j===2?4:3):4;let c=o.flash?RC(M.PAPER,6):RC(M.CLAY,l+lv);
+  if(o.frost&&j<=1&&((i*5+j*3)%4===0))c=RC(M.ICE,6);
+  for(let yy=0;yy<s;yy++)for(let xx=0;xx<s;xx++)pset(x0+i*s+xx,y0+j*s+yy,c)}
+ const ex=o.ex||0,blink=o.blink;for(const ec of[4,8])for(let j=blink?3:2;j<=3;j++)for(let yy=0;yy<s;yy++)for(let xx=0;xx<s;xx++)pset(x0+(ec+ex)*s+xx,y0+j*s+yy,RC(M.CLAY,0))}
+function drawPlayer(){if(S==='dead'||S==='title'||S==='intro')return;if(P.inv>0&&S==='play'&&Math.floor(T*16)%2===0&&P.inv<1.05)return;
+ const sx=Math.round(P.x-ox),sy=Math.round(P.y-oy+Math.sin(T*3)*0.8);
+ drawClawd(sx,sy,1,{lv:0,fr:Math.floor(P.anim)%2,ex:P.ax>0.35?1:P.ax<-0.35?-1:0,blink:(T%3.7)<0.12,frost:P.warm<25,flash:P.dashT>0.12});
+ for(let k=0;k<6;k++)glowAdd(sx-4+k*2,sy,M.CLAY,4,0.12);
+ // 背着的书页绕身旋转
+ P.carry.forEach((id,i)=>{const a=T*2+i*TAU/Math.max(1,P.carry.length);const px=P.x+Math.cos(a)*10,py=P.y+Math.sin(a)*6-2;drawPageIcon(px,py,0.7)})}
+function drawPageIcon(x,y,s=1){const w=Math.round(5*s),h=Math.round(7*s);for(let j=0;j<h;j++)for(let i=0;i<w;i++){const line=j>0&&j<h-1&&j%2===0&&i>0&&i<w-1;we(x-w/2+i,y-h/2+j,line?M.ORE:M.PAPER,line?5:6,line?0.4:0.25)}}
+function drawKiln(){if(!onScreen(0,0,40))return;const sh=0;
+ // 漂浮的基石
+ for(let dy=4;dy<12;dy++)for(let dx=-14;dx<=14;dx++){const w=14-(dy-4)*1.6;if(Math.abs(dx)>w)continue;wp(dx,dy,M.ROCK,3-(dy-4)*0.35+(dx<0?0.6:-0.6)+bay(dx&3,dy&3))}
+ // 陶窑主体（和小克同一种陶土）
+ for(let dy=-14;dy<=4;dy++)for(let dx=-11;dx<=11;dx++){const e=(dx*dx)/121+((dy+3)*(dy+3))/((dy<-3?12:8)**2);if(e>1)continue;
+  const L=(-dx/11)*0.5+(-(dy+3)/12)*0.6;let l=Math.floor(3.3+L*1.6+bay(dx&3,dy&3)-0.5);if((dy+20)%5===0&&Math.abs(dx)<10)l--;wp(dx,dy,M.CLAY,l+sh)}
+ // 烟囱
+ for(let dy=-19;dy<=-13;dy++)for(let dx=-2;dx<=2;dx++)wp(dx+3,dy,M.CLAY,dx<0?4:2);
+ // 炉口火焰
+ for(let dy=-5;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){const arch=dy<-2?Math.abs(dx)<=4-(-2-dy)*1.4:Math.abs(dx)<=4;if(!arch)continue;
+  const f=n2(dx*0.6+3,dy*0.5+T*6)*1.4+(dy+5)/9;const l=Math.floor(f*3.6+1+bay(dx&3,dy&3)*0.6);we(dx,dy,l>=4?M.GOLD:M.EMBER,Math.min(6,l),0.5)}
+ if(rnd()<0.3)part(3+(rnd()-0.5)*3,-20,(rnd()-0.5)*6,-10-rnd()*8,2.2,M.MOTH,3,0);
+ // 已装订的书页绕炉旋转
+ for(let i=0;i<P.bound;i++){const a=T*0.8+i*TAU/3;drawPageIcon(Math.cos(a)*22,-6+Math.sin(a)*8,1)}}
+function drawBeacons(){for(const b of BEA){if(!onScreen(b.x,b.y))continue;const sh=shiftAt(b.x,b.y);
+ for(let dy=-6;dy<=2;dy++)for(let dx=-1;dx<=1;dx++)wp(b.x+dx,b.y+dy,M.CLAY,(dx<0?4:dx>0?2:3)+sh);for(let dx=-3;dx<=3;dx++)wp(b.x+dx,b.y+3,M.ROCK,3);
+ const on=b.hp>=3||Math.sin(T*20)>0;if(on)for(let dy=-3;dy<=0;dy++)for(let dx=-1;dx<=1;dx++){if(dy===-3&&dx)continue;we(b.x+dx,b.y-8+dy,dy>-2?M.GOLD:M.EMBER,dy===0?6:5-(Math.sin(T*9+dx)>0.4?1:0),0.6)}}}
+function drawPages(){for(const p of PAGES){if(p.state!=='free')continue;if(!onScreen(p.x,p.y,30))continue;const by=Math.sin(T*2)*2;
+ drawPageIcon(p.x,p.y+by,1.4);for(let i=0;i<6;i++){const a=T*1.5+i*TAU/6;we(p.x+Math.cos(a)*13,p.y+by+Math.sin(a)*5,M.ORE,5+(i%2),0.4)}}}
+function drawCocoon(){const p=PAGES[2];if(!serp||serp.st!=='sleep'&&serp.st!=='rise')return;if(!onScreen(p.x,p.y,30))return;
+ const pul=Math.sin(T*1.6)*1.2;ball(p.x,p.y,15+pul,M.SERP,3,0,0.08,0.75);drawPageIcon(p.x,p.y,1);
+ for(let i=0;i<14;i++){const a=T*(0.6+(i%3)*0.2)+i*1.7,r=10+(i%4)*2.2;we(p.x+Math.cos(a)*r,p.y+Math.sin(a)*r*0.7,M.ORE,5,0.3)}}
+function drawPickups(){for(const p of PK){if(!onScreen(p.x,p.y))continue;const tw=Math.sin(T*8+p.age*3)>0;
+ if(p.k==='dust'){we(p.x,p.y,M.ORE,tw?6:5,0.35);if(tw){wp(p.x+1,p.y,M.ORE,3);wp(p.x-1,p.y,M.ORE,3)}}
+ else if(p.k==='ember'){we(p.x,p.y,M.EMBER,6,0.5);we(p.x+1,p.y,M.EMBER,4,0.3);we(p.x,p.y+1,M.EMBER,4,0.3);we(p.x+1,p.y+1,M.EMBER,3,0.2)}}}
+function drawBullets(){for(const b of PB){const l=Math.hypot(b.vx,b.vy)||1;for(let k=0;k<4;k++)we(b.x-b.vx/l*k,b.y-b.vy/l*k,k?M.CLAY:M.GOLD,6-k,0.5-k*0.1);we(b.x+0.5,b.y+0.5,M.GOLD,5,0.3)}
+ for(const b of EB){const fl=Math.sin(T*14+b.x)>0;we(b.x,b.y,b.m,6,0.6);we(b.x+1,b.y,b.m,fl?5:4,0.4);we(b.x,b.y+1,b.m,fl?4:5,0.4);we(b.x-1,b.y,b.m,4,0.3);we(b.x,b.y-1,b.m,4,0.3)}}
+function drawParticles(){for(const p of PT){if(!onScreen(p.x,p.y,2))continue;const k=p.life/p.max;const l=Math.floor(p.l*(0.4+0.6*k)+bay(Math.floor(p.x)&3,Math.floor(p.y)&3)*0.8);
+ if(p.emit)we(p.x,p.y,p.m,l,0.3*k);else{const sx=Math.floor(p.x)-ox,sy=Math.floor(p.y)-oy;if(k<0.4&&bay(sx&3,sy&3)>k*2.5)continue;wp(p.x,p.y,p.m,l)}}}
+
+// ---- 生物绘制 ----
+const DRAW={
+ hush(c,sh){const pul=Math.sin(c.age*2.2+c.ph),r=6+pul*0.8,x=c.x,y=c.y;
+  for(let k=0;k<5;k++){const bx=-4+k*2;for(let j=0;j<9;j++){const wx=x+bx+Math.sin(c.age*3+k+j*0.6)*(j*0.25);if(j%2===0||k%2===0)wp(wx,y+2+j,M.JELLY,3-j*0.3+sh)}}
+  for(let dy=-Math.ceil(r);dy<=1;dy++)for(let dx=-Math.ceil(r)-1;dx<=Math.ceil(r)+1;dx++){const e=dx*dx/((r+1)*(r+1))+dy*dy/(r*r);if(e>1)continue;const sx=Math.floor(x)+dx-ox,sy=Math.floor(y)+dy-oy;if(sx<0||sx>=W||sy<0||sy>=H)continue;
+   const edge=e>0.62;if(!edge&&bay(sx,sy)>0.4)continue;out[sy*W+sx]=RC(M.JELLY,(edge?(dy<-r*0.4?5:4):3)+sh)}
+  for(let i=0;i<4;i++){const a=i*1.9+c.ph;const tw=Math.sin(T*3+i*2+c.ph)>0;we(x+Math.cos(a)*3,y-2+Math.sin(a)*1.6,M.JELLY,tw?6:5,0.35)}},
+ folio(c,sh){const a=Math.atan2(c.vy,c.vx),fx=Math.cos(a),fy=Math.sin(a),sx=-fy,sy=fx;const fl=Math.sin(c.age*7+c.ph),span=8*(0.45+0.55*Math.abs(fl));
+  for(let k=1;k<8;k++){const t=-4-k;wp(c.x+fx*t+sx*Math.sin(c.age*5-k*0.7)*1.5,c.y+fy*t+sy*Math.sin(c.age*5-k*0.7)*1.5,M.WINE,5-k*0.3+sh)}
+  for(let t=-3.5;t<=3.5;t+=0.45)for(const sd of[-1,1])for(let u=0;u<=1.001;u+=0.1){const px=c.x+fx*t+sx*sd*u*span,py=c.y+fy*t+sy*sd*u*span;const cover=u>0.82||Math.abs(t)>3.1;
+   const lit=(sd*fl>0)?1:0;wp(px,py,cover?M.WINE:M.PAPER,(cover?3+lit:4+lit+((Math.round(t*2)%2)?0:-1))+sh)}
+  for(let t=-4;t<=4;t+=0.5)wp(c.x+fx*t,c.y+fy*t,M.WINE,2+sh);if(c.flash>0)ball(c.x,c.y,4,M.PAPER,6,0)},
+ moth(c,sh){const fl=Math.floor(c.age*24)%2,x=c.x,y=c.y;const b=c.st==='burn'?M.EMBER:M.MOTH;
+  wp(x,y,b,4+sh);wp(x,y+1,b,3+sh);for(const s of[-1,1]){wp(x+s,y-fl,b,5+sh);wp(x+s*2,y-fl,b,4+sh);if(!fl)wp(x+s*2,y+1,b,3+sh)}
+  we(x,y-1,M.SERP,6,0.3)},
+ leech(c,sh){const tr=c.tr,n=tr.length/2;const red=c.st==='wind';const shake=red?(rnd()-0.5)*2:0;
+  for(let k=0;k<n;k+=2){const i=k*2,rr=1+k/n*1.8;ball(tr[i]+shake,tr[i+1],rr,M.LEECH,3,sh)}
+  ball(c.x+shake,c.y,3.2,red?M.EMBER:M.LEECH,red?5:4,red?0:sh,red?0.4:0);we(c.x+shake,c.y,M.WINE,red?6:3,red?0.6:0)},
+ clam(c,sh){const ta=c.na+Math.PI/2,tx=Math.cos(ta),ty=Math.sin(ta),nx=Math.cos(c.na),ny=Math.sin(c.na);const op=c.open*3;
+  for(let u=-5;u<=5;u+=0.5){const hh=3.4*Math.sqrt(Math.max(0,1-(u/5.3)**2));
+   for(let v=0;v<=hh+op+0.01;v+=0.5){let m=M.ICE,l;if(v<=hh*0.5)l=2+(Math.round(u)%2?0:1);else if(v>=hh*0.5+op)l=4+(Math.round(u)%2?0:1)-(v>hh+op-0.6?1:0);else continue;wp(c.x+tx*u+nx*v,c.y+ty*u+ny*v,m,l+sh)}}
+  if(c.st!=='empty'&&c.open>0.2){const px=c.x+nx*(3.4*0.5+op*0.5),py=c.y+ny*(3.4*0.5+op*0.5);we(px,py,M.EMBER,6,0.8);we(px+1,py,M.EMBER,5,0.5);we(px,py+1,M.EMBER,5,0.5);we(px+1,py+1,M.GOLD,4,0.4)}
+  if(c.flash>0)we(c.x,c.y,M.PAPER,6,0.5)},
+ grav(c,sh){const x=c.x,y=c.y;const pts=[];for(let k=0;k<30;k++){const r=8+(k%6)*1.9,a=c.age*(3.2-(k%6)*0.35)+k*0.83;pts.push([Math.cos(a)*r,Math.sin(a)*r*0.42,r])}
+  for(const p of pts)if(p[1]<0){we(x+p[0],y+p[1],p[2]<10?M.GOLD:M.GRAV,5,0.3);we(x+p[0]+1,y+p[1],p[2]<10?M.EMBER:M.GRAV,4,0.2)}
+  for(let dy=-6;dy<=6;dy++)for(let dx=-6;dx<=6;dx++){const d=Math.hypot(dx,dy);if(d>5.6)continue;if(d>4.3)we(x+dx,y+dy,M.GRAV,5+(Math.sin(T*4+Math.atan2(dy,dx)*3)>0.5?1:0),0.3);else wp(x+dx,y+dy,M.GRAV,0)}
+  for(const p of pts)if(p[1]>=0){we(x+p[0],y+p[1],p[2]<10?M.GOLD:M.GRAV,6,0.35);we(x+p[0]+1,y+p[1],p[2]<10?M.EMBER:M.GRAV,5,0.25)}
+  if(c.flash>0)ball(x,y,4,M.PAPER,6,0)},
+ mite(c,sh){const fx=Math.cos(c.ang),fy=Math.sin(c.ang);
+  for(let i=0;i<3;i++)for(const s of[-1,1]){const t=-1.5+i*1.6,lx=c.x+fx*t-fy*s*5.5,ly=c.y+fy*t+fx*s*5.5+(Math.sin(c.age*10+i)>0?0.5:0);wp(lx,ly,M.MOTH,3+sh)}
+  for(let dy=-5;dy<=5;dy++)for(let dx=-5;dx<=5;dx++){const d=Math.hypot(dx,dy);if(d>4.6)continue;const dd=(dx*fx+dy*fy)/(d||1);
+   if(dd>-0.15||d<2){const g=Math.abs(((dx*-fy+dy*fx))-Math.sin(T*1.7)*4)<0.8;wp(c.x+dx,c.y+dy,M.MIRROR,(g?6:3+(dd>0.6?1:0)+((dx+dy)<-1?1:0))+(g?0:sh))}
+   else we(c.x+dx,c.y+dy,M.SERP,d<3.2?5:3,0.25)}
+  if(c.flash>0)ball(c.x,c.y,3,M.PAPER,6,0)},
+ serp(c,sh){if(c.st==='sleep'||c.st==='dead')return;const segs=c.seg;
+  for(let i=segs.length-1;i>=0;i--){const s=segs[i],r=4.2-i*0.12;ball(s.x,s.y,r,M.SERP,3,sh);const tw=Math.sin(T*4+i*1.3)>0.2;we(s.x,s.y,M.ORE,tw?6:4,0.3)}
+  const fl=c.flash>0;ball(c.x,c.y,6.2,fl?M.PAPER:M.SERP,fl?6:4,0,0.05);const a=c.ha||0,fx=Math.cos(a),fy=Math.sin(a);
+  for(const s of[-1,1])we(c.x+fx*2.5-fy*s*2.5,c.y+fy*2.5+fx*s*2.5,M.ORE,6,0.6);
+  for(let k=0;k<6;k++){const aa=T*3+k*TAU/6;we(c.x+fx*4.5+Math.cos(aa)*1.6,c.y+fy*4.5+Math.sin(aa)*1.6,M.GOLD,5,0.3)}},
+};
+function drawCreatures(){for(const c of cr){if(c.dead||!onScreen(c.x,c.y,30))continue;let sh=c.t==='moth'?Math.max(-1,shiftAt(c.x,c.y)):shiftAt(c.x,c.y);DRAW[c.t](c,c.flash>0?1:sh)}}
+
+// ---- 界面 ----
+const HEART=['.#.#.','#####','#####','.###.','..#..'];
+function icon(pat,x,y,c){pat.forEach((r,j)=>{for(let i=0;i<r.length;i++)if(r[i]==='#')pset(x+i,y+j,c)})}
+const ICO_PAGE=['.#.','###','.#.'],ICO_EMB=['.#.','###','###'],ICO_TH=['.#.','.#.','.#.','###','###'],ICO_BEA=['.#.','###','.#.','.#.','###'];
+function hud(){
+ for(let i=0;i<P.maxhp;i++){icon(HEART,5+i*7,5,C_SH);icon(HEART,4+i*7,4,i<P.hp?RC(M.CLAY,5):RC(M.RUIN,4))}
+ // 体温
+ const wk=P.warm/P.maxwarm,bw=46,fl=P.warm<25&&Math.sin(T*10)>0;icon(ICO_TH,4,12,fl?C_RED:RC(M.ICE,5));box(9,13,bw+2,5,C_SH,RC(M.RUIN,5));
+ for(let i=0;i<bw*wk;i++){const m=wk<0.3?M.ICE:M.EMBER;rect(10+i,14,1,3,RC(m,i%2?4:5))}
+ drawDigits(String(Math.ceil(P.warm)),bw+14,13,wk<0.3?C_TEAL:C_TXT,C_SH);
+ // 资源
+ icon(ICO_PAGE,4,22,RC(M.ORE,5));drawDigits(String(P.dust),9,21,C_TXT,C_SH);
+ icon(ICO_EMB,26,22,RC(M.EMBER,5));drawDigits(String(P.ember),31,21,C_TXT,C_SH);
+ if(P.beacons){icon(ICO_BEA,44,21,RC(M.GOLD,5));drawDigits(String(P.beacons),49,21,C_TXT,C_SH)}
+ // 右上：暗潮钟 + 书页
+ const ph=((tideT%150)+150)%150,dark=tideT>0&&ph>=112;let left=dark?150-ph:(tideT<0?112-tideT:112-ph);
+ drawTextR(dark?'暗潮':'星息',W-46,3,9,dark?C_RED:C_GOLD,C_SH);drawDigits(Math.floor(left/60)+':'+String(Math.floor(left%60)).padStart(2,'0'),W-44,6,dark?C_RED:C_TXT,C_SH);
+ drawMinimap(W-46,15,42);
+ drawTextR('书页 '+P.bound+'/3',W-4,59,9,C_TEAL,C_SH);
+ // 区域名
+ if(S==='play'){const z=ZN(P.x,P.y);if(z!==hud.z){hud.z=z;hud.zt=2.5}hud.zt-=1/60;if(hud.zt>0)drawText(ZNAME[z],W/2,20,10,C_DIM,C_SH,Math.min(1,hud.zt))}
+ // 首领血条
+ if(serp&&(serp.st==='fight'||serp.st==='rise')){const k=serp.hp/DEF.serp.hp;drawText('回声蛇',W/2,4,9,col32('#e57cb6'),C_SH);box(W/2-60,15,120,4,C_SH,RC(M.SERP,2));rect(W/2-59,16,118*k,2,RC(M.SERP,5))}
+ // 屏幕边缘箭头
+ const arrows=[];if(Math.hypot(P.x,P.y)>110)arrows.push([0,0,M.GOLD]);for(const p of PAGES)if(p.state==='free'||p.state==='sealed')arrows.push([p.x,p.y,M.ORE]);
+ for(const [x,y,m] of arrows){const sx=x-ox,sy=y-oy;if(sx>4&&sx<W-4&&sy>4&&sy<H-4)continue;const cx=W/2,cy=H/2,dx=sx-cx,dy=sy-cy;const k=Math.min((W/2-10)/Math.abs(dx||1e-3),(H/2-10)/Math.abs(dy||1e-3));
+  const ax=cx+dx*k,ay=cy+dy*k,a=Math.atan2(dy,dx),pul=Math.sin(T*4)>0;for(let t=0;t<5;t++)for(let w=-t;w<=t;w++){const px=Math.round(ax+Math.cos(a)*(2-t)-Math.sin(a)*w*0.7),py=Math.round(ay+Math.sin(a)*(2-t)+Math.cos(a)*w*0.7);pset(px,py,RC(m,pul?6:5))}}
+ // 提示条
+ let ty=H-14;for(let i=toasts.length-1;i>=0;i--){const t=toasts[i];const a=Math.min(1,t.t*2,(t.max-t.t)*6);const lines=wrapText(t.s,10,290);for(let j=lines.length-1;j>=0;j--){drawText(lines[j],W/2,ty,10,t.c,C_SH,a);ty-=13}}
+ // 炉灯旁提示
+ if(S==='play'&&Math.hypot(P.x,P.y)<kilnR())drawText('E 工坊',W/2,H/2+18,9,C_GOLD,C_SH,0.8+0.2*Math.sin(T*4))}
+function drawMinimap(x,y,s){box(x,y,s,s,C_PANEL,C_LINE);const k=s/(WR*2+60),cx=x+s/2,cy=y+s/2;
+ for(const r of rocks){const px=Math.round(cx+r.x*k),py=Math.round(cy+r.y*k);pset(px,py,RC(r.zone==='echo'?M.MIRROR:M.RUIN,r.R>18?5:4))}
+ pset(Math.round(cx),Math.round(cy),RC(M.GOLD,6));pset(Math.round(cx)+1,Math.round(cy),RC(M.GOLD,5));
+ for(const b of BEA)pset(Math.round(cx+b.x*k),Math.round(cy+b.y*k),RC(M.EMBER,5));
+ for(const p of PAGES)if(p.state==='free'||p.state==='sealed'){if(Math.sin(T*5)>-0.3){const px=Math.round(cx+p.x*k),py=Math.round(cy+p.y*k);pset(px,py,RC(M.ORE,6));pset(px+1,py,RC(M.ORE,4));pset(px,py+1,RC(M.ORE,4))}}
+ if(serp&&serp.st==='fight')pset(Math.round(cx+serp.x*k),Math.round(cy+serp.y*k),RC(M.SERP,6));
+ const px=Math.round(cx+P.x*k),py=Math.round(cy+P.y*k);pset(px,py,RC(M.PAPER,6));if(Math.sin(T*8)>0){pset(px+1,py,RC(M.CLAY,5));pset(px-1,py,RC(M.CLAY,5));pset(px,py+1,RC(M.CLAY,5));pset(px,py-1,RC(M.CLAY,5))}}
+function drawMenu(){dimScreen();box(36,14,248,152,C_PANEL,RC(M.CLAY,4));drawText('炉灯工坊',W/2,18,12,C_GOLD,C_SH,1,true);
+ icon(ICO_PAGE,210,24,RC(M.ORE,5));drawDigits(String(P.dust),216,24,C_TXT,C_SH);drawTextL('页尘',232,21,9,C_DIM,C_SH);
+ SHOP.forEach((it,i)=>{const y=44+i*17,sel=i===menuSel,full=it.k!=='beacon'&&it.lvl()>=it.max,cost=full?0:it.cost(),can=!full&&P.dust>=cost;
+  if(sel)rect(40,y-1,240,16,RC(M.RUIN,3));drawDigits(String(i+1),44,y+4,C_GOLD,C_SH);
+  drawTextL(it.name+(it.k==='beacon'?(P.beacons?' ×'+P.beacons:''):' '+('●'.repeat(it.lvl())+'○'.repeat(it.max-it.lvl()))),52,y,10,C_TXT,C_SH);
+  drawTextL(it.desc,60,y+8,8,C_DIM,null);
+  if(full)drawTextR('已满',276,y+2,9,C_DIM,C_SH);else{drawDigits(String(cost),262-String(cost).length*4,y+4,can?C_TXT:C_RED,C_SH);icon(ICO_PAGE,265,y+4,RC(M.ORE,can?5:3))}});
+ drawText('数字键 / 点击 打造 · E 关闭',W/2,149,9,C_DIM,C_SH)}
+function drawCodex(){dimScreen();box(8,8,304,164,C_PANEL,C_LINE);drawText('星海生物图鉴  '+ORDER.filter(t=>seen.has(t)||save.codex.includes(t)).length+'/8',W/2,12,11,C_GOLD,C_SH,1,true);
+ ORDER.forEach((t,i)=>{const y=34+i*16,k=seen.has(t)||save.codex.includes(t);if(i===codexSel)rect(14,y-2,96,15,RC(M.RUIN,3));drawTextL(k?DEF[t].name:'？？？',20,y,10,k?C_TXT:C_DIM,C_SH)});
+ const t=ORDER[codexSel],k=seen.has(t)||save.codex.includes(t);
+ // 肖像：画进临时缓冲再放大两倍
+ TMP.fill(0);const sv=out,sox=ox,soy=oy;out=TMP;NOLIGHT=true;ox=-W/2;oy=-H/2;
+ const dm={x:0,y:0,age:T,ph:1,vx:1,vy:0.0001,st:t==='leech'?'orbit':'open',open:1,tr:[],ang:Math.PI*0.75,flash:0,seg:[],ha:0,na:-Math.PI/2,sp:0};
+ if(t==='leech'){for(let i=12;i>0;i--)dm.tr.push(-i*1.2,Math.sin(T*3+i*0.5)*1.5)}if(t==='serp'){for(let i=0;i<12;i++)dm.seg.push({x:-6-i*4.5,y:Math.sin(T*2+i*0.6)*3})}if(t==='clam')dm.y=3;
+ DRAW[t](dm,0);NOLIGHT=false;out=sv;ox=sox;oy=soy;
+ const cx=212,cy=58,sc=t==='serp'?1:2;for(let y=-24;y<24;y++)for(let x=-48;x<48;x++){const c=TMP[(H/2+Math.floor(y/sc))*W+(W/2+Math.floor(x/sc))];if(c)pset(cx+x,cy+y,k?c:RC(M.RUIN,3))}
+ if(k){drawText(DEF[t].name,212,86,12,C_GOLD,C_SH,1,true);drawText(DEF[t].tag,212,101,9,C_TEAL,C_SH);wrapText(DEF[t].lore,9,180).forEach((l,i)=>drawText(l,212,114+i*11,9,C_TXT,C_SH))}
+ else drawText('还没遇到过。去更远的地方找找。',212,100,9,C_DIM,C_SH);
+ drawText('W/S 或鼠标选择 · Tab 关闭',W/2,160,8,C_DIM,C_SH)}
+const INTRO=['很久以前，「万语星图书馆」环绕着一颗叫「残烛」的恒星旋转，收藏着宇宙里说过的每一句话。','后来残烛打了个寒颤。图书馆碎了——那一天叫做「大散页」。','书页散成星尘。有的变成了生物，有的变成了寒冷，有的沉进了黑洞。','你是小克，图书馆炉膛里烧出来的最后一只陶灵。','去把散页拾回来吧。'];
+function drawIntro(){dimScreen();dimScreen();let y=36;INTRO.forEach((s,i)=>{const t0=i*3.2,a=clamp((introT-t0)/1.2,0,1);if(a<=0)return;wrapText(s,10,270).forEach(l=>{drawText(l,W/2,y,10,i===4?C_GOLD:C_TXT,C_SH,a);y+=13});y+=6});
+ if(introT>13){drawClawd(W/2,y+16,2,{fr:Math.floor(T*4)%2,blink:(T%3)<0.15})}drawText('点击跳过',W-30,H-12,8,C_DIM,C_SH,0.6)}
+function drawTitle(){dimScreen();const by=Math.sin(T*2)*2;
+ drawText('散 页',W/2,26,30,C_CLAY,C_SH,1,true);drawText('U N B O U N D',W/2,66,9,C_DIM,C_SH);
+ drawClawd(W/2,100+by,3,{fr:Math.floor(T*3)%2,blink:(T%3.3)<0.15,ex:Math.round(Math.sin(T*0.7))});
+ drawText('一只小陶灵，在碎掉的宇宙图书馆里拾回文字',W/2,124,10,C_TXT,C_SH);
+ drawText('点击开始',W/2,144,11,C_GOLD,C_SH,0.6+0.4*Math.sin(T*3));
+ drawText('WASD 移动 · 鼠标瞄准射击 · 空格冲刺 · E 工坊 · Q 吃余烬 · B 信标 · Tab 图鉴 · M 静音',W/2,164,8,C_DIM,C_SH);
+ if(save.clears)drawText('已通关 '+save.clears+' 次',W/2,6,8,C_GOLD,C_SH)}
+function drawEnding(){const k=Math.min(1,endT/3);
+ // 图书馆的第一层书架在炉灯上方显形
+ const lv=Math.min(12,Math.floor(endT*2));for(let i=0;i<lv;i++){const w=110-i*7,y=-24-i*11;for(let x=-w/2;x<=w/2;x++){const tw=Math.sin(T*3+x*0.3+i)>0.6;we(x,y,M.ORE,tw?6:4,0.15);if(i%2===0&&Math.floor(x)%9===0)for(let yy=0;yy<11;yy++)we(x,y+yy,M.ORE,3,0.08)}
+  for(let x=-w/2+2;x<w/2-2;x+=2)if(h1(i*99+x|0)>0.4)for(let yy=2;yy<9;yy++)wp(x,y+yy,h1(i*31+x|0)>0.5?M.GOLD:M.PAPER,2+((yy+x)%3===0?1:0))}
+ for(let i=0;i<3;i++){const r=(endT*40+i*60)%200;for(let a=0;a<TAU;a+=0.04)if(rnd()<0.5)we(Math.cos(a)*r,Math.sin(a)*r*0.6,M.GOLD,4,0.1)}
+ if(endT>6){dimScreen();box(50,28,220,128,C_PANEL,RC(M.GOLD,4));drawText('第一章 · 已装订',W/2,38,14,C_GOLD,C_SH,1,true);
+  const m=Math.floor(gt/60),s=Math.floor(gt%60);
+  const lines=['用时  '+m+' 分 '+s+' 秒','碎掉过  '+P.deaths+' 次','熬过暗潮  '+tides+' 次','遇见生物  '+seen.size+' / 8 种','拾回页尘  '+P.dustTotal];
+  lines.forEach((l,i)=>drawText(l,W/2,62+i*13,10,C_TXT,C_SH));drawText('图书馆的第一层亮了。还有九千九百九十九层。',W/2,128,9,C_TEAL,C_SH);drawText('Enter / 点击 继续自由探索',W/2,140,8,C_DIM,C_SH,0.6+0.4*Math.sin(T*3))}}
+function drawDead(){const a=Math.min(1,deadT);if(deadT>0.4){dimScreen();drawText('小克碎了',W/2,70,16,C_CLAY,C_SH,a,true);drawText('炉灯正在把它重新烧好……',W/2,96,10,C_DIM,C_SH,a)}}
+
+function render(){
+ const sx=(rnd()-0.5)*shk,sy=(rnd()-0.5)*shk;ox=Math.round(cam.x-W/2+sx);oy=Math.round(cam.y-H/2+sy);GACC.fill(0);
+ buildLights();drawBG();drawZones();drawRocks();drawKiln();drawBeacons();drawPages();drawCocoon();drawPickups();drawCreatures();drawBullets();drawPlayer();drawParticles();
+ if(S==='ending')drawEnding();
+ // 暗潮：画面四周压暗
+ if(TIDE>0.05||(S==='play'&&P.warm<25)){const cold=S==='play'&&P.warm<25?(25-P.warm)/25:0;for(let y=0;y<H;y+=1)for(let x=0;x<W;x++){const dx=(x-W/2)/(W/2),dy=(y-H/2)/(H/2),v=dx*dx+dy*dy;
+   if(bay(x,y)<(v-0.55)*0.9*Math.max(TIDE,cold*0.8))out[y*W+x]=cold>TIDE?RC(M.ICE,1):RC(M.SPACE,0)}}
+ if(S==='play'||S==='menu'||S==='codex')hud();
+ if(S==='menu')drawMenu();if(S==='codex')drawCodex();if(S==='title')drawTitle();if(S==='intro')drawIntro();if(S==='dead')drawDead();
+ if(S==='ending'&&endT<=6){for(const t of toasts){}}
+ // 辉光
+ for(let i=0;i<GW*GH;i++){const k=i*3;gimg.data[i*4]=Math.min(255,GACC[k]*0.35);gimg.data[i*4+1]=Math.min(255,GACC[k+1]*0.35);gimg.data[i*4+2]=Math.min(255,GACC[k+2]*0.35);gimg.data[i*4+3]=255}
+ gctx.putImageData(gimg,0,0);lctx.putImageData(img,0,0);
+ ctx.fillStyle='#020208';ctx.fillRect(0,0,cv.width,cv.height);ctx.imageSmoothingEnabled=false;ctx.drawImage(low,VX,VY,W*VS,H*VS);
+ ctx.imageSmoothingEnabled=true;ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.5;ctx.drawImage(glowC,VX,VY,W*VS,H*VS);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';drawTQ()}
+const css=c=>'rgb('+(c&255)+','+((c>>8)&255)+','+((c>>16)&255)+')';
+function drawTQ(){ctx.textAlign='center';ctx.textBaseline='top';for(const t of TQ){const fs=t.size*VS*1.02;ctx.font=(t.bold?'700 ':'500 ')+fs+'px '+FONTS;ctx.globalAlpha=t.alpha;const x=VX+t.cx*VS,y=VY+(t.y+t.size*0.05)*VS;
+ if(t.sh!=null){ctx.fillStyle=css(t.sh);const o=Math.max(1,VS*0.7);ctx.fillText(t.str,x+o,y+o);ctx.fillText(t.str,x,y+o);ctx.fillText(t.str,x+o,y)}ctx.fillStyle=css(t.c);ctx.fillText(t.str,x,y)}ctx.globalAlpha=1;TQ=[]}
+
+let last=performance.now(),acc=0;
+function frame(now){const dt=Math.min(0.1,(now-last)/1000);last=now;acc+=dt;let n=0;while(acc>=1/60&&n<6){update(1/60);acc-=1/60;n++}if(n>=6)acc=0;render();requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+
+// 调试 / 自动试玩钩子
+window.__game={get S(){return S},set S(v){S=v},P,UP,PAGES,keys,jp,mouse,get cr(){return cr},get rocks(){return rocks},get serp(){return serp},get PK(){return PK},get BEA(){return BEA},get tideT(){return tideT},set tideT(v){tideT=v},get TIDE(){return TIDE},get gt(){return gt},seen,cam,
+ step(n){for(let i=0;i<n;i++){update(1/60);if(i===0){}}},render,aim(wx,wy){mouse.x=wx-ox;mouse.y=wy-oy;ox=Math.round(cam.x-W/2);oy=Math.round(cam.y-H/2);mouse.x=wx-ox;mouse.y=wy-oy},rockAt,
+ click(){clickQ=true},press(k){jp.add(k)},get toasts(){return toasts}};
+})();
+</script>
+
+</body></html>
