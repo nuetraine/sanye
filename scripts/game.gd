@@ -196,20 +196,26 @@ func step(dt: float) -> void:
 				if pressed(KEY_0 + i):
 					try_buy(i - 1)
 			if pressed(KEY_W) or pressed(KEY_UP):
-				menu_sel = (menu_sel + SHOP.size() - 1) % SHOP.size()
+				menu_sel = (menu_sel + SHOP.size() - 2) % SHOP.size()
 			if pressed(KEY_S) or pressed(KEY_DOWN):
+				menu_sel = (menu_sel + 2) % SHOP.size()
+			if pressed(KEY_A) or pressed(KEY_LEFT):
+				menu_sel = (menu_sel + SHOP.size() - 1) % SHOP.size()
+			if pressed(KEY_D) or pressed(KEY_RIGHT):
 				menu_sel = (menu_sel + 1) % SHOP.size()
 			if pressed(KEY_ENTER) or pressed(KEY_SPACE):
 				try_buy(menu_sel)
 			var mp := pointer()
-			var mi := floori((mp.y - 38) / 15.0)
 			var closed := pressed(KEY_E) or pressed(KEY_ESCAPE) or pressed(KEY_TAB)
-			if mp.x > 40 and mp.x < 280 and mi >= 0 and mi < SHOP.size():
-				if mouse_moved or click_q:
-					menu_sel = mi
-				if click_q:
-					try_buy(mi)
-			elif click_q and (mp.y > 152 or mp.x < 36 or mp.x > 284 or mp.y < 10):
+			var on_card := false
+			for i in SHOP.size():
+				if menu_rect(i).has_point(mp):
+					on_card = true
+					if click_q:
+						menu_sel = i
+			if click_q and buy_rect().has_point(mp):
+				try_buy(menu_sel)
+			elif click_q and not on_card and (mp.y > 170 or mp.x < 12 or mp.x > 308 or mp.y < 8):
 				closed = true
 			if closed:
 				S = "play"

@@ -277,36 +277,58 @@ func draw_touch_ui() -> void:
 
 func draw_menu() -> void:
 	dim()
-	box(36, 14, 248, 152, C_PANEL, Pal.rc(CLAY, 4))
-	text("炉灯工坊", W / 2.0, 17, 12, C_GOLD, C_SH, 1.0, true)
-	icon(ICO_PAGE, 210, 24, Pal.rc(ORE, 5))
-	digits(str(P.dust), 216, 24, C_TXT, C_SH)
-	text_l("页尘", 232, 21, 9, C_DIM, C_SH)
+	box(12, 8, 296, 164, C_PANEL, Pal.rc(CLAY, 4))
+	text("炉灯工坊", W / 2.0, 11, 12, C_GOLD, C_SH, 1.0, true)
+	icon(ICO_PAGE, 262, 16, Pal.rc(ORE, 5))
+	digits(str(P.dust), 268, 15, C_TXT, C_SH)
+	# 左边：两列卡片
 	for i in SHOP.size():
 		var it := SHOP[i]
-		var y := 39 + i * 15
+		var r := menu_rect(i)
 		var lv := shop_lvl(it)
-		var full: bool = it.k != "beacon" and lv >= it.max
+		var full: bool = it.k != "beacon" and it.k != "forge" and lv >= it.max
 		var cost := 0 if full else shop_cost(it)
 		var can := not full and P.dust >= cost
-		if i == menu_sel:
-			rect(40, y - 1, 240, 15, Pal.rc(RUIN, 3))
-		digits(str(i + 1), 44, y + 4, C_GOLD, C_SH)
-		var nm: String = it.name
+		var sel := i == menu_sel
+		box(r.position.x, r.position.y, r.size.x, r.size.y, Pal.rc(RUIN, 3) if sel else Pal.rc(SPACE, 2), Pal.rc(CLAY, 5) if sel else Pal.rc(RUIN, 4))
+		var x := r.position.x
+		var y := r.position.y
+		if not touch_mode:
+			digits(str(i + 1), x + 4, y + 4, C_GOLD, C_SH)
+		text_l(it.name, x + (12 if not touch_mode else 5), y + 1, 10, C_TXT if can or full else C_DIM, C_SH)
+		var sub := ""
 		if it.k == "forge":
-			nm += "（背包 %d 字）" % P.bag.size()
+			sub = "背包 %d 字" % P.bag.size()
 		elif it.k == "beacon":
-			nm += " ×%d" % P.beacons if P.beacons else ""
+			sub = "有 %d 座" % P.beacons
 		else:
-			nm += " " + "●".repeat(lv) + "○".repeat(int(it.max) - lv)
-		text_l(nm, 52, y, 10, C_TXT, C_SH)
+			sub = "●".repeat(lv) + "○".repeat(int(it.max) - lv)
+		text_l(sub, x + 5, y + 16, 7, C_DIM, null)
 		if full:
-			text_r("已满", 276, y + 2, 9, C_DIM, C_SH)
+			text_r("已满", x + r.size.x - 4, y + 16, 7, C_DIM, null)
 		else:
-			digits(str(cost), 262 - str(cost).length() * 4, y + 4, C_TXT if can else C_RED, C_SH)
-			icon(ICO_PAGE, 265, y + 4, Pal.rc(ORE, 5 if can else 3))
-	text(SHOP[clampi(menu_sel, 0, SHOP.size() - 1)].desc, W / 2.0, 144, 9, C_TEAL, C_SH)
-	text("点击打造 · 关闭：点外面" if touch_mode else "数字键 / 点击 打造 · E 关闭", W / 2.0, 155, 8, C_DIM, C_SH)
+			var cs := str(cost)
+			digits(cs, int(x + r.size.x - 10 - cs.length() * 4), int(y + 18), C_TXT if can else C_RED, C_SH)
+			icon(ICO_PAGE, int(x + r.size.x - 8), int(y + 19), Pal.rc(ORE, 5 if can else 3))
+	# 右边：选中项的详情
+	var it2 := SHOP[clampi(menu_sel, 0, SHOP.size() - 1)]
+	var lv2 := shop_lvl(it2)
+	var full2: bool = it2.k != "beacon" and it2.k != "forge" and lv2 >= it2.max
+	var cost2 := 0 if full2 else shop_cost(it2)
+	var can2 := not full2 and P.dust >= cost2
+	box(198, 30, 104, 130, Pal.rc(SPACE, 1), Pal.rc(RUIN, 4))
+	text(it2.name, 250, 34, 13, C_GOLD, C_SH, 1.0, true)
+	var lines := wrap_text(it2.desc, 9, 92)
+	for i in lines.size():
+		text(lines[i], 250, 58 + i * 12, 9, C_TXT, C_SH)
+	if full2:
+		text("已经满级了", 250, 112, 9, C_DIM, C_SH)
+	else:
+		text("需要 %d 页尘" % cost2, 250, 112, 9, C_TXT if can2 else C_RED, C_SH)
+	var br := buy_rect()
+	box(br.position.x, br.position.y, br.size.x, br.size.y, Pal.rc(CLAY, 3) if can2 else Pal.rc(SPACE, 2), Pal.rc(GOLD, 5) if can2 else Pal.rc(RUIN, 4))
+	text("打造" if not full2 else "已满", br.get_center().x, br.position.y + 3, 10, C_GOLD if can2 else C_DIM, C_SH, 1.0, true)
+	text("点卡片选择 · 点「打造」 · 点外面关闭" if touch_mode else "数字键直接打造 · 点卡片选择 · E 关闭", W / 2.0, 162, 7, C_DIM, null)
 
 func draw_codex() -> void:
 	dim()

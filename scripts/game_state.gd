@@ -686,6 +686,13 @@ func load_words() -> void:
 		P.slots[i] = {"c": sw[i], "gold": false}
 	calc_loadout()
 
+## 工坊布局：左边两列卡片，右边详情 + 打造按钮
+func menu_rect(i: int) -> Rect2:
+	return Rect2(18 + (i % 2) * 89, 30 + (i / 2) * 33, 85, 30)
+
+func buy_rect() -> Rect2:
+	return Rect2(210, 132, 80, 18)
+
 ## 句子面板的布局（state 和 hud 共用）
 func slot_rect(i: int) -> Rect2:
 	var n := P.slots.size()
