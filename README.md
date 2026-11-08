@@ -9,6 +9,10 @@
 
 ![游戏截图](docs/screenshot.png)
 
+## 在线试玩
+
+网页版：https://nuetraine.github.io/sanye/ （手机浏览器也能玩，横屏）
+
 ## 怎么运行
 
 1. 安装 Godot 4.7（Mac 上：`brew install --cask godot`）
@@ -68,7 +72,7 @@ godot --path .
 - 三张失落之页与装订效果、结局画面、生物图鉴、通关次数存档
 - 程序化合成的音效与背景低音；手机触屏操作
 
-还没做：辉光特效、远景的图书馆残骸、网页版需要的内置中文字体、手机/网页的导出设置。
+还没做：辉光特效、远景的图书馆残骸、安卓导出。
 
 ![工坊](docs/screenshot-menu.png)
 ![首领](docs/screenshot-boss.png)
@@ -99,6 +103,16 @@ godot --path . -- --autoplay
 
 会自动开始游戏、乱飞乱打，并把几张截图存到 Godot 的用户数据文件夹，然后自动退出。
 
+## 发布网页版
+
+```bash
+tools/publish_web.sh
+```
+
+会导出网页版并推到 `gh-pages` 分支，GitHub Pages 自动更新。
+
 ## 许可证
 
-[CC BY-NC 4.0](LICENSE)：可以复制、修改、转发，但要署名，且不能商用。「小克」形象归 Anthropic 所有，不在授权范围内。
+内置字体是思源黑体（Noto Sans SC），按 [SIL Open Font License](fonts/OFL.txt) 授权。
+
+游戏本身 [CC BY-NC 4.0](LICENSE)：可以复制、修改、转发，但要署名，且不能商用。「小克」形象归 Anthropic 所有，不在授权范围内。

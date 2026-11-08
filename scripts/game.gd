@@ -3,8 +3,11 @@ extends "res://scripts/game_hud.gd"
 
 func _ready() -> void:
 	R0.seed = 20261108
-	font = _load_font(500)
-	font_b = _load_font(700)
+	font = _load_font()
+	var fb := FontVariation.new()
+	fb.base_font = font
+	fb.variation_embolden = 0.7
+	font_b = fb
 
 	var bg_layer := CanvasLayer.new()
 	bg_layer.layer = -1
@@ -64,13 +67,11 @@ func _ready() -> void:
 		_autoplay = true
 
 ## 找一款系统里的中文字体直接加载（网页版以后需要打包一款开源中文字体）
-func _load_font(weight: int) -> Font:
-	for n in ["Hiragino Sans GB", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei", "Droid Sans Fallback"]:
-		var path := OS.get_system_font_path(n, weight, 100, false)
-		if path != "" and FileAccess.file_exists(path):
-			var f := FontFile.new()
-			if f.load_dynamic_font(path) == OK and f.get_height(10) > 0:
-				return f
+## 内置的开源中文字体（思源黑体 / Noto Sans SC，OFL 许可），网页和手机上也能显示中文
+func _load_font() -> Font:
+	var f = load("res://fonts/NotoSansSC-Regular.otf")
+	if f is Font:
+		return f
 	return ThemeDB.fallback_font
 
 # 输入（键盘 / 鼠标 / 触屏）
