@@ -87,12 +87,10 @@ func _ready() -> void:
 	load_save()
 	load_words()
 	var args0 := OS.get_cmdline_user_args()
-	if args0.has("--ch=2"):
-		chapter = 2
-		unlocked = 2
-	if args0.has("--ch=3"):
-		chapter = 3
-		unlocked = 3
+	for a in args0:
+		if a.begins_with("--ch="):
+			chapter = clampi(int(a.substr(5)), 1, NCH)
+			unlocked = chapter
 	_bot_god = args0.has("--god")
 	var t0 := Time.get_ticks_msec()
 	new_world()
@@ -287,6 +285,7 @@ func step(dt: float) -> void:
 			upd_world2(dt)
 			upd_world3(dt)
 			upd_belt(dt)
+			upd_hi(dt)
 			upd_pickups(dt)
 			upd_beacons(dt)
 			upd_spawns(dt)
@@ -341,9 +340,9 @@ func step(dt: float) -> void:
 			if pressed(KEY_S) or pressed(KEY_DOWN):
 				codex_sel = (codex_sel + 1) % cn
 			if pressed(KEY_A) or pressed(KEY_LEFT):
-				codex_sel = maxi(0, codex_sel - 8)
+				codex_sel = maxi(0, codex_sel - 9)
 			if pressed(KEY_D) or pressed(KEY_RIGHT):
-				codex_sel = mini(cn - 1, codex_sel + 8)
+				codex_sel = mini(cn - 1, codex_sel + 9)
 			var mp := ppointer()
 			var mi := -1
 			for i in cn:
@@ -365,7 +364,7 @@ func step(dt: float) -> void:
 			upd_creatures(dt)
 			if end_t > 7 and (pressed(KEY_ENTER) or pressed(KEY_KP_ENTER) or click_q):
 				S = "play"
-				if chapter < 3:
+				if chapter < NCH:
 					goto_chapter(chapter + 1)
 					toast("想回前面的章节，在炉灯边按 G（或点「翻章」）。", C_DIM, 6)
 				else:
@@ -531,7 +530,7 @@ func _autoplay_step(dt: float) -> void:
 	if OS.get_cmdline_user_args().has("--gallery"):
 		_gallery_step()
 		return
-	var shots := _shots if chapter == 1 else (_shots2 if chapter == 2 else _shots3)
+	var shots := _shots if chapter == 1 else (_shots2 if chapter == 2 else (_shots3 if chapter == 3 else _shotshi))
 	for k in shots.keys():
 		if _ap_t >= k:
 			var img := get_viewport().get_texture().get_image()
@@ -594,6 +593,12 @@ func _autoplay_step(dt: float) -> void:
 		return
 	if chapter == 3 and _ap_t > 9.9:
 		_ap3_step()
+		return
+	if OS.get_cmdline_user_args().has("--mobs") and _ap_t > 9.9:
+		_mobs_step()
+		return
+	if chapter >= 4 and _ap_t > 9.9:
+		_aphi_step()
 		return
 	if OS.get_cmdline_user_args().has("--penfx") and _ap_t > 9.9:
 		_penfx_step()
@@ -669,7 +674,7 @@ func _bot_step(dt: float) -> void:
 
 func _bot_tick(dt: float) -> void:
 	_bot_t += dt
-	unlocked = 3
+	unlocked = NCH
 	if S == "title" or S == "intro" or S == "ending":
 		click_q = true
 		if S == "intro":
@@ -1024,4 +1029,113 @@ func _belt_step() -> void:
 	_ap_fire = _ap_t > 13.0 and fmod(_ap_t, 1.5) < 0.8
 	if _ap_t > 19.0:
 		print("belt test: snail=", count_type("snail"), " borer=", count_type("borer"), " comet=", count_type("comet"), " zone=", zn(P.x, P.y))
+		get_tree().quit()
+
+## 第四章起的自动截图：三个区域、生物、首领的几招、通关
+var _shotshi := {1.0: "title", 9.0: "codex_hi"}
+func _aphi_step() -> void:
+	P.hp = 99
+	var ch := chapter
+	var zs: Array = [["lake", "pillar", "aurora"], ["prism", "echoval", "shadow"], ["sea", "ash", "core"]][ch - 4]
+	var mobs: Array = [["spider", "roller", "bat"], ["mimic", "prismbug", "shard"], ["salamander", "ashghost", "drip"]][ch - 4]
+	for zi in 3:
+		var t0 := 10.0 + zi * 3.0
+		if _once(t0):
+			S = "play"
+			var a: float = [0.3, 2.2, -1.6][zi]
+			var p := Vector2(cos(a), sin(a)) * 700.0
+			if zi == 2 and ch == 4 and not AUR.is_empty():
+				p = Vector2(-300, AUR[0].y0 + sin(T * AUR[0].sp + AUR[0].ph - 300 * 0.004) * AUR[0].amp)
+			if zi == 1 and ch == 4 and not PILLARS.is_empty():
+				p = Vector2(PILLARS[0].x + 30, PILLARS[0].y + 20)
+				for q in PILLARS:
+					if Vector2(q.x, q.y).distance_to(p) < 160:
+						q.st = 2
+						q.r = q.R
+						q.t = 9.0
+			P.x = p.x
+			P.y = p.y
+			cam_pos = p
+			var t: String = mobs[zi]
+			for i in (2 if t == "bat" else 3):
+				var c := mk(t, P.x + 50 + i * 16, P.y - 30 + i * 18)
+				c.hx = c.x
+				c.hy = c.y
+				c.off = i
+				init_c(c)
+			_shotshi[t0 + 1.6] = "z%d_%s" % [ch, zs[zi]]
+			_shotshi[t0 + 2.6] = "z%d_%sb" % [ch, zs[zi]]
+	if _once(19.0):
+		P.x = PAGES[2].x + 100
+		P.y = PAGES[2].y + 60
+		cam_pos = Vector2(P.x, P.y)
+		_shotshi[21.5] = "boss%d_a" % ch
+		_shotshi[24.0] = "boss%d_b" % ch
+		_shotshi[26.5] = "boss%d_c" % ch
+	if _ap_t > 19.0 and bossc and bossc.st != "dead":
+		_ap_aim = Vector2(bossc.x - P.x, bossc.y - P.y)
+		_ap_fire = fmod(_ap_t, 1.0) < 0.6 and _ap_t > 22.0
+	if _once(28.0) and bossc:
+		kill(bossc, true)
+	if _once(29.0):
+		P.carry = [0, 1, 2]
+		for pg in PAGES:
+			pg.state = "carried"
+		P.x = 0
+		P.y = 20
+		cam_pos = Vector2(0, 20)
+	if _once(36.0):
+		get_viewport().get_texture().get_image().save_png("user://shot_ending%d.png" % ch)
+		print("ending%d S=%s unlocked=%d" % [ch, S, unlocked])
+	if _ap_t > 36.5:
+		get_tree().quit()
+
+## 测试用：把第四到六章的生物和首领摆成一排拍照
+func _mobs_step() -> void:
+	P.hp = 99
+	if _once(10.0):
+		S = "play"
+		for c in cr:
+			c.dead = true
+		var base := Vector2(0, 150)
+		for r in rocks.duplicate():
+			if Vector2(r.x, r.y).distance_to(base) < 190:
+				rocks.erase(r)
+				grid_del(r)
+				r.spr.queue_free()
+				r.spr = null
+		var ts := ["spider", "roller", "bat", "index", "mimic", "mimic", "prismbug", "shard", "shade", "mirror", "salamander", "ashghost", "drip", "wick"]
+		for i in ts.size():
+			var c := mk(ts[i], base.x - 20 + (i % 5) * 52, base.y - 50 + (i / 5) * 50)
+			c.hx = c.x
+			c.hy = c.y
+			init_c(c)
+			if BOSS_T.has(ts[i]):
+				c.st = "fight"
+				c.burst_t = 99
+			if i == 5:
+				c.st = "chase"
+				c.tm = 99
+			if ts[i] == "roller":
+				c.r = 7.0
+			if ts[i] == "shade":
+				c.st = "follow"
+			if ts[i] == "ashghost":
+				c.open = 1.0
+			if ts[i] == "salamander":
+				for k in 8:
+					c.tr.append(c.x - 16 + k * 2.0)
+					c.tr.append(c.y + sin(k * 0.9) * 2.0)
+		P.x = base.x + 150
+		P.y = base.y + 80
+		cam_pos = base
+		_shotshi[10.3] = "mobs"
+		_shots[10.3] = "mobs"
+	freeze_t = 9.0
+	toasts.clear()
+	P.x = 150
+	P.y = 150
+	P.vx = 0
+	P.vy = 0
+	if _ap_t > 11.0:
 		get_tree().quit()

@@ -6,7 +6,7 @@ extends RefCounted
 ## 色调表（和 rock.gdshader 里的 TINT 一一对应）：下标 → 调色板材质
 ## 8 = 金箔矿、9 = 字晶（这两个只给矿脉用），10 冰晶 11 陶土 12 灰页 13 苔 14 粉晶 15 青晶
 const TINTS := [1, 10, 15, 12, 14, 9, 13, 5, 13, 9, 8, 4, 6, 7, 11, 2]
-const ZONE_TI := {"echo": 1, "stacks": 2, "hall": 3, "dark": 4, "ink": 5, "gear": 1, "tower": 3, "flare": 6, "wind": 3}
+const ZONE_TI := {"echo": 1, "stacks": 2, "hall": 3, "dark": 4, "ink": 5, "gear": 1, "tower": 3, "flare": 6, "wind": 3, "frost": 10, "lake": 10, "pillar": 10, "aurora": 15, "atrium": 1, "prism": 1, "echoval": 0, "shadow": 5, "corona": 6, "sea": 4, "ash": 4, "core": 4}
 const ORE_GOLD := 8
 const ORE_WORD := 9
 ## 石头的样子：普通 / 长条 / 陨坑 / 页岩 / 熔岩 / 陨铁 / 晶簇 / 晶洞 / 苔石
@@ -74,6 +74,21 @@ static func pick_kind(zn: String, rad: int, rng: RandomNumberGenerator) -> Strin
 			w.iron = 26.0
 		"dark":
 			w.crystal = 18.0
+		"frost", "lake", "pillar":
+			w.crystal = 20.0
+			w.shale = 10.0
+		"aurora":
+			w.crystal = 10.0
+			w.crater = 20.0
+		"prism", "atrium":
+			w.crystal = 30.0
+			w.iron = 14.0
+		"shadow", "echoval":
+			w.crater = 20.0
+			w.geode = 6.0
+		"corona", "sea", "ash", "core":
+			w.magma = 40.0
+			w.moss = 0.0
 		"echo":
 			w.crater = 28.0
 			w.iron = 8.0

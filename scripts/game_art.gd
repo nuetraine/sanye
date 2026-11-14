@@ -135,6 +135,7 @@ func _draw_zones(c: CanvasItem) -> void:
 			var rr: float = q.z * (0.25 + 0.09 * i)
 			sp(q.x + cos(a) * rr, q.y + sin(a * 1.3) * rr * 0.8, GRAV, 4 if i % 2 == 0 else 3, 0, 1.0 if i % 3 == 0 else 0.5)
 	draw_zones3()
+	draw_zones_hi()
 	draw_ring(0, 0, kiln_r(), GOLD)
 	for b in BEA:
 		draw_ring(roundi(b.x), roundi(b.y), 56, EMBER)
@@ -188,6 +189,7 @@ func _draw_world(c: CanvasItem) -> void:
 			sp(cc.x - 0.25, cc.y - cc.r - 3.5, GRAV, 5)
 	draw_hazards()
 	draw_hazards3()
+	draw_hazards_hi()
 	draw_bullets()
 	draw_bombs()
 	draw_player()
@@ -223,6 +225,19 @@ func draw_creature(cc: Creature, sh: int) -> void:
 		"snail": draw_snail(cc, sh)
 		"borer": draw_borer(cc, sh)
 		"comet": draw_comet(cc, sh)
+		"spider": draw_spider(cc, sh)
+		"roller": draw_roller(cc, sh)
+		"bat": draw_bat(cc, sh)
+		"index": draw_index(cc, sh)
+		"mimic": draw_mimic(cc, sh)
+		"prismbug": draw_prismbug(cc, sh)
+		"shard": draw_shard(cc, sh)
+		"shade": draw_shade(cc, sh)
+		"mirror": draw_mirrorboss(cc, sh)
+		"salamander": draw_salamander(cc, sh)
+		"ashghost": draw_ashghost(cc, sh)
+		"drip": draw_drip(cc, sh)
+		"wick": draw_wick(cc, sh)
 		"stamp": draw_stamp(cc, sh)
 		"binder": draw_binder(cc, sh)
 
@@ -1344,8 +1359,6 @@ func draw_zones3() -> void:
 				sp(q.x + cos(a) * (q.r - 2 - t * 0.5), q.y + sin(a) * (q.r - 2 - t * 0.5), GOLD, 5 if k % 3 == 0 else 3)
 
 func draw_hazards3() -> void:
-	if chapter != 3:
-		return
 	# 钟针
 	for q in CLOCKS:
 		if not on_screen(q.x, q.y, q.r + 6):
@@ -1975,3 +1988,595 @@ func draw_comet(c: Creature, sh: int) -> void:
 	var di := posmod(roundi(a / TAU * 16.0), 16)
 	var f := int(c.age * 8.0) % 2
 	sd(bake("comet|%d|%d" % [di, f], 5, 5, _p_comet.bind(di, f)), c.x, c.y, 0, c.flash > 0)
+
+# ======================================================================
+# 第四章「冰封书库」的画面
+# ======================================================================
+func draw_zones_hi() -> void:
+	if chapter == 4:
+		draw_zones4()
+	elif chapter == 5:
+		draw_zones5()
+	elif chapter == 6:
+		draw_zones6()
+
+func draw_hazards_hi() -> void:
+	if chapter == 4:
+		draw_hazards4()
+	elif chapter == 5:
+		draw_hazards5()
+	elif chapter == 6:
+		draw_hazards6()
+
+func draw_zones4() -> void:
+	# 冰湖：地上一片片冰面，带裂纹和反光
+	var x0 := floori((ox - 20) / 24.0)
+	var y0 := floori((oy - 20) / 24.0)
+	for gy in range(y0, y0 + int(H / 24.0) + 3):
+		for gx in range(x0, x0 + int(W / 24.0) + 3):
+			var cx := gx * 24.0 + 12.0
+			var cy := gy * 24.0 + 12.0
+			if not on_ice(cx, cy):
+				continue
+			var h := _hh(gx, gy)
+			for k in 3:
+				var a := h * TAU + k * 2.1
+				var L := 5.0 + _hh(gx + k, gy) * 9.0
+				for s in int(L):
+					sp(cx + cos(a) * s - 0.25, cy + sin(a) * s - 0.25, ICE, 3 if s % 3 else 4)
+			if _hh(gx * 3, gy) > 0.6:
+				var gl := fposmod(T * 0.6 + h * 5.0, 3.0)
+				if gl < 0.6:
+					sp(cx - 3 + gl * 10 - 0.25, cy - 2 - 0.25, PAPER, 6)
+	# 暖泉
+	for s in SPRINGS:
+		if not on_screen(s.x, s.y, 40):
+			continue
+		ball(s.x, s.y, 6.5, ORE, 3, 0)
+		ball(s.x - 1, s.y - 1, 4.0, ORE, 4, 0)
+		sp(s.x - 2, s.y - 2, PAPER, 6)
+		for i in 5:
+			var t := fposmod(T * 0.7 + i * 0.37, 1.0)
+			var px: float = s.x + sin(T * 2 + i * 1.7) * 3 + (i - 2) * 1.5
+			var py: float = s.y - 4 - t * 22
+			if Pal.bay(i, int(T * 10)) > 1.0 - t:
+				continue
+			sp(px - 0.5, py - 0.5, PAPER, 5 if t < 0.5 else 4, 0, 1.0)
+		draw_ring(roundi(s.x), roundi(s.y), int(s.r), EMBER)
+	# 极光：绿青色的帘子，跟着时间飘
+	for a in AUR:
+		if absf(oy + H / 2.0 - a.y0) > H + a.amp + 40:
+			continue
+		var x := floorf(ox / 2.0) * 2.0
+		while x < ox + W:
+			var cy: float = a.y0 + sin(T * a.sp + a.ph + x * 0.004) * a.amp
+			var hgt: float = a.w * (0.8 + 0.4 * sin(x * 0.05 + T))
+			var j := 0.0
+			while j < hgt * 2.0:
+				var k := j / (hgt * 2.0)
+				if Pal.bay(int(x), int(j)) < 0.8 - absf(k - 0.5) * 1.2:
+					sp(x, cy - hgt + j, LEECH if k > 0.4 else ORE, 4 if k < 0.2 or k > 0.8 else 5, 0, 1.0)
+				j += 1.0
+			x += 2.0
+
+func draw_hazards4() -> void:
+	for p in PILLARS:
+		if p.r < 0.6 or not on_screen(p.x, p.y, 20):
+			continue
+		var st := int(p.st)
+		var rr := snappedf(p.r, 0.5)
+		sd(bake("pillar|%.1f|%d" % [rr, 1 if st == 3 else 0], rr + 1, rr + 1, _p_pillar.bind(rr, st == 3)), p.x + ((randf() - 0.5) if st == 3 else 0.0), p.y)
+
+func _p_pillar(r: float, crack: bool) -> void:
+	var R := ceili(r * 2.0) + 1
+	for jj in range(-R, R + 1):
+		for ii in range(-R, R + 1):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			var a := atan2(y, x)
+			var rr := r * (0.85 + 0.15 * absf(cos(a * 3.0)))
+			var d := sqrt(x * x + y * y)
+			if d > rr:
+				continue
+			# 六棱柱的顶面：按扇区分明暗
+			var sec := posmod(int(floorf((a + PI) / (TAU / 6.0))), 6)
+			var lv: float = [5, 6, 5, 4, 3, 4][sec] - (1.0 if d > rr * 0.75 else 0.0)
+			if d < rr * 0.35:
+				lv = 6
+			if crack and absf(sin(a * 5.0 + d)) < 0.15:
+				ipx(ii, jj, SPACE, 1)
+				continue
+			ipx(ii, jj, ICE, lv)
+
+# ---------- 冰蛛 ----------
+func _p_spider(f: int) -> void:
+	for jj in range(-14, 14):
+		for ii in range(-16, 16):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			# 腿：每边四条，折成一个钝角
+			for s in [-1.0, 1.0]:
+				for k in 4:
+					var ph := (k + f) % 2
+					var by := -2.0 + k * 1.4
+					var kx: float = s * (4.5 + (0.6 if ph == 0 else 0.0))
+					var ky: float = by - 2.0 + (0.8 if ph == 1 else 0.0)
+					var ex: float = s * 7.0
+					var ey: float = by + 1.5 - k * 0.2
+					var p := Vector2(x, y)
+					var d1 := Geometry2D.get_closest_point_to_segment(p, Vector2(s * 2.0, by), Vector2(kx, ky)).distance_to(p)
+					var d2 := Geometry2D.get_closest_point_to_segment(p, Vector2(kx, ky), Vector2(ex, ey)).distance_to(p)
+					if minf(d1, d2) < 0.36:
+						ipx(ii, jj, ICE, 3 if d2 < d1 else 4)
+			if (x * x) / 9.0 + ((y - 1.0) * (y - 1.0)) / 12.0 < 1.0:
+				ipx(ii, jj, ICE, 5 if y < 0.5 else 4)
+				if absf(x) < 0.8 and y > 1.0 and y < 3.5:
+					ipx(ii, jj, MIRROR, 6)
+			elif x * x + (y + 3.2) * (y + 3.2) < 3.2:
+				ipx(ii, jj, ICE, 4)
+	for s in [-1.0, 1.0]:
+		ip(s * 0.8, -3.6, ORE, 6, true)
+		ip(s * 1.6, -3.0, ORE, 5, true)
+
+func draw_spider(c: Creature, sh: int) -> void:
+	var f := int(c.age * (8.0 if Vector2(c.vx, c.vy).length() > 10 else 2.0)) % 2
+	sd(bake("spider|%d" % f, 8, 7, _p_spider.bind(f)), c.x, c.y, sh, c.flash > 0)
+
+# ---------- 雪球兽 ----------
+func _p_roller(r: float, rot: int) -> void:
+	_p_ball(r, PAPER, 5)
+	var a0 := rot / 8.0 * TAU
+	for k in 5:
+		var a := a0 + k * 1.3
+		var rr := r * (0.3 + 0.12 * k)
+		ip(cos(a) * rr, sin(a) * rr * 0.9, ICE, 4)
+		ip(cos(a) * rr + 0.5, sin(a) * rr * 0.9, ICE, 3)
+	# 两只从雪里探出来的小眼睛
+	ip(-r * 0.3, -r * 0.15, SPACE, 0)
+	ip(r * 0.3, -r * 0.15, SPACE, 0)
+
+func draw_roller(c: Creature, sh: int) -> void:
+	var rr := snappedf(c.r, 0.5)
+	var rot := posmod(int(c.ang * 8.0 / TAU), 8)
+	sd(bake("roller|%.1f|%d" % [rr, rot], rr + 1, rr + 1, _p_roller.bind(rr, rot)), c.x, c.y, sh, c.flash > 0)
+
+# ---------- 霜蝠 ----------
+func _p_bat(f: int) -> void:
+	var up := f == 0
+	for jj in range(-12, 12):
+		for ii in range(-18, 18):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			var ax := absf(x)
+			if (x * x) / 2.6 + ((y - 0.5) * (y - 0.5)) / 4.0 < 1.0:
+				ipx(ii, jj, RUIN, 4 if y < 0 else 3)
+				continue
+			if ax < 1.4 and y < -1.2 and y > -3.0 and absf(ax - 0.8) < 0.45 - (y + 3.0) * 0.1:
+				ipx(ii, jj, RUIN, 4)
+				continue
+			# 翅膀：两张书签
+			var wy := -ax * (0.55 if up else -0.25) + (-0.5 if up else 0.5)
+			if ax > 1.2 and ax < 8.0 and absf(y - wy) < 1.8 - ax * 0.12:
+				var notch := ax > 6.0 and absf(y - wy) < 0.5 and fmod(ax, 1.0) < 0.5
+				if not notch:
+					ipx(ii, jj, ICE, 4 if y < wy else 3)
+	ip(-0.6, -0.3, ORE, 6, true)
+	ip(0.6, -0.3, ORE, 6, true)
+
+func draw_bat(c: Creature, sh: int) -> void:
+	var f := int(c.age * (16.0 if c.st == "dive" else 9.0) + c.off) % 2
+	sd(bake("bat|%d" % f, 9, 6, _p_bat.bind(f)), c.x, c.y, 0 if c.st == "dive" else sh, c.flash > 0)
+
+# ---------- 索引柜 ----------
+func _p_index(open: int, eye: int, p2: bool) -> void:
+	for jj in range(-30, 30):
+		for ii in range(-26, 26):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			if absf(x) > 12.0 or y < -13.0 or y > 14.0:
+				continue
+			# 柜身
+			var edge := absf(x) > 11.0 or y < -12.0 or y > 13.0
+			var lv := 2.0 if not edge else 3.0
+			var m := RUIN
+			# 抽屉：3×3
+			var cx := floorf((x + 11.0) / 7.34)
+			var cyy := floorf((y + 12.0) / 8.34)
+			var lx := (x + 11.0) - cx * 7.34
+			var ly := (y + 12.0) - cyy * 8.34
+			if not edge and lx > 0.6 and lx < 6.8 and ly > 0.6 and ly < 7.8:
+				var idx := int(cyy) * 3 + int(cx)
+				var is_open := open > 0 and (idx + open) % 3 == 0
+				m = CLAY
+				lv = 5 if ly < 1.3 else (3 if ly > 7.0 else 4)
+				if is_open:
+					lv = 1
+					m = SPACE
+					if ly > 5.5 and lx > 1.0 and lx < 6.4:
+						m = PAPER
+						lv = 5
+				if absf(lx - 3.7) < 0.8 and absf(ly - 4.0) < 0.5 and not is_open:
+					m = GOLD
+					lv = 5
+				if idx == 4 and eye >= 0:
+					var ed := Vector2(lx - 3.7, ly - 4.1).length()
+					if ed < 2.2:
+						m = PAPER
+						lv = 6
+						if Vector2(lx - 3.7 + (eye - 1) * 0.7, ly - 4.1).length() < 1.0:
+							m = SERP if p2 else ORE
+							lv = 6
+			# 顶上结的冰
+			if y < -11.0 + (1.5 if p2 else 0.6) * absf(sin(x * 1.3)) and y < -10.0:
+				m = ICE
+				lv = 5
+			ipx(ii, jj, m, lv, m == ORE or m == SERP)
+	# 冰锥挂在下面
+	for k in 7:
+		var bx := -9.0 + k * 3.0
+		var L := 1.5 + fmod(k * 1.7, 2.5)
+		for s in int(L * 2):
+			ip(bx, 13.6 + s * 0.5, ICE, 5)
+
+func draw_index(c: Creature, sh: int) -> void:
+	var open := 0
+	if c.sing > 0:
+		open = 1 + int(c.age * 6.0) % 2
+	var eye := -1 if c.st == "sleep" else (0 if P.x < c.x - 30 else (2 if P.x > c.x + 30 else 1))
+	var p2 := c.orR > 0
+	var y := c.y + (sin(c.age * 1.5) * 1.0 if c.st != "sleep" else 0.0)
+	var x := c.x + ((randf() - 0.5) * 2.0 if c.st == "rise" else 0.0)
+	sd(bake("index|%d|%d|%s" % [open, eye, p2], 14, 16, _p_index.bind(open, eye, p2)), x, y, 0 if c.st != "sleep" else maxi(sh, -1), c.flash > 0)
+	if c.sp > 0:
+		for i in 6:
+			var a := T * 3.0 + i * TAU / 6.0
+			var rr := 18.0 + fposmod(T * 40.0 + i * 9.0, 50.0)
+			sp(c.x + cos(a) * rr, c.y + sin(a) * rr, PAPER, 6, 0, 1.0)
+
+
+# ======================================================================
+# 第五章「镜之回廊」的画面
+# ======================================================================
+func draw_zones5() -> void:
+	pass
+
+func draw_hazards5() -> void:
+	for q in MIRS:
+		if not on_screen(q.x, q.y, q.len + 4):
+			continue
+		var ca := cos(q.a)
+		var sa := sin(q.a)
+		var u: float = -q.len
+		while u <= q.len:
+			var gl := fposmod(u * 0.2 + T * 1.5, 4.0) < 0.6
+			sr(q.x + ca * u - 0.75, q.y + sa * u - 0.75, 1.5, 1.5, PAPER if gl else MIRROR, 6 if gl else 5)
+			sp(q.x + ca * u + sa * 1.0 - 0.25, q.y + sa * u - ca * 1.0 - 0.25, ICE, 4)
+			u += 0.75
+		for e in [-1.0, 1.0]:
+			sr(q.x + ca * q.len * e - 1.0, q.y + sa * q.len * e - 1.0, 2.0, 2.0, GOLD, 5)
+
+# ---------- 拟字兽 ----------
+func _p_mimic(open: int) -> void:
+	# 一堆页尘粒；醒了以后中间裂开一张嘴
+	for k in 9:
+		var a := k * 2.4
+		var rr := 1.0 + fmod(k * 1.7, 3.2)
+		var x := cos(a) * rr
+		var y := sin(a) * rr * 0.7
+		if open > 0:
+			y += -1.6 if y < 0 else 1.6
+		for q in 4:
+			ip(x + (q % 2) * 0.5, y + (q / 2) * 0.5, ORE, 6 if k % 3 == 0 else 5, true)
+	if open > 0:
+		for ii in range(-10, 10):
+			for jj in range(-6, 7):
+				var x := ii * 0.5 + 0.25
+				var y := jj * 0.5 + 0.25
+				if (x * x) / 25.0 + (y * y) / 9.0 < 1.0:
+					ipx(ii, jj, WINE if absf(y) < 1.3 * (1.0 - absf(x) / 5.0) else GRAV, 2 if absf(y) < 1.0 else 4)
+		for k in 5:
+			ip(-3.0 + k * 1.5, -1.2, PAPER, 6)
+			ip(-2.3 + k * 1.5, 1.0, PAPER, 6)
+		ip(-2.0, -3.0, SERP, 6, true)
+		ip(2.0, -3.0, SERP, 6, true)
+
+func draw_mimic(c: Creature, sh: int) -> void:
+	var open := 0 if c.st == "idle" else 1
+	var jx := (randf() - 0.5) * 1.5 if c.st == "wake" else 0.0
+	sd(bake("mimic|%d" % open, 6, 5, _p_mimic.bind(open)), c.x + jx, c.y + (sin(c.age * 3 + c.ph) * 0.5 if open == 0 else 0.0), 0 if open == 0 else sh, c.flash > 0)
+
+# ---------- 棱镜虫 ----------
+func _p_prismbug(f: int, hot: bool) -> void:
+	for jj in range(-12, 12):
+		for ii in range(-12, 12):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			# 背上的三棱镜
+			if y < 1.0 and y > -5.0 and absf(x) < (y + 5.0) * 0.62:
+				var side := x < -0.3
+				var mm := ICE if side else MIRROR
+				var lv := 4.0 if side else 6.0
+				if absf(x) > (y + 5.0) * 0.62 - 0.5 or y > 0.4:
+					lv = 3
+				if hot and absf(x - 0.3) < 0.5:
+					mm = GOLD
+					lv = 6
+				ipx(ii, jj, mm, lv, hot)
+			elif y >= 1.0 and y < 3.2 and absf(x) < 4.2 - (y - 1.0) * 0.6:
+				ipx(ii, jj, RUIN, 4 if y < 2.0 else 3)
+	for s in [-1.0, 1.0]:
+		for k in 3:
+			ip(s * (1.5 + k * 1.2), 3.4 + ((k + f) % 2) * 0.5, RUIN, 4)
+		ip(s * 2.4, 1.8, PAPER, 6, true)
+	# 棱镜里透出来的三色
+	ip(1.2, -1.0, EMBER, 6, true)
+	ip(1.5, -0.2, GOLD, 6, true)
+	ip(1.8, 0.4, ORE, 6, true)
+
+func draw_prismbug(c: Creature, sh: int) -> void:
+	var f := int(c.age * 6.0) % 2
+	var hot := c.sp > 0
+	sd(bake("prismbug|%d|%s" % [f, hot], 6, 6, _p_prismbug.bind(f, hot)), c.x, c.y + sin(c.age * 2.5) * 0.8, maxi(sh, -1), c.flash > 0)
+
+# ---------- 碎镜片 ----------
+func _p_shard(rot: int) -> void:
+	var a := rot / 8.0 * PI
+	var ca := cos(a)
+	var sa := sin(a)
+	for jj in range(-8, 8):
+		for ii in range(-8, 8):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			var u := x * ca + y * sa
+			var v := -x * sa + y * ca
+			if absf(u) / 3.4 + absf(v) / 1.5 < 1.0:
+				ipx(ii, jj, MIRROR if v < 0 else ICE, 6 if absf(v) < 0.4 else (5 if v < 0 else 4), absf(v) < 0.4)
+
+func draw_shard(c: Creature, sh: int) -> void:
+	var rot := posmod(int(c.ang * 8.0 / PI), 8)
+	sd(bake("shard|%d" % rot, 4, 4, _p_shard.bind(rot)), c.x, c.y, 0, c.flash > 0)
+
+# ---------- 影子 ----------
+func draw_shade(c: Creature, sh: int) -> void:
+	mono = true
+	var a := 0.45 if c.st == "idle" else 0.8
+	sd(bake("shadepc", 7, 6, _p_shadepc), c.x, c.y + sin(c.age * 3.0) * 0.6, -3, c.flash > 0, a)
+	mono = false
+	if c.st != "idle":
+		sp(c.x - 2.5, c.y - 1.5, SERP, 6, 0, 1.0)
+		sp(c.x + 1.5, c.y - 1.5, SERP, 6, 0, 1.0)
+
+func _p_shadepc() -> void:
+	for jj in range(-7, 7):
+		for ii in range(-13, 13):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			if absf(x) < 5.0 and y > -3.5 and y < 2.0:
+				ipx(ii, jj, GRAV, 2)
+			elif absf(x) > 5.0 and absf(x) < 6.5 and absf(y + 0.5) < 1.0:
+				ipx(ii, jj, GRAV, 2)
+			elif y >= 2.0 and y < 3.5 and (absf(absf(x) - 3.5) < 0.6 or absf(absf(x) - 1.5) < 0.6):
+				ipx(ii, jj, GRAV, 2)
+
+# ---------- 镜中人 ----------
+func draw_mirrorboss(c: Creature, sh: int) -> void:
+	if c.st == "sleep":
+		# 一面立着的大镜子
+		for j in 22:
+			for i in 12:
+				var edge := i == 0 or i == 11 or j == 0 or j == 21
+				var gl := (i + j + int(T * 6)) % 14 < 2
+				sr(c.x - 6 + i, c.y - 11 + j, 1.0, 1.0, GOLD if edge else (PAPER if gl else MIRROR), 4 if edge else (6 if gl else 4))
+		return
+	var p2 := c.orR > 0
+	var jx := (randf() - 0.5) * 2.0 if c.st == "rise" or c.sp > 0.45 else 0.0
+	draw_pc(0, c.x + jx, c.y, int(c.age * 6) % 2, -1 if P.x < c.x else 1, false, true, c.flash > 0 or (p2 and sin(T * 9.0) > 0.92))
+	# 银色描边的闪光 + 裂纹
+	for i in 6:
+		var a := T * 2.0 + i * TAU / 6.0
+		sp(c.x + cos(a) * 9 - 0.25, c.y + sin(a) * 7 - 0.25, MIRROR, 6)
+	if p2:
+		for k in 5:
+			sp(c.x - 3 + k * 1.0, c.y - 3 + k * 0.5 + (k % 2), SPACE, 0)
+	if c.sp > 0 and c.sp < 0.45:
+		for k in 5:
+			sp(c.x - cos(c.ang) * k * 3, c.y - sin(c.ang) * k * 3, MIRROR, 6 - k, 0, 1.0)
+
+# ======================================================================
+# 第六章「残烛之心」的画面
+# ======================================================================
+func _p_lava(r: float) -> void:
+	var R := ceili(r * 2.0)
+	for jj in range(-R, R + 1):
+		for ii in range(-R, R + 1):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			var a := atan2(y, x)
+			var d := sqrt(x * x + y * y) / (r * (0.88 + 0.12 * sin(a * 5.0)))
+			if d > 1.0:
+				continue
+			var lv := 5.0 - d * 2.0 + (1.0 if Pal.n2(x * 0.4 + r, y * 0.4) > 0.6 else 0.0)
+			if d > 0.86:
+				ipx(ii, jj, WINE, 3)
+			else:
+				ipx(ii, jj, EMBER if lv < 5.0 else GOLD, clampf(lv, 3, 6), true)
+
+func draw_zones6() -> void:
+	for q in LAVA:
+		if not on_screen(q.x, q.y, q.r + 4):
+			continue
+		var r := snappedf(lava_r(q), 1.0)
+		sd(bake("lava|%d" % int(r), r + 1, r + 1, _p_lava.bind(r)), q.x, q.y)
+		for i in 4:
+			var t := fposmod(T * 0.5 + i * 0.27 + q.ph, 1.0)
+			var a: float = q.ph + i * 1.9
+			sp(q.x + cos(a) * r * 0.5, q.y + sin(a) * r * 0.4 - t * 5.0, GOLD, 6 if t < 0.5 else 5)
+
+func draw_hazards6() -> void:
+	# 地上的火
+	for f in FIRES:
+		if not on_screen(f.x, f.y, 8):
+			continue
+		var k: float = f.t / f.max
+		for i in 5:
+			var h := (0.5 + 0.5 * sin(T * 14.0 + i * 2.0 + f.x)) * 4.0 * k
+			var px: float = f.x + (i - 2) * 1.2
+			sr(px - 0.5, f.y - h, 1.0, h + 1.0, EMBER if i % 2 else GOLD, 6 if k > 0.4 else 5)
+	# 落蜡的圈
+	for l in LOBS:
+		var k: float = l.t / l.max
+		var rr: float = l.r * (0.35 + 0.65 * k)
+		var n := int(l.r * 4)
+		for i in n:
+			var a := float(i) / n * TAU
+			sp(l.x + cos(a) * l.r - 0.25, l.y + sin(a) * l.r - 0.25, EMBER, 5)
+			if i % 2 == 0:
+				sp(l.x + cos(a + T * 3) * rr - 0.25, l.y + sin(a + T * 3) * rr - 0.25, GOLD, 6)
+		sp(l.x - 0.5, l.y - 0.5 - k * 60.0, PAPER, 6, 0, 1.5)
+	# 耀斑
+	if ray_len > 0:
+		var o := Vector2(PAGES[2].x, PAGES[2].y)
+		var u := Vector2(cos(ray_a), sin(ray_a))
+		var s := 30.0
+		while s < ray_len:
+			var px := o.x + u.x * s
+			var py := o.y + u.y * s
+			if on_screen(px, py, 8):
+				var w := 3.0 + sin(s * 0.2 - T * 20.0) * 1.0
+				sr(px - w / 2.0, py - w / 2.0, w, w, GOLD, 6)
+				sp(px + u.y * (w + 1.0), py - u.x * (w + 1.0), EMBER, 5)
+				sp(px - u.y * (w + 1.0), py + u.x * (w + 1.0), EMBER, 5)
+			s += 1.5
+	# 灰烬风暴：横着飞的灰
+	if ash_dark() > 0:
+		var side := Vector2(cos(ash_dir), sin(ash_dir))
+		for i in 90:
+			var hx := _hh(i, 7) * (W + 80.0)
+			var hy := _hh(i, 13) * (H + 80.0)
+			var t := T * (60.0 + _hh(i, 3) * 80.0)
+			var px := ox - 40.0 + fposmod(hx + side.x * t, W + 80.0)
+			var py := oy - 40.0 + fposmod(hy + side.y * t, H + 80.0)
+			sr(px, py, 1.5 if i % 4 == 0 else 1.0, 1.0, RUIN if i % 3 else EMBER, 5 if i % 3 else 6)
+
+# ---------- 火蜥 ----------
+func draw_salamander(c: Creature, sh: int) -> void:
+	var n := c.tr.size() / 2
+	for i in n:
+		var k := float(i) / maxf(1.0, n)
+		ball(c.tr[i * 2], c.tr[i * 2 + 1], 1.0 + k * 2.0, EMBER if i % 2 else WINE, 4, 0)
+	if n > 0:
+		sp(c.tr[0] - 0.5, c.tr[1] - 1.5, GOLD, 6, 0, 1.0)
+	var a := c.ang
+	ball(c.x, c.y, 3.4, EMBER, 5, 0)
+	for s in [-1.0, 1.0]:
+		var st: float = sin(c.age * 12.0) * s
+		sp(c.x - sin(a) * 4.0 * s + cos(a) * st * 1.5 - 0.5, c.y + cos(a) * 4.0 * s + sin(a) * st * 1.5 - 0.5, WINE, 5, 0, 1.0)
+		sp(c.x + cos(a) * 2.0 - sin(a) * 1.5 * s - 0.25, c.y + sin(a) * 2.0 + cos(a) * 1.5 * s - 0.25, PAPER, 6)
+	if c.flash > 0:
+		ball(c.x, c.y, 3.4, PAPER, 6, 0)
+
+# ---------- 灰烬魂 ----------
+func _p_ashghost(f: int) -> void:
+	for jj in range(-14, 14):
+		for ii in range(-12, 12):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			var w := 4.6 if y < 0 else 4.6 - y * 0.5 + sin(y * 1.5 + f * 1.6 + x) * 0.7
+			if y < -5.0 or y > 6.0:
+				continue
+			if y < 0 and x * x + y * y > 23.0:
+				continue
+			if absf(x) > w:
+				continue
+			if Pal.bay(ii, jj) > 0.85 - y * 0.06:
+				continue
+			ipx(ii, jj, RUIN, 5 if y < -1.0 else (4 if y < 3.0 else 3))
+	for s in [-1.0, 1.0]:
+		ip(s * 1.6, -1.5, EMBER, 6, true)
+		ip(s * 1.6, -1.0, GOLD, 6, true)
+
+func draw_ashghost(c: Creature, sh: int) -> void:
+	var f := int(c.age * 5.0) % 4
+	sd(bake("ashghost|%d" % f, 6, 7, _p_ashghost.bind(f)), c.x, c.y, 0, c.flash > 0, 0.45 + 0.55 * c.open)
+
+# ---------- 烛泪 ----------
+func _p_drip(sq: int) -> void:
+	var hgt := 7.0 - sq * 1.5
+	var wid := 4.5 + sq * 0.8
+	for jj in range(-16, 10):
+		for ii in range(-12, 12):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			var t := (4.0 - y) / hgt
+			if t < 0 or t > 1.0:
+				continue
+			var w := wid * (1.0 - t * t * 0.75)
+			if absf(x) > w:
+				continue
+			var lv := 5.0 - (1.0 if x > w * 0.3 else 0.0) - (1.0 if y > 3.0 else 0.0)
+			ipx(ii, jj, PAPER, lv)
+	for k in 3:
+		for q in int(2 + k * 1.3):
+			ip(-2.5 + k * 2.5, 4.0 + q * 0.5, PAPER, 4)
+	ip(-1.3, 1.5 - (2 - sq) * 0.8, SPACE, 0)
+	ip(1.3, 1.5 - (2 - sq) * 0.8, SPACE, 0)
+	ip(0.0, 4.0 - hgt - 1.0, GOLD, 6, true)
+	ip(0.0, 4.0 - hgt - 1.6, EMBER, 6, true)
+
+func draw_drip(c: Creature, sh: int) -> void:
+	var sq := 2 if c.sp > 0.5 else (1 if c.sp > 0.1 or sin(c.age * 2.0) > 0.7 else 0)
+	sd(bake("drip|%d" % sq, 6, 8, _p_drip.bind(sq)), c.x, c.y, maxi(sh, -1), c.flash > 0)
+
+# ---------- 残烛之芯 ----------
+func _p_wick(f: int, eye: int, ph: int) -> void:
+	for jj in range(-40, 30):
+		for ii in range(-28, 28):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			# 火焰：下圆上尖，会摆
+			var t := clampf((10.0 - y) / 28.0, 0.0, 1.0)
+			var sway := sin(f * 1.57 + t * 5.0) * t * 2.2
+			var w := 12.5 * sqrt(maxf(0.0, 1.0 - pow(t * 1.02, 1.6))) * (1.0 if y < 10.0 else 0.0)
+			var dx := absf(x - sway)
+			if y >= 10.0:
+				# 烛芯底座
+				if y < 13.5 and absf(x) < 5.0 - (y - 10.0) * 0.8:
+					ipx(ii, jj, SPACE if ph < 2 else WINE, 1 if absf(x) > 1.0 else 2)
+				continue
+			if dx > w:
+				continue
+			var k := dx / maxf(0.5, w)
+			var m := GOLD
+			var lv := 6.0
+			if k > 0.72:
+				m = WINE if ph == 2 else EMBER
+				lv = 4
+			elif k > 0.45:
+				m = EMBER
+				lv = 5 if Pal.bay(ii, jj) > 0.4 else 6
+			elif t < 0.5 and k < 0.25:
+				m = PAPER
+				lv = 6
+			ipx(ii, jj, m, lv, true)
+	# 眼睛：一只竖着的大眼
+	if eye >= 0:
+		for jj in range(-8, 8):
+			for ii in range(-6, 6):
+				var x := ii * 0.5 + 0.25
+				var y := jj * 0.5 + 0.25
+				if (x * x) / 6.0 + (y * y) / 12.0 < 1.0:
+					var pd := Vector2(x - (eye - 1) * 0.9, y).length()
+					ipx(ii, jj + 4, SPACE if pd < 1.3 else PAPER, 0 if pd < 1.3 else 6, pd >= 1.3)
+
+func draw_wick(c: Creature, sh: int) -> void:
+	var f := int(c.age * 7.0) % 4
+	var eye := -1 if c.st == "sleep" else (0 if P.x < c.x - 30 else (2 if P.x > c.x + 30 else 1))
+	var ph := int(c.orR)
+	var jx := (randf() - 0.5) * 2.5 if c.st == "rise" else 0.0
+	sd(bake("wick|%d|%d|%d" % [f, eye, ph], 15, 21, _p_wick.bind(f, eye, ph)), c.x + jx, c.y, 0, c.flash > 0, 0.55 if c.st == "sleep" else 1.0)
+	if c.st == "dead":
+		return
+	for i in 8:
+		var a := T * 1.2 + i * TAU / 8.0
+		var rr := 20.0 + sin(T * 3.0 + i) * 3.0
+		sp(c.x + cos(a) * rr, c.y - 4 + sin(a) * rr * 0.8, GOLD if i % 2 else EMBER, 6)

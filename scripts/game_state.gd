@@ -22,6 +22,9 @@ const ZNAME := {
 	"shallow": "浅页带", "leech": "蛭环", "nursery": "坍缩苗圃", "echo": "回声深处", "drift": "冷寂漂流区",
 	"hall": "前厅", "stacks": "书架迷宫", "dark": "熄灯区", "ink": "墨海",
 	"tower": "钟楼底层", "wind": "页风回廊", "gear": "齿轮钟室", "flare": "烛焰台", "belt": "矿脉带",
+	"frost": "霜厅", "lake": "冰湖", "pillar": "霜柱林", "aurora": "极光原",
+	"atrium": "镜厅", "prism": "棱镜林", "echoval": "回声谷", "shadow": "影湖",
+	"corona": "日冕台", "sea": "熔页海", "ash": "灰烬原", "core": "烛心",
 }
 ## m = 打散时迸出的碎屑颜色；as = 在图鉴里算作哪一种
 const DEF := {
@@ -50,6 +53,19 @@ const DEF := {
 	"snail": {"name": "石蜗", "hp": 5, "r": 5, "dust": 7, "ember": 0.2, "m": CLAY},
 	"borer": {"name": "钻岩虫", "hp": 6, "r": 4, "dust": 9, "ember": 0.4, "m": RUIN},
 	"comet": {"name": "彗尾鱼", "hp": 3, "r": 4, "dust": 6, "ember": 1.0, "m": ORE},
+	"spider": {"name": "冰蛛", "hp": 5, "r": 5, "dust": 8, "ember": 0.3, "m": ICE},
+	"roller": {"name": "雪球兽", "hp": 4, "r": 4, "dust": 9, "ember": 0.4, "m": PAPER},
+	"bat": {"name": "霜蝠", "hp": 2, "r": 4, "dust": 4, "ember": 0.2, "m": ICE},
+	"index": {"name": "索引柜", "hp": 120, "r": 12, "dust": 80, "ember": 6.0, "m": CLAY},
+	"mimic": {"name": "拟字兽", "hp": 6, "r": 5, "dust": 14, "ember": 0.0, "m": ORE},
+	"prismbug": {"name": "棱镜虫", "hp": 4, "r": 5, "dust": 8, "ember": 0.3, "m": MIRROR},
+	"shard": {"name": "碎镜片", "hp": 1, "r": 3, "dust": 2, "ember": 0.0, "m": MIRROR},
+	"shade": {"name": "影子", "hp": 5, "r": 5, "dust": 9, "ember": 0.5, "m": GRAV},
+	"mirror": {"name": "镜中人", "hp": 130, "r": 7, "dust": 90, "ember": 6.0, "m": MIRROR},
+	"salamander": {"name": "火蜥", "hp": 6, "r": 5, "dust": 9, "ember": 1.0, "m": EMBER},
+	"ashghost": {"name": "灰烬魂", "hp": 4, "r": 6, "dust": 7, "ember": 0.5, "m": RUIN},
+	"drip": {"name": "烛泪", "hp": 7, "r": 6, "dust": 10, "ember": 1.0, "m": PAPER},
+	"wick": {"name": "残烛之芯", "hp": 170, "r": 13, "dust": 150, "ember": 10.0, "m": GOLD},
 }
 
 const LORE := {
@@ -77,6 +93,19 @@ const LORE := {
 	"snail": ["爬石头 · 会缩壳", "背着一枚螺旋壳，沿着小行星的表面慢慢爬，一路啃矿脉里的页尘。你一靠近它就缩进壳里，过一会儿探出头吐三颗石子。打死它，它吃下去的页尘会全吐出来。"],
 	"borer": ["伏击 · 藏在石头里", "住在大石头的芯里。你经过时，石头表面会先冒出一阵碎屑，然后它会破石而出，笔直地钻出一条隧道。在外面晃一会儿，它又会找块石头钻回去。"],
 	"comet": ["胆小 · 拖着光尾", "一条拖着青色长尾巴的小鱼，在矿脉带的空地里绕大圈游。胆子很小，一靠近就飞快逃走。追上它能拿到余烬。"],
+	"spider": ["吐网 · 保持距离", "冰封书库角落里结网的蜘蛛，网是用冻住的标点符号织的。它不爱贴身，喜欢隔着一段距离横着爬，朝你吐一团网：被粘住不疼，但会慢下来。"],
+	"roller": ["越滚越大", "一团被风吹得滚起来的雪。滚得越久越大、越疼，可它看不清路：引它撞到石头或者霜柱上，它就自己碎了。"],
+	"bat": ["成对 · 俯冲", "倒挂在书架顶上的小蝙蝠，翅膀是两张冻硬的书签。总是两只一起，绕着你扑腾，然后尖叫一声俯冲下来，被撞到会冷得一哆嗦。"],
+	"index": ["索引柜 · 第四章首领", "图书馆的卡片目录柜，记得每一本书放在哪里。冻了太久，它只记得一件事：把闯进来的东西也编进索引。会弹出抽屉飞卡片、画出网格线，还会刮起暴风雪。"],
+	"mimic": ["伪装 · 偷页尘", "装成一小堆页尘，一动不动地等人来捡。你一靠近它就张开嘴扑上来，还会咬掉你身上的页尘。真的页尘会被你吸过来，它不会。"],
+	"prismbug": ["散射 · 会闪现", "背着一块三棱镜的小虫。它射出的光弹飞到半路会散成三种颜色。挨了打会“啪”地闪到旁边去。"],
+	"shard": ["成群 · 反弹", "镜子碎掉以后还不肯安静的碎片。成群直线乱飞，撞到石头就弹开，一碰就碎，但是多。"],
+	"shade": ["跟着你的脚印", "回声谷里，你的影子有了自己的主意。它踩着你一秒多以前走过的路追上来：往回走、停下来，都会撞上它。"],
+	"mirror": ["镜中人 · 第五章首领", "镜子里的那个你。它总站在你的正对面，学你开枪，然后突然冲过来。它还会在你身边立起一圈镜子，让你的字弹打回自己身上。"],
+	"salamander": ["留下火痕", "在熔页海里游的小蜥蜴，尾巴尖一直烧着。它跑过的地方会留下一串火，烧两秒才灭。"],
+	"ashghost": ["忽隐忽现 · 死后炸开", "烧完的书页留下的一点念想。在灰烬风暴里几乎看不见，慢慢贴过来。打散它会炸出一圈火星，离远点再打。"],
+	"drip": ["不会动 · 远程", "残烛滴下来、凝在地上的一大滴蜡。它不会动，但会朝你脚下甩蜡：落点先出现一个圈，落地后还会烧一会儿。"],
+	"wick": ["残烛之芯 · 最终首领", "残烛的火芯。大散页那天它打了个寒颤，从此一直在发抖。它不是坏，它只是太冷、太害怕熄灭了。让它安静下来。"],
 }
 
 ## 五种笔：同一句话，换一支笔就是另一种打法
@@ -87,7 +116,7 @@ const PENS := [
 	{"name": "砚雷", "desc": "朝准星扔一团墨，炸开一片，连镜螨的正面也炸得到"},
 	{"name": "墨线", "desc": "按住蓄力，松开射出一道穿透一切的墨线"},
 ]
-const ORDER := ["hush", "folio", "clam", "moth", "leech", "mite", "grav", "comma", "serp", "blot", "worm", "wisp", "redact", "dove", "tick", "cinder", "stamp", "binder", "chill", "icicle", "mothq", "snail", "borer", "comet"]
+const ORDER := ["hush", "folio", "clam", "moth", "leech", "mite", "grav", "comma", "serp", "blot", "worm", "wisp", "redact", "dove", "tick", "cinder", "stamp", "binder", "chill", "icicle", "mothq", "snail", "borer", "comet", "spider", "roller", "bat", "index", "mimic", "prismbug", "shard", "shade", "mirror", "salamander", "ashghost", "drip", "wick"]
 const PAGE_TXT := [
 	"「寒冷不是热的缺席，而是一切停止说话的声音。」——体温上限 +30，保温 +15%",
 	"「万物彼此吸引，因为它们都想被读到。」——字弹伤害 +1",
@@ -98,6 +127,15 @@ const PAGE_TXT := [
 	"「风从不读书，但它翻过的页比谁都多。」——冲刺冷却 -20%",
 	"「时间是一根线，把所有的页缝在一起。」——技能冷却 -25%",
 	"「最后的火不是用来取暖的，是用来照见字的。」",
+	"「冰封的字也在等春天。」——体温上限 +25",
+	"「索引是图书馆的记忆：忘了的地方，它替你记着。」——生命上限 +1，并补满",
+	"「春天不会自己来，是有人先把冰化开。」",
+	"「镜子里的字是反的，意思却一样。」——字弹伤害 +1",
+	"「回声是话语给自己的回信。」——所有的笔出手再快 10%",
+	"「你在镜子里看见的，从来都是你自己。」",
+	"「灰烬也是字，只是写完了。」——生命上限 +1，并补满",
+	"「熔化的书页会重新凝固成新的书。」——体温上限 +25",
+	"「火会熄，话会停，但被读过的，就一直在。」",
 ]
 
 const INTRO := [
@@ -154,6 +192,7 @@ class EBullet:
 	var vy := 0.0
 	var life := 4.0
 	var m := 11
+	var web := false
 
 class Beacon:
 	var x := 0.0
@@ -190,6 +229,7 @@ class Bullet:
 	var w := {}
 	var bounce := 0
 	var chain := 0
+	var refl := false
 	var mark := 0.0
 	var crit := 0.0
 
@@ -269,7 +309,8 @@ class PlayerState:
 	var ch := 0                # 现在是哪一只陶灵（CHARS 的下标）
 	var sk := 0                # 现在用哪个技能（SKILLS 的下标）
 	var sk_cd := 0.0           # 技能冷却
-	var shield_t := 0.0        # 墨盾剩下的时间
+	var shield_t := 0.0
+	var slow_t := 0.0        # 墨盾剩下的时间
 	var dashk := 1.0           # 冲刺冷却倍数（第三章书页）
 	var skk := 1.0             # 技能冷却倍数（第三章书页）
 
@@ -385,6 +426,8 @@ var C_LINE := Color("#3a3f66")
 func zn(x: float, y: float) -> String:
 	var d := sqrt(x * x + y * y)
 	var a := atan2(y, x)
+	if chapter >= 4:
+		return zn_hi(x, y)
 	if chapter == 3:
 		return zn3(x, y)
 	if chapter == 2:
@@ -454,7 +497,7 @@ func gen_rocks() -> void:
 		var z := zn(x, y)
 		if z == "stacks":
 			continue
-		if (z == "echo" and R0.randf() < 0.45) or (z == "ink" and R0.randf() < 0.5) or (z == "wind" and R0.randf() < 0.55):
+		if (z == "lake" and R0.randf() < 0.55) or (z == "prism" and R0.randf() < 0.3) or (z == "sea" and R0.randf() < 0.5) or (z == "echo" and R0.randf() < 0.45) or (z == "ink" and R0.randf() < 0.5) or (z == "wind" and R0.randf() < 0.55):
 			continue
 		var R := 0.0
 		match z:
@@ -490,7 +533,7 @@ func gen_rocks() -> void:
 		var x: float = PAGES[2].x + cos(a) * 120
 		var y: float = PAGES[2].y + sin(a) * 120
 		if Vector2(x, y).length() < WR - 20:
-			rocks.append(Rock.build(roundi(x), roundi(y), 7 + (k % 3) * 3, ["", "echo", "ink", "flare"][chapter], R0))
+			rocks.append(Rock.build(roundi(x), roundi(y), 7 + (k % 3) * 3, ["", "echo", "ink", "flare", "aurora", "shadow", "core"][chapter], R0))
 	for r in rocks:
 		grid_add(r)
 		_make_sprite(r)
@@ -542,6 +585,9 @@ func zone_spot(t: String) -> Vector2:
 				continue
 			if t == "comet" and not ((z == "belt" or z == "drift") and d > 520):
 				continue
+		elif chapter >= 4:
+			if not hi_spot_ok(t, z, d):
+				continue
 		elif chapter == 3:
 			if t == "dove" and z != "wind" and not (z == "tower" and d > 260 and randf() < 0.15):
 				continue
@@ -580,6 +626,16 @@ func zone_spot(t: String) -> Vector2:
 	return Vector2.INF
 
 func spawn(t: String) -> void:
+	if t == "bat":
+		var bp := zone_spot(t)
+		if bp == Vector2.INF:
+			return
+		for i in 2:
+			var c := mk("bat", bp.x + i * 10, bp.y)
+			c.off = i
+			c.ang = randf() * TAU
+			c.tm = 2.0 + i * 1.5
+		return
 	if t == "snail" or t == "borer":
 		rock_spawn(t)
 		return
@@ -660,6 +716,8 @@ func new_world() -> void:
 			{"id": 1, "gid": 1, "x": cos(2.25) * 1050, "y": sin(2.25) * 1050, "name": "论引力", "state": "free"},
 			{"id": 2, "gid": 2, "x": 0.0, "y": -1110.0, "name": "论回声", "state": "sealed"},
 		]
+	elif chapter >= 4:
+		PAGES = hi_pages()
 	elif chapter == 3:
 		PAGES = [
 			{"id": 0, "gid": 6, "x": cos(0.05) * 1090, "y": sin(0.05) * 1090, "name": "论风向", "state": "free"},
@@ -697,6 +755,17 @@ func new_world() -> void:
 	serp = null
 	redact = null
 	binder = null
+	bossc = null
+	if chapter != 5:
+		MIRS.clear()
+	if chapter != 6:
+		LAVA.clear()
+	LOBS.clear()
+	FIRES.clear()
+	if chapter != 4:
+		SPRINGS.clear()
+		PILLARS.clear()
+		AUR.clear()
 	flare_st = 0
 	flare_t = 6.0
 	gen_clams()
@@ -704,6 +773,12 @@ func new_world() -> void:
 		gen_ch2()
 	if chapter == 3:
 		gen_ch3()
+	if chapter == 4:
+		gen_ch4()
+	if chapter == 5:
+		gen_ch5()
+	if chapter == 6:
+		gen_ch6()
 	for t in targets():
 		var g := 0
 		while count_type(t) < targets()[t] and g < 60:
@@ -724,6 +799,8 @@ func new_world() -> void:
 		serp.burst_t = 4
 		for i in 18:
 			serp.seg.append(Vector2(PAGES[2].x, PAGES[2].y + i * 2))
+	elif chapter >= 4:
+		hi_guards()
 	elif chapter == 3:
 		# 第一页：顺风的尽头一大群信鸽页；第二页：大钟下面两只发条甲虫
 		for i in 6:
@@ -831,6 +908,8 @@ func warm_zone(x: float, y: float) -> int:
 	for l in LAMPS:
 		if l.lit > 0 and Vector2(x - l.x, y - l.y).length() < 40:
 			return 1
+	if near_spring(x, y):
+		return 1
 	return 0
 
 func key(k: int) -> bool:
@@ -927,8 +1006,8 @@ func load_run() -> void:
 				page_store[str(k)] = ps[k]
 	elif r.get("pages") is Array:
 		page_store["1"] = r.pages
-	unlocked = clampi(int(r.get("unlocked", 1)), 1, 3)
-	for k in [1, 2]:
+	unlocked = clampi(int(r.get("unlocked", 1)), 1, NCH)
+	for k in range(1, NCH):
 		var bk := 0
 		for q in page_store.get(str(k), []):
 			if str(q.get("state", "")) == "bound":
@@ -1294,7 +1373,7 @@ func set_pen(i: int) -> void:
 func can_hit(c: Creature) -> bool:
 	if c.dead:
 		return false
-	if c.t == "serp" or c.t == "redact" or c.t == "binder":
+	if BOSS_T.has(c.t):
 		return c.st == "fight"
 	if c.t == "wisp":
 		return c.open > 0.5
@@ -1599,10 +1678,12 @@ func upd_player(dt: float) -> void:
 		aim = aim.normalized()
 		P.ax = aim.x
 		P.ay = aim.y
-	var ACC: float = 235.0 * chr().sp
+	var ACC: float = 235.0 * chr().sp * (0.45 if P.slow_t > 0 else 1.0)
 	P.vx += ix * ACC * dt
 	P.vy += iy * ACC * dt
 	var drag := 0.6 if P.dash_t > 0 else 2.35
+	if P.dash_t <= 0 and on_ice(P.x, P.y):
+		drag = 0.4
 	if chapter == 2 and P.dash_t <= 0 and P.ch != 3 and in_ink(P.x, P.y):
 		drag = 7.0
 		tip("ink", "墨池会拖住脚步。冲刺可以滑过去。")
@@ -1688,7 +1769,7 @@ func upd_player(dt: float) -> void:
 		P.warm = minf(P.maxwarm, P.warm + 3 * dt)
 		tip("flarewarm", "烛焰台离残烛很近，一点也不冷。但是它隔一会儿就会喷火。")
 	else:
-		var drain: float = 0.8 * chr().drain * (1 + pd / 800) * (1 + 1.3 * TIDE) * (1 - 0.2 * UP.glaze) * (1 - P.glaze)
+		var drain: float = 0.8 * chr().drain * (1 + pd / 800) * (1 + 1.3 * TIDE) * (1 - 0.2 * UP.glaze) * (1 - P.glaze) * cold_k(P.x, P.y)
 		P.warm = maxf(0.0, P.warm - drain * dt)
 	if P.warm <= 0:
 		P.cold_t += dt
@@ -1807,11 +1888,21 @@ func bind_page(id: int) -> void:
 			P.dashk = 0.8
 		7:
 			P.skk = 0.75
+		9, 16:
+			P.maxwarm += 25
+			P.warm = P.maxwarm
+		10, 15:
+			P.maxhp += 1
+			P.hp = P.maxhp
+		12:
+			P.dmg += 1
+		13:
+			P.haste *= 0.9
 	if id == 2:
 		S = "ending"
 		end_t = 0
 		save.clears = int(save.clears) + 1
-		unlocked = maxi(unlocked, mini(3, chapter + 1))
+		unlocked = maxi(unlocked, mini(NCH, chapter + 1))
 		persist()
 	elif ch_bound() < 3:
 		toast("这一章还剩 %d 页。" % (3 - ch_bound()), C_DIM, 4)
@@ -2159,6 +2250,32 @@ func upd_creatures(dt: float) -> void:
 				upd_stamp(c, cdt, d, dx, dy)
 			"binder":
 				upd_binder(c, cdt, d)
+			"spider":
+				upd_spider(c, cdt, d, dx, dy)
+			"roller":
+				upd_roller(c, cdt, d, dx, dy)
+			"bat":
+				upd_bat(c, cdt, d, dx, dy)
+			"index":
+				upd_index(c, cdt, d)
+			"mimic":
+				upd_mimic(c, cdt, d, dx, dy)
+			"prismbug":
+				upd_prismbug(c, cdt, d, dx, dy)
+			"shard":
+				upd_shard(c, cdt, d, dx, dy)
+			"shade":
+				upd_shade(c, cdt, d, dx, dy)
+			"mirror":
+				upd_mirror(c, cdt, d)
+			"salamander":
+				upd_salamander(c, cdt, d, dx, dy)
+			"ashghost":
+				upd_ashghost(c, cdt, d, dx, dy)
+			"drip":
+				upd_drip(c, cdt, d, dx, dy)
+			"wick":
+				upd_wick(c, cdt, d)
 			"chill":
 				upd_chill(c, cdt, d, dx, dy)
 			"icicle":
@@ -2171,7 +2288,7 @@ func upd_creatures(dt: float) -> void:
 				upd_borer(c, cdt, d, dx, dy)
 			"comet":
 				upd_comet(c, cdt, d, dx, dy)
-		if not (c.t in ["clam", "leech", "serp", "redact", "worm", "wisp", "binder", "dove", "chill", "mothq", "snail", "borer"]) and not c.dead:
+		if not (c.t in ["clam", "leech", "serp", "redact", "worm", "wisp", "binder", "dove", "chill", "mothq", "snail", "borer", "bat", "index", "shard", "shade", "mirror", "wick", "ashghost", "drip"]) and not c.dead:
 			var r := rock_at(c.x, c.y)
 			if r:
 				var ex := c.x - r.x
@@ -2359,6 +2476,14 @@ func kill(c: Creature, drop: bool) -> void:
 		p.wc = keys[randi() % keys.size()]
 		p.gold = big or randf() < float(WD.gold_chance)
 		PK.append(p)
+	if c.t == "ashghost" and drop:
+		for i in 8:
+			var ea := i * TAU / 8.0
+			add_eb(c.x, c.y, cos(ea) * 70, sin(ea) * 70, 1.2, EMBER)
+	if c.t == "mirror":
+		MIRS = MIRS.filter(func(q): return not q.has("tmp"))
+	if c.t == "wick":
+		LOBS.clear()
 	if drop and c.t == "snail":
 		for i in mini(int(c.sp), 20):
 			add_pick(c.x, c.y, "dust", (randf() - 0.5) * 50, (randf() - 0.5) * 50)
@@ -2395,9 +2520,12 @@ func kill(c: Creature, drop: bool) -> void:
 		elif c.t == "redact":
 			toast("删节者把自己也划掉了。", C_GOLD, 5)
 			toast("第三页「论空白」露了出来。", C_TEAL, 5)
-		else:
+		elif c.t == "binder":
 			toast("装订师的线全断了，线轴滚进了烛焰里。", C_GOLD, 5)
 			toast("第三页「论余温」落了下来。", C_TEAL, 5)
+		else:
+			toast(BOSS_END[c.t], C_GOLD, 5)
+			toast("第三页「%s」露了出来。" % PAGES[2].name, C_TEAL, 5)
 		THR.clear()
 		for sg in c.seg:
 			burst(sg.x, sg.y, 8, m, 5, 50, 1)
@@ -2613,7 +2741,7 @@ func upd_bullets(dt: float) -> void:
 						break
 					continue
 				if not can_hit(c):
-					if (c.t == "redact" or c.t == "binder") and c.st == "sleep" and Vector2(b.x - c.x, b.y - c.y).length() < 15:
+					if BOSS_T.has(c.t) and c.t != "serp" and c.st == "sleep" and Vector2(b.x - c.x, b.y - c.y).length() < 15:
 						b.life = 0
 						burst(b.x, b.y, 3, RUIN, 6, 20, 0.3)
 						break
@@ -2647,7 +2775,12 @@ func upd_bullets(dt: float) -> void:
 		if rock_at(b.x, b.y) or (chapter == 3 and hand_at(b.x, b.y, 1.0) != Vector2.ZERO):
 			b.life = 0
 		if Vector2(b.x - P.x, b.y - P.y).length() < 4.5 and P.inv <= 0 and S == "play":
-			hurt_player(1, b.x, b.y)
+			if b.web:
+				P.slow_t = 2.5
+				burst(P.x, P.y, 10, PAPER, 5, 30, 0.5)
+				tip("web", "被冰蛛的网粘住了，会慢一会儿。冲刺不受影响。")
+			else:
+				hurt_player(1, b.x, b.y)
 			b.life = 0
 	EB = EB.filter(func(b): return b.life > 0)
 
@@ -2848,10 +2981,12 @@ func targets() -> Dictionary:
 func boss() -> Creature:
 	if serp != null:
 		return serp
+	if bossc != null:
+		return bossc
 	return redact if redact != null else binder
 
 func is_boss(c: Creature) -> bool:
-	return c.t == "serp" or c.t == "redact" or c.t == "binder"
+	return BOSS_T.has(c.t)
 
 func ch_bound() -> int:
 	var n := 0
@@ -2951,6 +3086,11 @@ func init_c(c: Creature) -> void:
 			c.ang = randf() * TAU
 		"stamp":
 			c.tm = randf() * 2.0
+		"spider":
+			c.w = -1.0 if randf() < 0.5 else 1.0
+			c.tm = 1.0 + randf() * 2.0
+		"roller":
+			c.r = 4.0
 		"worm":
 			c.ang = randf() * TAU
 			c.seg.clear()
@@ -3008,6 +3148,8 @@ func goto_chapter(n: int) -> void:
 		toast("炉灯跟着你翻到了下一章。这里的三张书页在书架迷宫、熄灯区和墨海。", C_TEAL, 6)
 	if n == 3:
 		toast("这里离残烛很近。三张书页在页风回廊、齿轮钟室和烛焰台。", C_TEAL, 6)
+	if n >= 4:
+		toast(CH_HINT[n], C_TEAL, 7)
 	save_run()
 
 func hit_dist(c: Creature, x: float, y: float) -> float:
@@ -3034,9 +3176,9 @@ func fx_near(f: Dictionary, x: float, y: float) -> bool:
 
 func upd_world2(dt: float) -> void:
 	# 第二章的环境：熄灯区变暗、路灯、删除线，还有排队等着出生的生物
-	var dk := 1.0 if chapter == 2 and zn(P.x, P.y) == "dark" else 0.0
+	var dk := 1.0 if chapter == 2 and zn(P.x, P.y) == "dark" else ash_dark() * 0.8
 	zone_dark += (dk - zone_dark) * minf(1.0, dt * 1.5)
-	if dk > 0:
+	if dk > 0 and chapter == 2:
 		tip("dark", "熄灯区很暗。朝路灯开一枪能把它点亮：亮一分钟，周围暖和。")
 	for l in LAMPS:
 		if l.lit > 0:
@@ -3293,12 +3435,15 @@ var INK: Array = []          # 墨海里的墨池 Vector3(x, y, 半径)
 var HZ: Array = []           # 预告线 / 删除线 {x, y, a, t, w, len, dmg}
 var spawn_q: Array = []      # 等这一帧结束再生出来的生物 [类型, x, y, vx, vy]
 var redact: Creature = null
-const CHNAME := ["", "第一章 · 星海散页", "第二章 · 阅览室残骸", "第三章 · 烛芯钟楼"]
+const CHNAME := ["", "第一章 · 星海散页", "第二章 · 阅览室残骸", "第三章 · 烛芯钟楼", "第四章 · 冰封书库", "第五章 · 镜之回廊", "第六章 · 残烛之心"]
 const TARGETS := [
 	{},
 	{"hush": 15, "folio": 9, "leech": 15, "grav": 7, "mite": 10, "comma": 5, "snail": 9, "borer": 6, "comet": 6},
 	{"blot": 13, "worm": 8, "comma": 11, "wisp": 9, "hush": 6, "mite": 6, "folio": 3, "snail": 3},
 	{"dove": 15, "tick": 9, "cinder": 12, "stamp": 7, "comma": 6, "hush": 4, "mite": 4, "snail": 4},
+	{"spider": 11, "roller": 9, "bat": 10, "hush": 5, "snail": 4, "mite": 4},
+	{"mimic": 10, "prismbug": 9, "shard": 18, "shade": 7, "mite": 8, "comma": 4},
+	{"salamander": 11, "ashghost": 10, "drip": 10, "cinder": 8, "stamp": 3, "comma": 4},
 ]
 
 func chr() -> Dictionary:
@@ -3578,8 +3723,6 @@ func in_flare(x: float, y: float) -> bool:
 	return chapter == 3 and zn3(x, y) == "flare" and Vector2(x - PAGES[2].x, y - PAGES[2].y).length() > 300
 
 func upd_world3(dt: float) -> void:
-	if chapter != 3:
-		return
 	# 钟针一直转；碰到就挨一下，被拨开
 	for q in CLOCKS:
 		for h in q.hands:
@@ -4157,7 +4300,7 @@ func tide_spot(d0: float) -> Vector2:
 	return Vector2.INF
 
 func tide_wave() -> void:
-	for i in mini(1 + tides, 6):
+	for i in (0 if chapter == 6 else mini(1 + tides, 6)):
 		var p := tide_spot(180)
 		if p != Vector2.INF:
 			mk("chill", p.x, p.y)
@@ -4170,7 +4313,7 @@ func tide_wave() -> void:
 	ice_sp = 3.0
 
 func tide_spawn_ice(dt: float) -> void:
-	if tides < 2:
+	if tides < 2 or chapter == 6:
 		return
 	ice_sp -= dt
 	if ice_sp > 0:
@@ -4654,3 +4797,1024 @@ func upd_comet(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
 		c.tr = c.tr.slice(2)
 	if randf() < dt * 10:
 		part(c.x, c.y, -c.vx * 0.2, -c.vy * 0.2, 0.6, ORE, 5, true)
+
+# ======================================================================
+# 第四章起的通用框架 + 第四章「冰封书库」
+# ======================================================================
+const NCH := 6
+const BOSS_T := ["serp", "redact", "binder", "index", "mirror", "wick"]
+var bossc: Creature = null       # 第四章起的首领
+var SPRINGS: Array = []          # 暖泉 {x, y, r}
+var PILLARS: Array = []          # 霜柱 {x, y, R, r, st, t, hp}
+var AUR: Array = []              # 极光 {y0, amp, sp, ph, w}
+
+func zn_hi(x: float, y: float) -> String:
+	var d := sqrt(x * x + y * y)
+	var a := atan2(y, x)
+	var names: Array = [["frost", "lake", "pillar", "aurora"], ["atrium", "prism", "echoval", "shadow"], ["corona", "sea", "ash", "core"]][chapter - 4]
+	if d < 420.0:
+		return names[0]
+	if absf(a) < 1.05:
+		return names[1]
+	if a < -1.05 and a > -2.2:
+		return names[3]
+	return names[2]
+
+func cold_k(x: float, y: float) -> float:
+	if chapter == 4:
+		var z := zn_hi(x, y)
+		if z == "aurora":
+			return 0.4 if in_aurora(x, y) else 2.0
+		return 1.35
+	if chapter == 6:
+		return 0.0
+	return 1.0
+
+func on_ice(x: float, y: float) -> bool:
+	return chapter == 4 and zn_hi(x, y) == "lake" and Vector2(x - PAGES[0].x, y - PAGES[0].y).length() > 40
+
+func near_spring(x: float, y: float) -> bool:
+	for s in SPRINGS:
+		if Vector2(x - s.x, y - s.y).length() < s.r:
+			return true
+	return false
+
+func in_aurora(x: float, y: float) -> bool:
+	for a in AUR:
+		var cy: float = a.y0 + sin(T * a.sp + a.ph + x * 0.004) * a.amp
+		if absf(y - cy) < a.w:
+			return true
+	return false
+
+func pillar_at(x: float, y: float, pad: float) -> Dictionary:
+	for p in PILLARS:
+		if p.r > 1.0 and Vector2(x - p.x, y - p.y).length() < p.r + pad:
+			return p
+	return {}
+
+func gen_ch4() -> void:
+	SPRINGS.clear()
+	PILLARS.clear()
+	AUR.clear()
+	var t := 0
+	while t < 400 and SPRINGS.size() < 9:
+		t += 1
+		var a := R0.randf() * TAU
+		var d := 380 + R0.randf() * 820
+		var p := Vector2(cos(a) * d, sin(a) * d)
+		if rock_at(p.x, p.y):
+			continue
+		var ok := true
+		for s in SPRINGS:
+			if Vector2(s.x - p.x, s.y - p.y).length() < 230:
+				ok = false
+		if ok:
+			SPRINGS.append({"x": p.x, "y": p.y, "r": 26.0})
+	t = 0
+	while t < 800 and PILLARS.size() < 26:
+		t += 1
+		var a := 1.1 + R0.randf() * 2.0
+		var d := 450 + R0.randf() * 800
+		var p := Vector2(cos(a) * d, sin(a) * d)
+		if zn_hi(p.x, p.y) != "pillar" or rock_at(p.x, p.y):
+			continue
+		var ok := true
+		for q in PILLARS:
+			if Vector2(q.x - p.x, q.y - p.y).length() < 50:
+				ok = false
+		if ok:
+			PILLARS.append({"x": p.x, "y": p.y, "R": 8.0 + R0.randf() * 7.0, "r": 0.0, "st": 0, "t": R0.randf() * 6.0, "hp": 6.0})
+	for i in 4:
+		AUR.append({"y0": -500.0 - i * 190.0, "amp": 50.0 + i * 10.0, "sp": 0.25 + i * 0.07, "ph": i * 1.7, "w": 22.0})
+
+func upd_hi(dt: float) -> void:
+	P.slow_t -= dt
+	if chapter == 4:
+		upd_world4(dt)
+	elif chapter == 5:
+		upd_world5(dt)
+	elif chapter == 6:
+		upd_world6(dt)
+
+func upd_world4(dt: float) -> void:
+	if S == "play":
+		if near_spring(P.x, P.y):
+			tip("spring", "暖泉！站在冒热气的泉眼旁边能回暖。冰封书库比别处更冷。")
+		if on_ice(P.x, P.y):
+			tip("ice", "冰面很滑：松开方向键也会一直滑下去，提前减速。")
+		if zn_hi(P.x, P.y) == "aurora":
+			tip("aurora", "极光原冷得要命。只有飘动的极光底下是暖的，跟着光走。")
+	# 霜柱：慢慢长出来 → 立一阵 → 裂开 → 碎成冰碴
+	for p in PILLARS:
+		p.t -= dt
+		match int(p.st):
+			0:
+				if p.t <= 0:
+					p.st = 1
+					p.t = 2.5
+					p.hp = 6.0
+			1:
+				p.r = p.R * (1.0 - p.t / 2.5)
+				if p.t <= 0:
+					p.st = 2
+					p.t = 6.0 + randf() * 4.0
+			2:
+				if p.t <= 0 or p.hp <= 0:
+					p.st = 3
+					p.t = 0.7
+					Sfx.play("ping", 0.5)
+			3:
+				if p.t <= 0:
+					for i in 8:
+						var a := i * TAU / 8.0 + randf() * 0.3
+						add_eb(p.x + cos(a) * p.r, p.y + sin(a) * p.r, cos(a) * 70, sin(a) * 70, 1.0, ICE)
+					burst(p.x, p.y, 20, ICE, 6, 60, 0.6)
+					Sfx.play("rock", 1.4)
+					p.st = 0
+					p.r = 0.0
+					p.t = 3.0 + randf() * 4.0
+		if p.r > 1.0 and S == "play":
+			var v := Vector2(P.x - p.x, P.y - p.y)
+			var l := v.length()
+			if l < p.r + 4.5 and l > 0.01:
+				P.x = p.x + v.x / l * (p.r + 4.5)
+				P.y = p.y + v.y / l * (p.r + 4.5)
+				var vn := Vector2(P.vx, P.vy).dot(v / l)
+				if vn < 0:
+					P.vx -= v.x / l * vn
+					P.vy -= v.y / l * vn
+	for b in PB:
+		var p := pillar_at(b.x, b.y, 0.5)
+		if not p.is_empty() and b.orbit <= 0:
+			p.hp -= b.dmg * (2.0 if b.burn > 0 else 1.0)
+			b.life = 0
+			burst(b.x, b.y, 3, ICE, 6, 30, 0.3)
+	for b in EB:
+		if not pillar_at(b.x, b.y, 0.0).is_empty():
+			b.life = 0
+
+## 网：不伤血，但让你慢下来
+func add_web(x: float, y: float, vx: float, vy: float) -> void:
+	var b := EBullet.new()
+	b.x = x
+	b.y = y
+	b.vx = vx
+	b.vy = vy
+	b.life = 2.0
+	b.m = PAPER
+	b.web = true
+	EB.append(b)
+
+func upd_spider(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 冰蛛：保持一段距离横着爬，隔一会儿吐一团网
+	var want := 85.0
+	var k := clampf((d - want) / 30.0, -1.0, 1.0)
+	var chase := d < 220 and c.calm <= 0 and S == "play"
+	var tx := (dx / d * k * 40 - dy / d * 26 * c.w) if chase else cos(c.age * 0.4 + c.ph) * 10 + (c.hx - c.x) * 0.03
+	var ty := (dy / d * k * 40 + dx / d * 26 * c.w) if chase else sin(c.age * 0.3 + c.ph) * 10 + (c.hy - c.y) * 0.03
+	c.vx += (tx - c.vx) * dt * 2.5
+	c.vy += (ty - c.vy) * dt * 2.5
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	c.tm -= dt
+	if chase and c.tm <= 0:
+		c.tm = 2.4 + randf()
+		if randf() < 0.3:
+			c.w = -c.w
+		var lead := Vector2(P.x + P.vx * 0.3 - c.x, P.y + P.vy * 0.3 - c.y).normalized()
+		add_web(c.x, c.y, lead.x * 110, lead.y * 110)
+		Sfx.play("ping", 1.8)
+	if d < c.r + 4:
+		hurt_player(1, c.x, c.y)
+
+func upd_roller(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 雪球兽：越滚越大，撞到石头就碎
+	var chase := d < 170 and c.calm <= 0 and S == "play"
+	if chase:
+		c.st = "roll"
+	if c.st == "roll":
+		var sp := 30.0 + (c.r - 4.0) * 14.0
+		c.vx += (dx / d * sp - c.vx) * dt * 0.9
+		c.vy += (dy / d * sp - c.vy) * dt * 0.9
+		var v := Vector2(c.vx, c.vy).length()
+		if c.r < 9.0:
+			var g := dt * v / 40.0
+			c.r = minf(9.0, c.r + g)
+			c.hp += g * 1.4
+		c.ang += v / maxf(3.0, c.r) * dt
+		if d > 260:
+			c.st = "idle"
+	else:
+		c.vx += (cos(c.age * 0.3 + c.ph) * 8 - c.vx) * dt
+		c.vy += (sin(c.age * 0.25 + c.ph) * 8 - c.vy) * dt
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	var r := rock_at(c.x + c.vx * 0.05, c.y + c.vy * 0.05)
+	if (r or not pillar_at(c.x, c.y, c.r * 0.5).is_empty()) and c.r > 5.0:
+		for i in int(c.r):
+			var a := randf() * TAU
+			add_eb(c.x, c.y, cos(a) * 60, sin(a) * 60, 0.8, PAPER)
+		burst(c.x, c.y, 24, PAPER, 6, 60, 0.6)
+		Sfx.play("rock", 1.2)
+		kill(c, true)
+		return
+	elif r:
+		c.vx *= -0.6
+		c.vy *= -0.6
+	if d < c.r + 4 and c.cd <= 0 and S == "play":
+		hurt_player(1 if c.r < 7 else 2, c.x, c.y)
+		P.vx += dx / d * (60 + c.r * 10)
+		P.vy += dy / d * (60 + c.r * 10)
+		c.vx = -c.vx * 0.5
+		c.vy = -c.vy * 0.5
+		c.cd = 1.2
+		tip("roller", "雪球兽越滚越大。引它撞到石头上，它自己就碎了。")
+
+func upd_bat(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 霜蝠：成对在你周围扑腾，轮流俯冲，被碰到会掉体温
+	if c.st == "dive":
+		c.tm -= dt
+		c.x += c.vx * dt
+		c.y += c.vy * dt
+		if d < c.r + 4 and c.cd <= 0 and S == "play":
+			hurt_player(1, c.x, c.y)
+			P.warm = maxf(0.0, P.warm - 10)
+			c.cd = 1.0
+		if c.tm <= 0 or rock_at(c.x, c.y):
+			c.st = "idle"
+			c.tm = 2.5 + randf() * 1.5
+		return
+	var chase := d < 200 and c.calm <= 0 and S == "play"
+	var cx := P.x if chase else c.hx
+	var cy := P.y if chase else c.hy
+	c.ang += dt * (1.6 + 0.4 * c.off)
+	var rr := 70.0 + sin(c.age * 1.3 + c.ph) * 18
+	var tx := cx + cos(c.ang + c.off * PI) * rr
+	var ty := cy + sin(c.ang + c.off * PI) * rr * 0.7
+	c.vx += ((tx - c.x) * 2.5 - c.vx) * dt * 3.0
+	c.vy += ((ty - c.y) * 2.5 + sin(c.age * 9) * 20 - c.vy) * dt * 3.0
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	c.tm -= dt
+	if chase and c.tm <= 0:
+		c.st = "dive"
+		c.tm = 0.8
+		var v := Vector2(dx, dy).normalized() * 170.0
+		c.vx = v.x
+		c.vy = v.y
+		Sfx.play("warn", 2.8)
+		tip("bat", "霜蝠俯冲前会尖叫一声，冲刺躲开！被撞到会掉体温。")
+
+func upd_index(c: Creature, dt: float, d: float) -> void:
+	# 第四章首领「索引柜」：抽屉飞卡、网格索引线、暴风雪
+	if c.st == "sleep":
+		if d < 230 and S == "play":
+			c.st = "rise"
+			c.tm = 2.0
+			Sfx.play("roar", 0.6)
+			shk = 8
+			toast("索引柜的抽屉一个个弹开了。", C_RED, 4)
+			tip("index", "索引线和装订师的线一样：虚线变实之前，钻到格子中间去。")
+		return
+	if c.st == "dead":
+		return
+	if c.st == "rise":
+		c.tm -= dt
+		shk = maxf(shk, 2)
+		if c.tm <= 0:
+			c.st = "fight"
+			c.burst_t = 1.0
+		return
+	var hpk: float = c.hp / DEF.index.hp
+	var p2 := hpk <= 0.5
+	if p2 and c.orR == 0:
+		c.orR = 1
+		shk = 8
+		Sfx.play("roar", 0.5)
+		toast("索引柜结了一层更厚的冰！", C_RED, 3)
+	var dx := P.x - c.x
+	var dy := P.y - c.y
+	var k := clampf((d - 100.0) / 40.0, -1.0, 1.0)
+	c.vx += (dx / d * k * 30 + cos(c.age * 0.5) * 12 - c.vx) * dt * 1.2
+	c.vy += (dy / d * k * 26 + sin(c.age * 0.7) * 10 - c.vy) * dt * 1.2
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	if c.sing > 0:
+		# 抽屉飞卡：十字（二阶段米字）慢慢转
+		c.sing -= dt
+		c.ang += dt * (1.0 if p2 else 0.7)
+		c.w -= dt
+		if c.w <= 0:
+			c.w = 0.12
+			var n := 8 if p2 else 4
+			for i in n:
+				var a := c.ang + i * TAU / n
+				add_eb(c.x + cos(a) * 12, c.y + sin(a) * 12, cos(a) * 120, sin(a) * 120, 2.4, PAPER)
+			Sfx.play("shoot", 1.6)
+	elif c.sp > 0:
+		# 暴风雪：把你往外推，四周飘雪片
+		c.sp -= dt
+		P.vx += dx / d * 140 * dt
+		P.vy += dy / d * 140 * dt
+		P.warm = maxf(0.0, P.warm - 6 * dt)
+		if randf() < dt * 14:
+			var a := randf() * TAU
+			add_eb(c.x, c.y, cos(a) * 65, sin(a) * 65, 3.0, ICE)
+	elif c.burst_t <= 0:
+		var pat := c.off % 3
+		c.off += 1
+		c.flash = 0.2
+		match pat:
+			0:
+				c.sing = 2.2
+				c.w = 0
+				c.burst_t = 3.2 if p2 else 3.8
+			1:
+				# 网格：三横三竖（二阶段四横四竖），以你为中心
+				var g := 4 if p2 else 3
+				var sp := 34.0
+				var L := 120.0
+				for i in g:
+					var off := (i - (g - 1) / 2.0) * sp + (randf() - 0.5) * 8
+					THR.append({"ax": P.x - L, "ay": P.y + off, "bx": P.x + L, "by": P.y + off, "t": 1.2, "life": 1.6})
+					THR.append({"ax": P.x + off, "ay": P.y - L, "bx": P.x + off, "by": P.y + L, "t": 1.2, "life": 1.6})
+				Sfx.play("warn", 1.0)
+				c.burst_t = 4.0 if p2 else 4.6
+			2:
+				c.sp = 2.2
+				Sfx.play("roar", 1.3)
+				tip("blizzard", "暴风雪会把你往外推、冻掉体温。躲到石头后面或者冲刺回来。")
+				if count_type("roller") < 3:
+					for i in 2:
+						var r := mk("roller", c.x + (i * 2 - 1) * 30, c.y + 20)
+						r.st = "roll"
+				c.burst_t = 4.0 if p2 else 4.6
+	c.burst_t -= dt
+	if d < c.r + 4:
+		hurt_player(1, c.x, c.y)
+	if Vector2(P.x - PAGES[2].x, P.y - PAGES[2].y).length() > 620:
+		reset_serp()
+		toast("索引柜把抽屉都关上了。", C_DIM)
+
+const BOSS_END := {
+	"index": "索引柜的抽屉全掉了出来，卡片撒了一地。",
+	"mirror": "镜中的你碎成了一地亮片。",
+	"wick": "残烛的火芯安静下来，变成一团温和的光。",
+}
+const CH_HINT := ["", "", "", "",
+	"这里比哪里都冷。找冒热气的暖泉取暖。三张书页在冰湖、霜柱林和极光原。",
+	"到处都是镜子，子弹会被弹回来。三张书页在棱镜林、回声谷和影湖。",
+	"这里是残烛的心脏，一点也不冷，但到处是火。三张书页在熔页海、灰烬原和烛心。"]
+
+func hi_pages() -> Array[Dictionary]:
+	var names: Array = [["论冰封", "论索引", "论回暖"], ["论倒影", "论回声之二", "论自己"], ["论灰烬", "论熔化", "论余火"]][chapter - 4]
+	var g0 := 9 + (chapter - 4) * 3
+	var out: Array[Dictionary] = [
+		{"id": 0, "gid": g0, "x": cos(0.08) * 1080, "y": sin(0.08) * 1080, "name": names[0], "state": "free"},
+		{"id": 1, "gid": g0 + 1, "x": cos(2.35) * 1050, "y": sin(2.35) * 1050, "name": names[1], "state": "free"},
+		{"id": 2, "gid": g0 + 2, "x": 0.0, "y": -1110.0, "name": names[2], "state": "sealed"},
+	]
+	return out
+
+func hi_guards() -> void:
+	if chapter == 4:
+		for i in 3:
+			init_c(mk("spider", PAGES[0].x + cos(i * 2.1) * 50, PAGES[0].y + sin(i * 2.1) * 50))
+		for i in 2:
+			init_c(mk("roller", PAGES[1].x + cos(i * 3.0) * 60, PAGES[1].y + sin(i * 3.0) * 60))
+		bossc = mk("index", PAGES[2].x, PAGES[2].y)
+	elif chapter == 5:
+		hi_guards5()
+	else:
+		hi_guards6()
+	bossc.st = "sleep"
+
+func hi_spot_ok(t: String, z: String, d: float) -> bool:
+	match chapter:
+		4:
+			match t:
+				"spider":
+					return z == "lake" or z == "frost" and d > 250
+				"roller":
+					return z == "pillar" or z == "aurora"
+				"bat":
+					return z != "frost" or d > 260
+				"hush":
+					return z == "frost" and d > 170
+				"snail", "mite":
+					return z != "frost"
+		5:
+			return hi_spot_ok5(t, z, d)
+		6:
+			return hi_spot_ok6(t, z, d)
+	return true
+
+
+# ======================================================================
+# 第五章「镜之回廊」
+# ======================================================================
+var MIRS: Array = []        # 镜子 {x, y, a, len, w（转速）}
+
+func gen_ch5() -> void:
+	MIRS.clear()
+	var t := 0
+	while t < 600 and MIRS.size() < 22:
+		t += 1
+		var a := -1.0 + R0.randf() * 2.0
+		var d := 450 + R0.randf() * 780
+		var p := Vector2(cos(a) * d, sin(a) * d)
+		if rock_at(p.x, p.y):
+			continue
+		var ok := true
+		for q in MIRS:
+			if Vector2(q.x - p.x, q.y - p.y).length() < 80:
+				ok = false
+		if ok:
+			MIRS.append({"x": p.x, "y": p.y, "a": R0.randf() * PI, "len": 14.0 + R0.randf() * 12.0, "w": (R0.randf() - 0.5) * 0.8 if R0.randf() < 0.5 else 0.0})
+
+func mir_hit(x: float, y: float) -> Dictionary:
+	for q in MIRS:
+		if absf(x - q.x) > q.len + 2 or absf(y - q.y) > q.len + 2:
+			continue
+		var u := Vector2(cos(q.a), sin(q.a))
+		var v := Vector2(x - q.x, y - q.y)
+		if absf(v.dot(u)) < q.len and absf(v.dot(u.orthogonal())) < 1.6:
+			return q
+	return {}
+
+func upd_world5(dt: float) -> void:
+	for q in MIRS:
+		q.a += q.w * dt
+	# 镜子把字弹弹回来（弹回来的会打到自己），也弹敌人的子弹
+	for b in PB:
+		if b.orbit > 0 or b.small:
+			continue
+		var q := mir_hit(b.x, b.y)
+		if not q.is_empty():
+			var n := Vector2(cos(q.a), sin(q.a)).orthogonal()
+			var v := Vector2(b.vx, b.vy)
+			if v.dot(n) * (Vector2(b.x - q.x, b.y - q.y).dot(n)) < 0:
+				v = v - 2.0 * v.dot(n) * n
+				b.vx = v.x
+				b.vy = v.y
+				b.refl = true
+				b.life = maxf(b.life, 0.5)
+				burst(b.x, b.y, 3, MIRROR, 6, 30, 0.25)
+				Sfx.play("ping", 1.5)
+				tip("mirror", "镜子会把字弹弹回来，弹回来的会打到你自己。绕开镜子，或者利用它拐弯打敌人。")
+		if b.refl and S == "play" and P.dash_t <= 0 and Vector2(b.x - P.x, b.y - P.y).length() < 4.0:
+			hurt_player(1, b.x, b.y)
+			b.life = 0
+	for b in EB:
+		var q := mir_hit(b.x, b.y)
+		if not q.is_empty():
+			var n := Vector2(cos(q.a), sin(q.a)).orthogonal()
+			var v := Vector2(b.vx, b.vy)
+			if v.dot(n) * (Vector2(b.x - q.x, b.y - q.y).dot(n)) < 0:
+				v = v - 2.0 * v.dot(n) * n
+				b.vx = v.x
+				b.vy = v.y
+	if S == "play":
+		var q := mir_hit(P.x, P.y)
+		if not q.is_empty():
+			var n := Vector2(cos(q.a), sin(q.a)).orthogonal()
+			var sgn := signf(Vector2(P.x - q.x, P.y - q.y).dot(n))
+			P.x += n.x * sgn * 2.0
+			P.y += n.y * sgn * 2.0
+			var vn := Vector2(P.vx, P.vy).dot(n)
+			P.vx -= n.x * vn * 1.6
+			P.vy -= n.y * vn * 1.6
+
+func trail_at(delay: int) -> Vector2:
+	var k := posmod(tr_i - delay, 400)
+	return Vector2(TRX[k], TRY[k])
+
+func upd_shade(c: Creature, dt: float, d: float, _dx: float, _dy: float) -> void:
+	# 影子：沿着你 1.3 秒前走过的路跟着你，站着不动就会被追上
+	if c.st == "idle":
+		if d < 150 and S == "play":
+			c.st = "follow"
+			c.off = 78
+			Sfx.play("warn", 0.5)
+			tip("shade", "影子会踩着你刚才走过的路追上来。别停下，也别往回走！")
+		return
+	if S != "play" or c.calm > 0:
+		return
+	var tp := trail_at(c.off)
+	var v := tp - Vector2(c.x, c.y)
+	if v.length() > 160:
+		c.st = "idle"
+		return
+	c.vx = v.x * 6.0
+	c.vy = v.y * 6.0
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	if d < c.r + 3 and c.cd <= 0:
+		hurt_player(1, c.x, c.y)
+		c.cd = 1.2
+		c.off = 78
+
+func upd_mimic(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 拟字兽：装成一堆页尘，等你来捡时扑上来
+	c.tm -= dt
+	match c.st:
+		"idle":
+			if d < 42 and S == "play" and c.calm <= 0:
+				c.st = "wake"
+				c.tm = 0.35
+				Sfx.play("warn", 1.6)
+				tip("mimic", "那堆页尘是拟字兽装的！发现它的页尘不会被你吸过来。")
+		"wake":
+			if c.tm <= 0:
+				c.st = "bite"
+				c.tm = 0.5
+				c.vx = dx / d * 190
+				c.vy = dy / d * 190
+		"bite":
+			c.x += c.vx * dt
+			c.y += c.vy * dt
+			if d < c.r + 4 and c.cd <= 0:
+				hurt_player(1, c.x, c.y)
+				var lose := mini(P.dust, 8)
+				P.dust -= lose
+				for i in lose / 2:
+					add_pick(P.x, P.y, "dust", (randf() - 0.5) * 80, (randf() - 0.5) * 80)
+				c.cd = 1.0
+			if c.tm <= 0:
+				c.st = "chase"
+				c.tm = 4.0
+		"chase":
+			c.vx += (dx / d * 52 - c.vx) * dt * 2.0
+			c.vy += (dy / d * 52 - c.vy) * dt * 2.0
+			c.x += c.vx * dt
+			c.y += c.vy * dt
+			if d < 46 and c.tm < 3.0:
+				c.st = "wake"
+				c.tm = 0.35
+			elif c.tm <= 0 or d > 200:
+				c.st = "idle"
+				c.vx = 0
+				c.vy = 0
+
+func upd_prismbug(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 棱镜虫：射出一颗光弹，飞到一半散成三色；挨打会闪到别处
+	var chase := d < 210 and c.calm <= 0 and S == "play"
+	c.vx += (cos(c.age * 0.6 + c.ph) * 14 + (c.hx - c.x) * 0.05 - c.vx) * dt
+	c.vy += (sin(c.age * 0.5 + c.ph) * 14 + (c.hy - c.y) * 0.05 - c.vy) * dt
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	c.tm -= dt
+	if c.sp > 0:
+		c.sp -= dt
+		if c.sp <= 0:
+			var a := c.ang
+			for i in 3:
+				var aa := a + (i - 1) * 0.35
+				add_eb(c.na, c.w, cos(aa) * 120, sin(aa) * 120, 1.6, [EMBER, GOLD, ORE][i])
+			burst(c.na, c.w, 6, PAPER, 6, 40, 0.3)
+	if chase and c.tm <= 0:
+		c.tm = 2.6 + randf()
+		c.ang = atan2(dy, dx)
+		c.na = c.x + cos(c.ang) * minf(d * 0.45, 60.0)
+		c.w = c.y + sin(c.ang) * minf(d * 0.45, 60.0)
+		c.sp = 0.45
+		FX.append({"k": "zap", "x": c.x, "y": c.y, "x1": c.na, "y1": c.w, "t": 0.45, "max": 0.45, "m": PAPER})
+		Sfx.play("shoot", 2.6)
+	if c.flash > 0.05 and c.cd <= 0 and c.hp > 0:
+		# 闪现
+		c.cd = 1.5
+		burst(c.x, c.y, 10, MIRROR, 6, 50, 0.4)
+		var a := randf() * TAU
+		for k in 6:
+			var p := Vector2(c.x + cos(a + k) * 45, c.y + sin(a + k) * 45)
+			if rock_at(p.x, p.y) == null:
+				c.x = p.x
+				c.y = p.y
+				c.hx = p.x
+				c.hy = p.y
+				break
+		burst(c.x, c.y, 10, MIRROR, 6, 50, 0.4)
+	if d < c.r + 4:
+		hurt_player(1, c.x, c.y)
+
+func upd_shard(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 碎镜片：成群直线乱飞，撞到石头和镜子就反弹；看见你会一起转向
+	if c.sp == 0:
+		var a := randf() * TAU
+		c.vx = cos(a) * 70
+		c.vy = sin(a) * 70
+		c.sp = 1
+	c.tm -= dt
+	if d < 150 and c.tm <= 0 and c.calm <= 0 and S == "play":
+		c.tm = 1.8 + randf()
+		c.vx = dx / d * 105
+		c.vy = dy / d * 105
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	c.ang += dt * 9.0
+	var r := rock_at(c.x, c.y)
+	if r:
+		var n := Vector2(c.x - r.x, c.y - r.y).normalized()
+		var v := Vector2(c.vx, c.vy)
+		v = v - 2.0 * v.dot(n) * n
+		c.vx = v.x
+		c.vy = v.y
+		c.x += n.x * 2
+		c.y += n.y * 2
+	if Vector2(c.x - c.hx, c.y - c.hy).length() > 260:
+		var h := Vector2(c.hx - c.x, c.hy - c.y).normalized() * 70
+		c.vx = h.x
+		c.vy = h.y
+	if d < c.r + 3.5 and c.cd <= 0:
+		hurt_player(1, c.x, c.y)
+		c.cd = 0.8
+
+func upd_mirror(c: Creature, dt: float, d: float) -> void:
+	# 第五章首领「镜中人」：站在你的对面，学你开枪
+	if c.st == "sleep":
+		if d < 230 and S == "play":
+			c.st = "rise"
+			c.tm = 2.0
+			Sfx.play("roar", 1.4)
+			shk = 8
+			toast("镜子里的你走了出来。", C_RED, 4)
+			tip("mirrorboss", "镜中人总站在你的正对面。它冲过来之前会拉一条线，横着躲开。")
+		return
+	if c.st == "dead":
+		return
+	if c.st == "rise":
+		c.tm -= dt
+		if c.tm <= 0:
+			c.st = "fight"
+			c.burst_t = 1.0
+		return
+	var hpk: float = c.hp / DEF.mirror.hp
+	var p2 := hpk <= 0.5
+	if p2 and c.orR == 0:
+		c.orR = 1
+		shk = 8
+		Sfx.play("roar", 1.0)
+		toast("镜中人裂开了，碎片也活了过来！", C_RED, 3)
+	var cx: float = PAGES[2].x
+	var cy: float = PAGES[2].y
+	var dx := P.x - c.x
+	var dy := P.y - c.y
+	c.ha = atan2(dy, dx)
+	if c.sp > 0:
+		# 冲刺：沿预告线直冲
+		c.sp -= dt
+		if c.sp < 0.45:
+			c.x += cos(c.ang) * 380 * dt
+			c.y += sin(c.ang) * 380 * dt
+			if d < c.r + 5:
+				hurt_player(1, c.x, c.y)
+		return
+	# 平时：走到“以巢为中心、和你对称”的位置
+	var tx := 2.0 * cx - P.x
+	var ty := 2.0 * cy - P.y
+	var tv := Vector2(tx - cx, ty - cy)
+	if tv.length() > 150:
+		tv = tv.normalized() * 150
+	if tv.length() < 50:
+		tv = Vector2(-dx, -dy).normalized() * 70
+	c.vx += ((cx + tv.x - c.x) * 2.2 - c.vx) * dt * 3.0
+	c.vy += ((cy + tv.y - c.y) * 2.2 - c.vy) * dt * 3.0
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	if c.sing > 0:
+		c.sing -= dt
+		c.w -= dt
+		if c.w <= 0:
+			c.w = 0.3 if p2 else 0.42
+			var n := 5 if p2 else 3
+			for i in n:
+				var a := c.ha + (i - (n - 1) / 2.0) * 0.2
+				add_eb(c.x + cos(a) * 6, c.y + sin(a) * 6, cos(a) * 150, sin(a) * 150, 2.2, MIRROR)
+			Sfx.play("shoot", 1.3)
+	elif c.burst_t <= 0:
+		var pat := c.off % 3
+		c.off += 1
+		c.flash = 0.15
+		match pat:
+			0:
+				c.sing = 1.8
+				c.w = 0
+				c.burst_t = 3.0 if p2 else 3.6
+			1:
+				c.ang = c.ha
+				c.sp = 1.1
+				THR.append({"ax": c.x, "ay": c.y, "bx": c.x + cos(c.ang) * 250, "by": c.y + sin(c.ang) * 250, "t": 0.65, "life": 0.45})
+				Sfx.play("warn", 1.8)
+				c.burst_t = 2.6 if p2 else 3.2
+			2:
+				# 在你身边立起一圈镜子
+				var n := 4 if p2 else 3
+				var a0 := randf() * TAU
+				MIRS = MIRS.filter(func(q): return not q.has("tmp"))
+				for i in n:
+					var a := a0 + i * TAU / n
+					MIRS.append({"x": P.x + cos(a) * 46, "y": P.y + sin(a) * 46, "a": a + PI / 2, "len": 16.0, "w": 0.9, "tmp": true})
+				if p2 and count_type("shard") < 6:
+					for i in 3:
+						var sc := mk("shard", c.x + i * 6, c.y)
+						sc.hx = cx
+						sc.hy = cy
+				Sfx.play("ping", 0.4)
+				c.burst_t = 3.4 if p2 else 4.0
+	c.burst_t -= dt
+	if d < c.r + 4:
+		hurt_player(1, c.x, c.y)
+	if Vector2(P.x - cx, P.y - cy).length() > 620:
+		reset_serp()
+		MIRS = MIRS.filter(func(q): return not q.has("tmp"))
+		toast("镜中人退回了镜子里。", C_DIM)
+
+func hi_guards5() -> void:
+	for i in 3:
+		var c := mk("prismbug", PAGES[0].x + cos(i * 2.1) * 50, PAGES[0].y + sin(i * 2.1) * 50)
+		c.hx = c.x
+		c.hy = c.y
+	for i in 2:
+		mk("shade", PAGES[1].x + cos(i * 3.0 + 1) * 40, PAGES[1].y + sin(i * 3.0 + 1) * 40)
+	bossc = mk("mirror", PAGES[2].x, PAGES[2].y)
+
+func hi_spot_ok5(t: String, z: String, d: float) -> bool:
+	match t:
+		"prismbug":
+			return z == "prism"
+		"shade":
+			return z == "echoval"
+		"shard":
+			return z != "atrium"
+		"mimic":
+			return d > 250
+		"mite":
+			return z != "atrium"
+	return d > 200
+
+# ======================================================================
+# 第六章「残烛之心」
+# ======================================================================
+var LAVA: Array = []        # 熔页池 {x, y, r, ph}
+var LOBS: Array = []        # 落下来的蜡 {x, y, t, r}
+var FIRES: Array = []       # 地上的火 {x, y, t}
+var ray_a := 0.0            # 耀斑转到哪了
+var ray_len := 0.0
+var ash_t := 14.0
+var ash_on := 0.0
+var ash_dir := 0.0
+var lava_cd := 0.0
+
+func gen_ch6() -> void:
+	LAVA.clear()
+	LOBS.clear()
+	FIRES.clear()
+	ray_a = 0.0
+	var t := 0
+	while t < 600 and LAVA.size() < 26:
+		t += 1
+		var a := -1.0 + R0.randf() * 2.0
+		var d := 440 + R0.randf() * 800
+		var p := Vector2(cos(a) * d, sin(a) * d)
+		if rock_at(p.x, p.y) or Vector2(p.x - PAGES[0].x, p.y - PAGES[0].y).length() < 60:
+			continue
+		var ok := true
+		for q in LAVA:
+			if Vector2(q.x - p.x, q.y - p.y).length() < q.r + 60:
+				ok = false
+		if ok:
+			LAVA.append({"x": p.x, "y": p.y, "r": 18.0 + R0.randf() * 20.0, "ph": R0.randf() * TAU})
+
+func lava_r(q: Dictionary) -> float:
+	return q.r * (0.75 + 0.25 * sin(T * 0.8 + q.ph))
+
+func in_lava(x: float, y: float) -> bool:
+	for q in LAVA:
+		if Vector2(x - q.x, y - q.y).length() < lava_r(q):
+			return true
+	return false
+
+func ray_on() -> bool:
+	return chapter == 6 and Vector2(P.x - PAGES[2].x, P.y - PAGES[2].y).length() < 760 and (bossc == null or bossc.st == "sleep")
+
+func add_lob(x: float, y: float, t: float, r: float) -> void:
+	LOBS.append({"x": x, "y": y, "t": t, "max": t, "r": r})
+
+func upd_world6(dt: float) -> void:
+	lava_cd -= dt
+	if S == "play" and P.dash_t <= 0 and in_lava(P.x, P.y):
+		tip("lava", "熔页池会烫伤你。它一涨一缩，等它缩小再过，或者冲刺跳过去。")
+		if lava_cd <= 0:
+			lava_cd = 0.8
+			hurt_player(1, P.x, P.y + 4)
+	# 地上的火
+	for f in FIRES:
+		f.t -= dt
+		if S == "play" and P.dash_t <= 0 and f.t < f.max - 0.25 and Vector2(P.x - f.x, P.y - f.y).length() < 5.5:
+			hurt_player(1, f.x, f.y)
+	FIRES = FIRES.filter(func(f): return f.t > 0)
+	# 落蜡
+	for l in LOBS:
+		l.t -= dt
+		if l.t <= 0:
+			burst(l.x, l.y, 18, EMBER, 6, 70, 0.5)
+			Sfx.play("rock", 0.8)
+			if S == "play" and Vector2(P.x - l.x, P.y - l.y).length() < l.r + 3:
+				hurt_player(1, l.x, l.y)
+			FIRES.append({"x": l.x, "y": l.y, "t": 2.0, "max": 2.0})
+	LOBS = LOBS.filter(func(l): return l.t > 0)
+	# 耀斑：从烛心伸出来的一道光慢慢扫，石头能挡
+	if ray_on():
+		ray_a += dt * 0.22
+		var o := Vector2(PAGES[2].x, PAGES[2].y)
+		var u := Vector2(cos(ray_a), sin(ray_a))
+		var s := 30.0
+		while s < 760.0:
+			if rock_at(o.x + u.x * s, o.y + u.y * s):
+				break
+			s += 3.0
+		ray_len = s
+		var v := Vector2(P.x, P.y) - o
+		var al := v.dot(u)
+		if S == "play" and al > 30 and al < ray_len and absf(v.dot(u.orthogonal())) < 5.0:
+			hurt_player(1, P.x - u.orthogonal().x * 4, P.y - u.orthogonal().y * 4)
+			tip("ray", "耀斑扫过来了！躲到石头后面，石头能挡住光。")
+	else:
+		ray_len = 0.0
+	# 灰烬风暴
+	var in_ash := zn_hi(P.x, P.y) == "ash"
+	ash_t -= dt
+	if ash_on > 0:
+		ash_on -= dt
+		if in_ash and S == "play":
+			P.vx += cos(ash_dir) * 95 * dt
+			P.vy += sin(ash_dir) * 95 * dt
+			if randf() < dt * 5:
+				var side := Vector2(cos(ash_dir), sin(ash_dir))
+				var p := Vector2(P.x, P.y) - side * 200 + side.orthogonal() * (randf() - 0.5) * 300
+				add_eb(p.x, p.y, side.x * 85, side.y * 85, 4.5, EMBER)
+	elif ash_t <= 0:
+		ash_t = 20.0 + randf() * 8.0
+		ash_on = 7.0
+		ash_dir = randf() * TAU
+		if in_ash:
+			Sfx.play("roar", 0.4)
+			toast("灰烬风暴来了！", C_RED, 3)
+			tip("ash", "灰烬风暴里看不远，风会推着你走，还夹着火星。贴着石头的背风面走。")
+
+func ash_dark() -> float:
+	return 1.0 if chapter == 6 and ash_on > 0 and zn_hi(P.x, P.y) == "ash" else 0.0
+
+func upd_salamander(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 火蜥：扭着身子追你，身后留下一串火
+	var chase := d < 200 and c.calm <= 0 and S == "play"
+	var j := sin(c.age * 4.0 + c.ph) * 0.9
+	var ux := (dx * cos(j) - dy * sin(j)) / d
+	var uy := (dx * sin(j) + dy * cos(j)) / d
+	var sp := 62.0 if chase else 0.0
+	c.vx += (ux * sp + (0.0 if chase else cos(c.age * 0.4 + c.ph) * 12) - c.vx) * dt * 2.5
+	c.vy += (uy * sp + (0.0 if chase else sin(c.age * 0.3 + c.ph) * 12) - c.vy) * dt * 2.5
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	c.ang = atan2(c.vy, c.vx)
+	c.tm -= dt
+	if c.tm <= 0 and Vector2(c.vx, c.vy).length() > 25:
+		c.tm = 0.16
+		FIRES.append({"x": c.x - cos(c.ang) * 5, "y": c.y - sin(c.ang) * 5, "t": 1.8, "max": 1.8})
+	c.tr.append(c.x)
+	c.tr.append(c.y)
+	if c.tr.size() > 16:
+		c.tr = c.tr.slice(2)
+	if d < c.r + 4:
+		hurt_player(1, c.x, c.y)
+		tip("salamander", "火蜥身后的火会烧一会儿。别跟在它后面追。")
+
+func upd_ashghost(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 灰烬魂：飘过来贴着你，忽隐忽现；打散时炸出一圈火星
+	var chase := d < 190 and c.calm <= 0 and S == "play"
+	var tx := dx / d * 38 if chase else cos(c.age * 0.4 + c.ph) * 10
+	var ty := dy / d * 38 if chase else sin(c.age * 0.3 + c.ph) * 10
+	c.vx += (tx + sin(c.age * 2 + c.ph) * 16 - c.vx) * dt * 1.6
+	c.vy += (ty + cos(c.age * 1.7 + c.ph) * 16 - c.vy) * dt * 1.6
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	c.open = 0.5 + 0.5 * sin(c.age * 1.6 + c.ph)
+	if d < c.r + 4 and c.cd <= 0:
+		hurt_player(1, c.x, c.y)
+		c.cd = 1.2
+
+func upd_drip(c: Creature, dt: float, d: float, _dx: float, _dy: float) -> void:
+	# 烛泪：不会动，朝你脚下甩蜡，落点先出现一个圈
+	c.tm -= dt
+	c.sp = maxf(0.0, c.sp - dt * 3)
+	if d < 190 and c.tm <= 0 and S == "play" and c.calm <= 0:
+		c.tm = 2.3 + randf() * 0.8
+		c.sp = 1.0
+		add_lob(P.x + P.vx * 0.5 + (randf() - 0.5) * 16, P.y + P.vy * 0.5 + (randf() - 0.5) * 16, 1.1, 13.0)
+		Sfx.play("ping", 0.4)
+		tip("drip", "烛泪甩出的蜡会落在圈里，圈合拢之前走开。落地后还会烧两秒。")
+
+func upd_wick(c: Creature, dt: float, d: float) -> void:
+	# 最终首领「残烛之芯」
+	if c.st == "sleep":
+		if d < 240 and S == "play":
+			c.st = "rise"
+			c.tm = 2.4
+			Sfx.play("roar", 0.4)
+			shk = 10
+			toast("残烛的火芯睁开了眼。", C_RED, 5)
+			tip("wick", "火芯转圈喷火时，跟着空当一起转；地上的圈是落蜡，别站进去。")
+		return
+	if c.st == "dead":
+		return
+	if c.st == "rise":
+		c.tm -= dt
+		shk = maxf(shk, 2)
+		if c.tm <= 0:
+			c.st = "fight"
+			c.burst_t = 1.0
+		return
+	var hpk: float = c.hp / DEF.wick.hp
+	var ph := 0 if hpk > 0.66 else (1 if hpk > 0.33 else 2)
+	if ph > c.orR:
+		c.orR = ph
+		shk = 9
+		Sfx.play("roar", 0.5)
+		toast(["", "火芯烧得更旺了！", "残烛只剩最后一截了！"][ph], C_RED, 3)
+		for i in 8 + ph * 4:
+			var a := i * TAU / (8 + ph * 4)
+			add_eb(c.x, c.y, cos(a) * 60, sin(a) * 60, 4.0, GOLD)
+	var dx := P.x - c.x
+	var dy := P.y - c.y
+	c.ha = atan2(dy, dx)
+	c.x += ((PAGES[2].x + cos(c.age * 0.4) * 30) - c.x) * dt * 1.2
+	c.y += ((PAGES[2].y + sin(c.age * 0.55) * 18) - c.y) * dt * 1.2
+	if c.sing > 0:
+		# 螺旋火：两臂（后期三臂），留出空当
+		c.sing -= dt
+		c.ang += dt * (1.3 + 0.3 * ph) * (1.0 if c.off % 2 == 0 else -1.0)
+		c.w -= dt
+		if c.w <= 0:
+			c.w = 0.11
+			var arms := 2 + (1 if ph >= 1 else 0)
+			for i in arms:
+				var a := c.ang + i * TAU / arms
+				add_eb(c.x + cos(a) * 12, c.y + sin(a) * 12, cos(a) * 105, sin(a) * 105, 3.0, EMBER)
+	elif c.burst_t <= 0:
+		var pat := c.off % 3
+		c.off += 1
+		c.flash = 0.15
+		match pat:
+			0:
+				c.sing = 2.6
+				c.w = 0
+				c.burst_t = 3.6 - ph * 0.3
+			1:
+				# 落蜡：你周围一圈，再补一颗在你脚下
+				var n := 5 + ph * 2
+				var a0 := randf() * TAU
+				for i in n:
+					var a := a0 + i * TAU / n
+					add_lob(P.x + cos(a) * 34, P.y + sin(a) * 34, 1.0 + i * 0.08, 13.0)
+				add_lob(P.x, P.y, 1.7, 15.0)
+				Sfx.play("warn", 0.7)
+				c.burst_t = 3.6 - ph * 0.3
+			2:
+				# 光轮：六道光，隔一会儿换成错开的六道
+				var n := 6
+				var a0 := randf() * TAU
+				for k in (2 if ph >= 1 else 1):
+					for i in n:
+						var a := a0 + i * TAU / n + k * TAU / n / 2.0
+						THR.append({"ax": c.x + cos(a) * 16, "ay": c.y + sin(a) * 16, "bx": c.x + cos(a) * 260, "by": c.y + sin(a) * 260, "t": 1.1 + k * 1.3, "life": 1.0})
+				if ph == 2 and count_type("cinder") < 4:
+					for i in 2:
+						init_c(mk("cinder", c.x + (i * 2 - 1) * 40, c.y + 30))
+				Sfx.play("warn", 1.1)
+				c.burst_t = 4.2 - ph * 0.3
+	c.burst_t -= dt
+	if d < c.r + 5:
+		hurt_player(1, c.x, c.y)
+	if Vector2(P.x - PAGES[2].x, P.y - PAGES[2].y).length() > 640:
+		reset_serp()
+		LOBS.clear()
+		toast("火芯又合上了眼。", C_DIM)
+
+func hi_guards6() -> void:
+	for i in 3:
+		init_c(mk("salamander", PAGES[0].x + cos(i * 2.1) * 50, PAGES[0].y + sin(i * 2.1) * 50))
+	for i in 3:
+		mk("drip", PAGES[1].x + cos(i * 2.1 + 0.5) * 55, PAGES[1].y + sin(i * 2.1 + 0.5) * 55)
+	bossc = mk("wick", PAGES[2].x, PAGES[2].y)
+
+func hi_spot_ok6(t: String, z: String, d: float) -> bool:
+	match t:
+		"salamander":
+			return z == "sea" or (z == "corona" and d > 260)
+		"ashghost":
+			return z == "ash"
+		"drip":
+			return z != "corona" and not in_lava(0, 0)
+		"cinder":
+			return d > 260
+	return d > 220

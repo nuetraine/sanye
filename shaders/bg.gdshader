@@ -39,7 +39,11 @@ void fragment() {
 	// 第二章：星云换成墨紫色
 	if (chap > 1.5) { if (m == 2.0) m = 9.0; else if (m == 15.0) m = 11.0; }
 	// 第三章：离残烛很近，星云烧成橙金色，残烛也大了一圈
-	if (chap > 2.5) { if (m == 9.0) m = 3.0; else if (m == 11.0) m = 13.0; }
+	if (chap > 2.5 && chap < 3.5) { if (m == 9.0) m = 3.0; else if (m == 11.0) m = 13.0; }
+	// 第四章：冰蓝；第五章：银粉；第六章：深红金
+	if (chap > 3.5 && chap < 4.5) { if (m == 9.0) m = 8.0; else if (m == 11.0) m = 5.0; }
+	if (chap > 4.5 && chap < 5.5) { if (m == 9.0) m = 10.0; else if (m == 11.0) m = 11.0; }
+	if (chap > 5.5) { if (m == 9.0) m = 15.0; else if (m == 11.0) m = 3.0; }
 	float li = floor(l + b - 0.5);
 	vec4 col;
 	if (tide > 0.02 && b < tide) {
@@ -50,9 +54,9 @@ void fragment() {
 	// 残烛
 	vec2 sc = floor((vec2(52.0, 34.0) - cam * 0.015) * 2.0 + 0.5) * 0.5;
 	vec2 dd = p - sc;
-	if (abs(dd.x) <= 46.0 && abs(dd.y) <= 46.0) {
+	if (abs(dd.x) <= 60.0 && abs(dd.y) <= 60.0) {
 		float d = length(dd);
-		float sr = (chap > 2.5 ? 17.0 : 11.0) - 3.0 * tide;
+		float sr = (chap > 5.5 ? 28.0 : (chap > 2.5 ? 17.0 : 11.0)) - 3.0 * tide;
 		if (d < sr) {
 			col = rc(tide > 0.5 ? 15.0 : 13.0, floor(6.0 - d / sr * 2.5 - tide * 2.5 + b * 0.9));
 		} else {
