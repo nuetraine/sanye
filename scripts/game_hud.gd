@@ -97,7 +97,7 @@ func dim(a := 0.62) -> void:
 func _draw_hud(c: CanvasItem) -> void:
 	cv = c
 	OFS = Vector2.ZERO
-	if S == "play" or S == "menu" or S == "codex" or S == "words":
+	if S == "play" or S == "menu" or S == "codex" or S == "words" or S == "chars":
 		draw_hud_play()
 		if touch_mode and S == "play":
 			draw_touch_ui()
@@ -106,6 +106,8 @@ func _draw_hud(c: CanvasItem) -> void:
 			OFS = PO
 			if S == "menu":
 				draw_menu()
+			elif S == "chars":
+				draw_chars()
 			elif S == "codex":
 				draw_codex()
 			else:
@@ -135,6 +137,11 @@ func _draw_hud_sprites(c: CanvasItem) -> void:
 	elif S == "intro" and intro_t > 13:
 		c.draw_set_transform(o + Vector2(160, intro_clawd_y) * U, 0, Vector2(2 * U, 2 * U))
 		draw_clawd(0, 0, int(T * 4) % 2, 0, fmod(T, 3.0) < 0.15)
+	elif S == "chars":
+		for i in CHARS.size():
+			var r := char_rect(i)
+			c.draw_set_transform(o + Vector2(r.position.x + r.size.x / 2.0, r.position.y + 16 + (sin(T * 3) * 1.0 if i == char_sel else 0.0)) * U, 0, Vector2(2 * U, 2 * U))
+			draw_pc(i, 0, 0, int(T * 4) % 2 if i == char_sel else 0, 0, fmod(T + i, 3.0) < 0.15)
 	elif S == "codex":
 		var t: String = ORDER[codex_sel]
 		draw_portrait(t, 214, 58, 1 if t == "serp" else 2, known(t))
@@ -236,7 +243,7 @@ func draw_hud_play() -> void:
 			ty -= 12
 		ty -= 1
 	if S == "play" and near_kiln() and not touch_mode:
-		text("按 E 打开工坊" if unlocked < 2 else "E 工坊 · G 翻到第%s章" % ("二" if chapter == 1 else "一"), P.x - ox, P.y - oy - 22, 8, C_GOLD, C_SH, 0.8 + 0.2 * sin(T * 4))
+		text("E 工坊 · C 换角色" if unlocked < 2 else "E 工坊 · C 换角色 · G 翻到第%s章" % ("二" if chapter == 1 else "一"), P.x - ox, P.y - oy - 22, 8, C_GOLD, C_SH, 0.8 + 0.2 * sin(T * 4))
 
 ## 左下角的小句子：每格一个字，金色字发光
 func draw_sentence_hud() -> void:
@@ -334,7 +341,8 @@ func touch_btn(i: int) -> Rect2:
 		0: return Rect2(W - 42, H - 42, 36, 36)
 		1: return Rect2(W - 42, H - 76, 36, 30)
 		2: return Rect2(W - 42, H - 110, 36, 30)
-		_: return Rect2(W - 82, H - 36, 36, 30)
+		3: return Rect2(W - 82, H - 36, 36, 30)
+		_: return Rect2(W - 122, H - 36, 36, 30)
 
 func draw_touch_ui() -> void:
 	for t in touches.values():
@@ -345,9 +353,11 @@ func draw_touch_ui() -> void:
 				hp(st.x + cos(a) * 18, st.y + sin(a) * 18, Pal.rc(RUIN, 6))
 			var kp: Vector2 = st + joy * 18
 			box(kp.x - 3, kp.y - 3, 6, 6, Pal.rc(CLAY, 4), Pal.rc(CLAY, 6))
-	var names := ["冲", "烬", "坊" if near_kiln() else "标", "翻章"]
-	var mats := [CLAY, EMBER, GOLD, ORE]
-	for i in 4:
+	var names := ["冲", "烬", "坊" if near_kiln() else "标", "翻章", "角色"]
+	var mats := [CLAY, EMBER, GOLD, ORE, CLAY]
+	for i in 5:
+		if i == 4 and not near_kiln():
+			continue
 		if i == 2 and not near_kiln() and P.beacons == 0:
 			continue
 		if i == 3 and not (near_kiln() and unlocked >= 2):
@@ -560,4 +570,24 @@ func codex_rect(i: int) -> Rect2:
 
 func is_boss_t(t: String) -> bool:
 	return t == "serp" or t == "redact"
+
+func draw_chars() -> void:
+	box(12, 8, 296, 164, C_PANEL, Pal.rc(CLAY, 4))
+	text("换一副陶身", 160, 11, 12, C_GOLD, C_SH, 1.0, true)
+	for i in CHARS.size():
+		var c: Dictionary = CHARS[i]
+		var r := char_rect(i)
+		var sel := i == char_sel
+		box(r.position.x, r.position.y, r.size.x, r.size.y, Pal.rc(RUIN, 3) if sel else Pal.rc(SPACE, 2), Pal.rc(GOLD, 5) if sel else Pal.rc(RUIN, 4))
+		var cx := r.position.x + r.size.x / 2.0
+		text(c.name, cx, r.position.y + 30, 11, C_GOLD, C_SH, 1.0, true)
+		text(c.tag, cx, r.position.y + 45, 8, C_TEAL, C_SH)
+		var ls := wrap_text(c.desc, 8, r.size.x - 8)
+		for j in ls.size():
+			text(ls[j], cx, r.position.y + 58 + j * 10, 8, C_TXT, null)
+		if i == P.ch:
+			text("现在的样子", cx, r.position.y + r.size.y - 12, 8, C_DIM, null)
+		elif sel:
+			text("点一下换上", cx, r.position.y + r.size.y - 12, 8, C_GOLD, null, 0.7 + 0.3 * sin(T * 4))
+	text("升级、字和书页都会带着走，随时能换回来 · %s" % ("点外面关闭" if touch_mode else "A/D 选 · Enter 换上 · C 关闭"), 160, 159, 8, C_DIM, null)
 

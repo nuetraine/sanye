@@ -175,6 +175,9 @@ func _input(e: InputEvent) -> void:
 			elif touch_btn(2).has_point(pos) and (near_kiln() or P.beacons > 0):
 				kind = "btn"
 				jp[KEY_E if near_kiln() else KEY_B] = true
+			elif touch_btn(4).has_point(pos) and near_kiln():
+				kind = "btn"
+				jp[KEY_C] = true
 			elif touch_btn(3).has_point(pos) and near_kiln() and unlocked >= 2:
 				kind = "btn"
 				jp[KEY_G] = true
@@ -288,6 +291,8 @@ func step(dt: float) -> void:
 				word_sel = -1
 		"words":
 			upd_words_panel()
+		"chars":
+			upd_chars_panel()
 		"menu":
 			for i in range(1, SHOP.size() + 1):
 				if pressed(KEY_0 + i) or pressed(KEY_KP_0 + i):
@@ -550,6 +555,15 @@ func _autoplay_step(dt: float) -> void:
 		jp[KEY_2] = true
 		jp[KEY_3] = true
 		jp[KEY_1] = true
+	if _once(7.3) and OS.get_cmdline_user_args().has("--chars"):
+		jp[KEY_E] = true
+	if _once(7.5) and OS.get_cmdline_user_args().has("--chars"):
+		jp[KEY_C] = true
+		_shots[7.9] = "chars"
+	if _once(8.0) and OS.get_cmdline_user_args().has("--chars"):
+		jp[KEY_C] = true
+		set_char(int(Time.get_ticks_msec()) % 3 + 1)
+		return
 	if _once(8.0):
 		jp[KEY_E] = true
 		seen["hush"] = true
@@ -631,6 +645,9 @@ func _bot_tick(dt: float) -> void:
 		if S == "intro":
 			intro_t = 99
 		return
+	if S == "chars":
+		jp[[KEY_A, KEY_D, KEY_ENTER, KEY_C][randi() % 4]] = true
+		return
 	if S == "menu":
 		jp[KEY_1 + randi() % 8] = true
 		if randf() < 0.05:
@@ -662,7 +679,7 @@ func _bot_tick(dt: float) -> void:
 			goal = Vector2(P.x, P.y) + Vector2.from_angle(randf() * TAU) * 300
 		_bot_dir = (goal - Vector2(P.x, P.y)).normalized().rotated((randf() - 0.5) * 0.8)
 		if randf() < 0.2:
-			jp[[KEY_Q, KEY_B, KEY_F, KEY_TAB, KEY_E, KEY_SPACE, KEY_R, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5][randi() % 12]] = true
+			jp[[KEY_Q, KEY_B, KEY_F, KEY_TAB, KEY_E, KEY_SPACE, KEY_R, KEY_C, KEY_C, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5][randi() % 12]] = true
 		if near_kiln() and randf() < 0.5:
 			jp[KEY_E] = true
 		if near_kiln() and randf() < 0.04:

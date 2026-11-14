@@ -586,7 +586,7 @@ func draw_player() -> void:
 		return
 	var sy := P.y + sin(T * 3) * 0.8
 	var ex := 1 if P.ax > 0.35 else (-1 if P.ax < -0.35 else 0)
-	draw_clawd(P.x, sy, int(P.anim) % 2, ex, fmod(T, 3.7) < 0.12, P.warm < 25, P.dash_t > 0.12)
+	draw_pc(P.ch, P.x, sy, int(P.anim) % 2, ex, fmod(T, 3.7) < 0.12, P.warm < 25, P.dash_t > 0.12)
 	for i in P.carry.size():
 		var a := T * 2 + i * TAU / P.carry.size()
 		draw_page_icon(P.x + cos(a) * 10, P.y + sin(a) * 6 - 2, 0.7)
@@ -1167,4 +1167,113 @@ func draw_redact(c: Creature, sh: int) -> void:
 		var qy := y + sin(a) * rr * 0.55
 		sr(qx - 2, qy, 4, 0.5, RUIN, 6)
 		sr(qx - 2.5, qy + 0.5, 5, 0.5, WINE if c.sing > 0 else SPACE, 5 if c.sing > 0 else 0)
+
+func draw_pc(ci: int, x: float, y: float, fr: int, ex: int, blink: bool, frost := false, flash := false) -> void:
+	if ci == 0:
+		draw_clawd(x, y, fr, ex, blink, frost, flash)
+		return
+	sd(bake("ch|%d|%d|%d|%s|%s" % [ci, fr, ex, blink, frost], 7, 6, _p_char.bind(ci, fr, ex, blink, frost)), x, y, 0, flash)
+
+func _eyes(ex: int, blink: bool, y0: int, m: int, l: float) -> void:
+	for e in [-5, 2]:
+		for j in range(y0 + (2 if blink else 0), y0 + 4):
+			for i in 2:
+				ipx(e + ex + i, j, m, l, m != SPACE)
+
+func _feet(fr: int, xs: Array, y0: int, m: int) -> void:
+	for q in xs.size():
+		var up := (fr == 1 and q % 2 == 0) or (fr == 0 and q % 2 == 1)
+		for j in range(y0, y0 + (2 if up else 4)):
+			for i in 2:
+				ipx(xs[q] + i, j, m, 3 if i == 0 else 2)
+
+func _p_char(ci: int, fr: int, ex: int, blink: bool, frost: bool) -> void:
+	match ci:
+		1:
+			# 小瓷：白底青花的小瓷瓶
+			for j in range(-11, 7):
+				var hw := 0.0
+				if j <= -10:
+					hw = 3.5
+				elif j <= -8:
+					hw = 2.5
+				else:
+					hw = 7.6 * sqrt(maxf(0.0, 1.0 - pow((j + 0.5) / 7.6, 2.0)))
+					hw = maxf(hw, 3.0)
+				for i in range(-9, 9):
+					var x := i + 0.5
+					if absf(x) > hw:
+						continue
+					var l := 6.0
+					if x > hw - 2.2:
+						l = 4
+					elif x > hw * 0.3:
+						l = 5
+					var m := PAPER
+					# 青花：肩上一圈点，肚子上一道波浪
+					if (j == -6 and posmod(i, 3) == 0) or (j == 3 + (1 if posmod(i, 4) < 2 else 0)) or j == -10:
+						m = JELLY
+						l = 4
+					if frost and j <= -8:
+						m = ICE
+						l = 6
+					ipx(i, j, m, l)
+			_eyes(ex, blink, -3, SPACE, 0)
+			_feet(fr, [-5, 3], 7, JELLY)
+		2:
+			# 阿砖：一块长了腿的老窑砖
+			for j in range(-8, 6):
+				for i in range(-12, 12):
+					var row := (j + 8) / 5
+					var mortar := (j + 8) % 5 == 4 or posmod(i + 12 + row * 5, 10) == 9
+					var l := 4.0
+					if j == -8 or i == -12:
+						l = 5
+					if i >= 10 or j == 5:
+						l = 3
+					if mortar:
+						l = 2
+					var m := WINE
+					if frost and j <= -6 and (i * 5 + j * 3) % 4 == 0:
+						m = ICE
+						l = 6
+					ipx(i, j, m, l)
+			_eyes(ex, blink, -4, PAPER, 6)
+			_feet(fr, [-10, -5, 3, 8], 6, WINE)
+		3:
+			# 墨墨：软木塞、细脖子、贴着标签的墨水瓶
+			for j in range(-12, 7):
+				var hw := 8.0
+				var m := SPACE
+				if j <= -10:
+					hw = 3.0
+					m = MOTH
+				elif j <= -8:
+					hw = 4.0
+				elif j == -7 or j == 6:
+					hw = 7.0
+				for i in range(-9, 9):
+					var x := i + 0.5
+					if absf(x) > hw:
+						continue
+					var l := 5.0 if m == MOTH else 1.0
+					var mm := m
+					if m == SPACE:
+						if absf(x) > hw - 1.0 or j == -9 or j == 6:
+							mm = GRAV
+							l = 5 if x < 0 else 3
+						elif i == -6:
+							mm = GRAV
+							l = 6
+						elif j >= -3 and j <= 3 and i >= -6 and i <= 5 and (j > -3 or i > -6):
+							mm = PAPER
+							l = 6 if j < 3 else 4
+					elif i >= 1:
+						l = 4
+					if frost and j <= -10:
+						mm = ICE
+						l = 6
+					ipx(i, j, mm, l)
+			_eyes(ex, blink, -2, SPACE, 0)
+			_feet(fr, [-6, 4], 7, GRAV)
 

@@ -234,6 +234,7 @@ class PlayerState:
 	var charge := 0.0          # 墨线蓄力 0~1
 	var aim_d := 60.0          # 准星离小克多远（砚雷用）
 	var haste := 1.0           # 出手间隔的倍数（越小越快）
+	var ch := 0                # 现在是哪一只陶灵（CHARS 的下标）
 
 # ---------- 状态 ----------
 var S := "title"
@@ -766,7 +767,7 @@ func save_run() -> void:
 		"warm": P.warm, "maxwarm": P.maxwarm, "glaze": P.glaze, "dmg": P.dmg, "deaths": P.deaths,
 		"dust_total": P.dust_total, "kills": P.kills, "slots": P.slots, "bag": P.bag, "up": UP,
 		"pstore": page_store, "bea": bea, "gt": gt, "tides": tides, "seen": seen.keys(), "tips": tips.keys(),
-		"free": free_mode, "pen": P.pen, "ch": chapter, "unlocked": unlocked, "haste": P.haste,
+		"free": free_mode, "pen": P.pen, "ch": chapter, "unlocked": unlocked, "haste": P.haste, "char": P.ch,
 	}
 	persist()
 
@@ -778,7 +779,8 @@ func load_run() -> void:
 	P.dust = int(r.get("dust", 0))
 	P.ember = int(r.get("ember", 1))
 	P.beacons = int(r.get("beacons", 0))
-	P.maxhp = clampi(int(r.get("maxhp", 5)), 5, 8)
+	P.ch = clampi(int(r.get("char", 0)), 0, CHARS.size() - 1)
+	P.maxhp = clampi(int(r.get("maxhp", 5)), 3, 10)
 	P.hp = clampi(int(r.get("hp", 5)), 1, P.maxhp)
 	P.maxwarm = float(r.get("maxwarm", 100.0))
 	P.warm = clampf(float(r.get("warm", 100.0)), 40.0, P.maxwarm)
@@ -796,7 +798,7 @@ func load_run() -> void:
 	P.slots.clear()
 	for w in r.get("slots", []):
 		P.slots.append({"c": w.c, "gold": bool(w.get("gold", false))} if _word_ok(w) else null)
-	while P.slots.size() < int(WD.start_slots) + UP.bolt:
+	while P.slots.size() < int(WD.start_slots) + UP.bolt + int(chr().slot):
 		P.slots.append(null)
 	P.bag.clear()
 	for w in r.get("bag", []):
@@ -1410,11 +1412,11 @@ func upd_player(dt: float) -> void:
 		aim = aim.normalized()
 		P.ax = aim.x
 		P.ay = aim.y
-	const ACC := 235.0
+	var ACC: float = 235.0 * chr().sp
 	P.vx += ix * ACC * dt
 	P.vy += iy * ACC * dt
 	var drag := 0.6 if P.dash_t > 0 else 2.35
-	if chapter == 2 and P.dash_t <= 0 and in_ink(P.x, P.y):
+	if chapter == 2 and P.dash_t <= 0 and P.ch != 3 and in_ink(P.x, P.y):
 		drag = 7.0
 		tip("ink", "墨池会拖住脚步。冲刺可以滑过去。")
 		if P.moving and randf() < 0.3:
@@ -1446,7 +1448,10 @@ func upd_player(dt: float) -> void:
 		P.vy = dy * 250
 		P.dash_t = 0.22
 		P.inv = maxf(P.inv, 0.28)
-		P.dash_cd = 0.75 if UP.puff else 1.3
+		P.dash_cd = (0.75 if UP.puff else 1.3) * chr().dash
+		ram_hit.clear()
+		if P.ch == 2:
+			P.inv = maxf(P.inv, 0.4)
 		Sfx.play("dash")
 		for i in 10:
 			part(P.x - dx * 4, P.y - dy * 4, -dx * 60 + (randf() - 0.5) * 50, -dy * 60 + (randf() - 0.5) * 50, 0.5, CLAY, 5, true)
@@ -1493,7 +1498,7 @@ func upd_player(dt: float) -> void:
 	if wz:
 		P.warm = minf(P.maxwarm, P.warm + (24 if in_kiln else 16) * dt)
 	else:
-		var drain: float = 0.8 * (1 + pd / 800) * (1 + 1.3 * TIDE) * (1 - 0.2 * UP.glaze) * (1 - P.glaze)
+		var drain: float = 0.8 * chr().drain * (1 + pd / 800) * (1 + 1.3 * TIDE) * (1 - 0.2 * UP.glaze) * (1 - P.glaze)
 		P.warm = maxf(0.0, P.warm - drain * dt)
 	if P.warm <= 0:
 		P.cold_t += dt
@@ -1557,6 +1562,15 @@ func upd_player(dt: float) -> void:
 			Sfx.play("beacon")
 		else:
 			toast("要在炉灯的暖圈里才能打开工坊。", C_DIM)
+	if P.ch == 2 and P.dash_t > 0:
+		ram()
+	if S == "play" and pressed(KEY_C):
+		if in_kiln:
+			S = "chars"
+			char_sel = P.ch
+			Sfx.play("beacon")
+		else:
+			toast("要在炉灯的暖圈里才能换陶身。", C_DIM)
 	if S == "play" and pressed(KEY_G):
 		if unlocked < 2:
 			toast("装订完这一章的三张书页，才能翻到下一章。", C_DIM)
@@ -3011,3 +3025,75 @@ const TARGETS := [
 	{"hush": 15, "folio": 9, "leech": 15, "grav": 7, "mite": 10, "comma": 5},
 	{"blot": 13, "worm": 8, "comma": 11, "wisp": 9, "hush": 6, "mite": 6, "folio": 3},
 ]
+
+func chr() -> Dictionary:
+	return CHARS[P.ch]
+
+func char_rect(i: int) -> Rect2:
+	return Rect2(19 + i * 71, 30, 68, 118)
+
+func set_char(i: int) -> void:
+	# 在炉灯里换一副陶身：升级、字、书页都带着走
+	if i == P.ch or i < 0 or i >= CHARS.size():
+		return
+	var o: Dictionary = CHARS[P.ch]
+	var n: Dictionary = CHARS[i]
+	P.maxhp = maxi(1, P.maxhp + int(n.hp) - int(o.hp))
+	P.hp = clampi(P.hp + maxi(0, int(n.hp) - int(o.hp)), 1, P.maxhp)
+	if int(n.slot) > int(o.slot):
+		P.slots.append(null)
+	elif int(n.slot) < int(o.slot) and P.slots.size() > 1:
+		var w = P.slots.pop_back()
+		if w != null:
+			P.bag.append(w)
+	P.ch = i
+	calc_loadout()
+	Sfx.play("buy")
+	shk = 3
+	burst(P.x, P.y, 30, GOLD, 6, 60, 0.9)
+	toast("炉灯把你重新烧成了「%s」：%s" % [n.name, n.tag], C_GOLD, 4)
+	save_run()
+
+func ram() -> void:
+	# 阿砖的冲刺：撞伤路上的敌人，撞碎石头
+	for c in cr:
+		if can_hit(c) and not ram_hit.has(c) and Vector2(c.x - P.x, c.y - P.y).length() < c.r + 7:
+			ram_hit[c] = true
+			fx_hit(c, 3 + P.dmg, P.x, P.y)
+			shk = maxf(shk, 3)
+			burst(c.x, c.y, 8, WINE, 5, 50, 0.4)
+	var v := Vector2(P.vx, P.vy).normalized()
+	for k in [-0.6, 0.0, 0.6]:
+		var q := v.rotated(k) * 7
+		var r := rock_at(P.x + q.x, P.y + q.y)
+		if r:
+			carve(r, P.x + q.x, P.y + q.y, 4.0)
+
+func upd_chars_panel() -> void:
+	var n := CHARS.size()
+	if pressed(KEY_A) or pressed(KEY_LEFT):
+		char_sel = (char_sel + n - 1) % n
+	if pressed(KEY_D) or pressed(KEY_RIGHT):
+		char_sel = (char_sel + 1) % n
+	var mp := ppointer()
+	var on := -1
+	for i in n:
+		if char_rect(i).has_point(mp):
+			on = i
+	if on >= 0 and (mouse_moved or click_q):
+		char_sel = on
+	if pressed(KEY_ENTER) or pressed(KEY_KP_ENTER) or pressed(KEY_SPACE) or (click_q and on >= 0):
+		set_char(char_sel)
+		S = "play"
+	elif pressed(KEY_C) or pressed(KEY_ESCAPE) or pressed(KEY_E) or (click_q and not Rect2(12, 8, 296, 164).has_point(mp)):
+		S = "play"
+
+# ---------- 可选的陶灵 ----------
+const CHARS := [
+	{"name": "小克", "tag": "均衡", "desc": "炉膛里烧出来的最后一只陶灵。没有短处，也没有特别的长处。", "hp": 0, "sp": 1.0, "dash": 1.0, "drain": 1.0, "slot": 0},
+	{"name": "小瓷", "tag": "轻快 · 怕摔", "desc": "一只薄胎青花小瓷瓶。飞得快，冲刺恢复快，不怕冷；但是少一颗心。", "hp": -1, "sp": 1.22, "dash": 0.65, "drain": 0.7, "slot": 0},
+	{"name": "阿砖", "tag": "结实 · 会撞", "desc": "烧过了头的老窑砖。多两颗心，飞得慢；冲刺会撞伤路上的敌人，也撞得碎石头。", "hp": 2, "sp": 0.82, "dash": 1.0, "drain": 1.0, "slot": 0},
+	{"name": "墨墨", "tag": "多一格 · 怕冷", "desc": "一只会走路的墨水瓶。句子多一格，墨池拖不住它；但是少一颗心，冷得更快。", "hp": -1, "sp": 1.0, "dash": 1.0, "drain": 1.25, "slot": 1},
+]
+var char_sel := 0
+var ram_hit := {}
