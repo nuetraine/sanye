@@ -68,6 +68,8 @@ godot --path .
 | 墨墨 | 句子多一格、不怕墨池，少一颗心、冷得更快 |
 | 蓝色大肥鱼 | 吸页尘范围翻倍、吞余烬回暖更多，冲刺喷水花冲掉敌弹；飞得稍慢 |
 
+蓝色大肥鱼的形象是社区同人角色“鲸鱼娘”，像素图由设定图缩小而来，出处：[DeepSeek Whale-chan Project](https://github.com/Neko3000/deepseek-whalechan)（原始形象作者见该项目说明）。该项目只允许非商业二创，本游戏如果要商用，需要先换掉这个角色或取得授权。
+
 ![角色](docs/screenshot-chars.png)
 
 ## 五种笔

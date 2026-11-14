@@ -14,6 +14,13 @@ void fragment() {
 	vec4 t = texture(TEXTURE, UV);
 	if (t.a < 0.5) discard;
 	if (vc.a < 0.99 && bay(floor(wpos * 2.0)) > vc.a) discard;
+	// alpha 约 200：这是一张直接存颜色的图（比如蓝色大肥鱼），按光照稍微压暗一点就行
+	if (t.a < 0.9) {
+		vec4 tc = vec4(t.rgb * (1.0 + 0.12 * (floor(vc.r * 8.0 + 0.5) - 4.0)), 1.0);
+		if (vc.g > 0.5) tc = rc(12.0, 6.0);
+		if (vc.b > 0.5) tc = rc(14.0, 3.0);
+		COLOR = tc;
+	} else {
 	float m = floor(t.r * 255.0 / 16.0);
 	float l = floor(t.g * 255.0 / 36.0);
 	if (t.b < 0.5) l = clamp(l + floor(vc.r * 8.0 + 0.5) - 4.0, 0.0, 6.0);
@@ -21,4 +28,5 @@ void fragment() {
 	if (vc.g > 0.5) col = rc(12.0, 6.0);
 	if (vc.b > 0.5) col = rc(14.0, 3.0);
 	COLOR = col;
+	}
 }

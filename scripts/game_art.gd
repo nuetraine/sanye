@@ -1173,7 +1173,7 @@ func draw_pc(ci: int, x: float, y: float, fr: int, ex: int, blink: bool, frost :
 		draw_clawd(x, y, fr, ex, blink, frost, flash)
 		return
 	if ci == 4:
-		sd(bake("whale4|%d|%d|%s|%s" % [fr, ex, blink, frost], 14, 11, _p_whale.bind(fr, ex, blink, frost)), x, y - 6.5, 0, flash)
+		sd(whale_spr(), x, y - (0.5 if fr == 1 else 0.0), 0, flash)
 		return
 	sd(bake("ch|%d|%d|%d|%s|%s" % [ci, fr, ex, blink, frost], 7, 6, _p_char.bind(ci, fr, ex, blink, frost)), x, y, 0, flash)
 
@@ -1280,88 +1280,19 @@ func _p_char(ci: int, fr: int, ex: int, blink: bool, frost: bool) -> void:
 			_eyes(ex, blink, -2, SPACE, 0)
 			_feet(fr, [-6, 4], 7, GRAV)
 
-## 蓝色大肥鱼：照 Eric 给的设定图画的 Q 版蓝鲸女仆。圈形呆毛、大荷叶边发箍、蓝蝴蝶结、下垂的深蓝鲸鳍耳（下缘白色绒边）、
-## 从深蓝渐变到浅蓝的大波浪长发、张嘴笑、深蓝长袖女仆裙（蓝宝石领结、小蓝鲸围裙、金色蝴蝶结）、白花边袜、深蓝玛丽珍鞋、
-## 身后翘起的鲸尾。一格 = 一个精细像素
-const WHALE_A := [
-	".................oIIIo..........................",
-	"................oIooLIo.........................",
-	"................oIo.oIo.........................",
-	"...............oooIooooooo......................",
-	".............oomWmWmWmWmWmoo....................",
-	"..........ooomWWWWWWWWWWWWWmooo.................",
-	".........oHmWWWmmmmmmmmmmmWWWmHo................",
-	"........oHHWWmmHHHHHHHHHHHmmWWHHo...............",
-	".......oCCHCCHLLLHHHHHHHLLLHCCHCCo..............",
-	"......oHCCbCCLHHHHHHHHHHHHHLCCbCCHo.............",
-	".......oCHHHCHHHIHHHIHHHHHHHCHHHCo..............",
-	"....oooFFFFFHIHIHHHIHHHHIHIHHFFFFFooo...........",
-	"..ooFFFfffffIHIHHIHHHIHIHIHIIfffffFFFoo.........",
-	".oFFffffffffISSSSSISSSHSSSSSIffffffffFFo........",
-	"oFffffffffffEEEEEESSSSIEEEEEEffffffffffFo.......",
-	"offfffffffFIIExeeESSSSSExeeEIIFfffffffffo.......",
-	"owwwwwwwfFHIIEeEeESSSSSEeEeEIIHFfwwwwwwwo.......",
-	"omwmwmwwIIHIIEeeeESSSSSEeeeEIIHIIwwmwmwmo.......",
-	".oooooIIHIHIIEppqESSSSSEppqEIIHIIIHooooo........",
-	".....oIIHIHISSEEESSxMMSSEEESSIHHIIIo............",
-	"....ooIIHIHIrrSSSSSSnSSSSSSrrIHIHIIoo...........",
-	"...oIHIIIHHISIIISSSSSSSSSIIISIHIHIIHIo.......oo.",
-	"..oIIHIIIIHIDDDDdDDSSSdDDDDDDIIIHIIHTTo.....oTTo",
-	"..oIIIHIIIHIDDDDdDDZZDdDDDDDDIIIHIHITTTo...oTTTo",
-	"..oLLLLILLIDDDDDDdDoddmDDDDDDDLLIILLTTTToooTTTUo",
-	"...oLLLILLDDDDDDDDmWkWmDDDDDDDDILILLLTTTTTTTTUo.",
-	"...oLLLILIdgDDDDDDmWWWmDDDDDDgdLLILLLoUTTTTTUo..",
-	"...oLLLILIdDDDDDDDmWkWmDDDDDDDdLLILLLoooTTToo...",
-	"..oLLLILIwdDDDLDddgdddgddDLDDDdwLILLLLo.oTTTo...",
-	".oLLLLILwwwLDDDDmWWWWWWWmDDDDLwwwLILLLLoTTTTo...",
-	".oQQQLQSSQQQDDDmWWWCWCWWWmDDDQQLSSQLQQQoTTTUo...",
-	"..oQQLQQLQQDDDDWWWWWCWWWWWDDDDQLQQQLQQoTTTUUo...",
-	"...oQLQQQLDDDDWWWWWBBBWWWWWDDDDQLQQLQooTTTUUo...",
-	"....oLQQoDDDgGWWWWBBBBbWWWWGgDDDoQQLoTTTTTUUo...",
-	"....oQLQDDDDDmWWWWWBBWWWWWWmDDDDDQLQTTTTTUUo....",
-	"....oQQDgDDgWmWmWmWmWmWmWmWmWgDDgDTTTTTTTUUo....",
-	"....oQwwwwwwwwwwwwwwwwwwwwwwwwwwwwwTTTTTUUo.....",
-	"....oQwmwmwmwmwmwmwmwmwmwmwmwmwmwmwTTTTUUUo.....",
-	".....ooooooooooooSSoooSSTTTTTTTTTTTTTTUUUo......",
-	"...............owmwwowwmwTTTUUTTTTTTTUUoo.......",
-	"...............ogJJJoJJJgoTUUUUUUUUUUUo.........",
-	"...............ojJJjojJJjoooooUUUUoooo..........",
-	"................oooo.oooo.....oooo..............",
-]
-const WHALE_MAP := {"B": [5, 3], "C": [5, 4], "D": [5, 1], "E": [5, 1], "F": [5, 2], "G": [13, 4], "H": [5, 3], "I": [5, 4], "J": [5, 1], "L": [5, 5], "M": [15, 3], "Q": [8, 5], "S": [4, 6], "T": [5, 1], "U": [5, 3], "W": [12, 6], "Z": [8, 5], "b": [5, 5], "d": [5, 0], "e": [5, 3], "f": [5, 1], "g": [13, 5], "j": [5, 0], "k": [13, 5], "m": [10, 5], "n": [11, 5], "o": [5, 0], "p": [5, 4], "q": [8, 6], "r": [11, 6], "w": [12, 6], "x": [12, 6]}
-const WHALE_EYE := "Exepq"
+## 蓝色大肥鱼：由 Eric 提供的鲸鱼娘设定图（社区同人角色，来自 DeepSeek Whale-chan Project，非商业二创）
+## 正面立绘缩小成 51×64 的像素图。贴图的 alpha 是 200 = “直接用颜色，不查色板”，sprite.gdshader 里会认
+const WHALE_PNG := "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"
+var _whale: Spr
 
-func _p_whale(fr: int, ex: int, blink: bool, frost: bool) -> void:
-	# 先画全身（眼睛的位置先当成脸），再按朝向把眼睛画上去
-	for pass_ in 2:
-		for j in WHALE_A.size():
-			var row: String = WHALE_A[j]
-			for i in row.length():
-				var ch := row[i]
-				if ch == ".":
-					continue
-				var eye := j >= 14 and j <= 19 and i >= 12 and i <= 28 and (i < 18 or i > 22) and WHALE_EYE.contains(ch)
-				if pass_ == 1 and not eye:
-					continue
-				if pass_ == 0 and eye:
-					ipx(i - 20, j - 21, CLAY, 6)
-					continue
-				var q: Array = WHALE_MAP[ch]
-				var m: int = q[0]
-				var l: float = q[1]
-				if eye:
-					if blink:
-						if j != 17:
-							continue
-						m = JELLY
-						l = 1
-					ipx(i - 20 + ex, j - 21, m, l, (ch == "x" or ch == "q") and not blink)
-					continue
-				# 走路：两只脚轮流抬起一格
-				var dy := 0
-				if j >= 38 and ((fr == 0 and i < 20) or (fr == 1 and i > 20)):
-					dy = -1
-				if frost and (ch == "H" or ch == "I" or ch == "W") and (i + j) % 2 == 0:
-					m = ICE
-					l = 6
-				ipx(i - 20, j - 21 + dy, m, l)
+func whale_spr() -> Spr:
+	if _whale == null:
+		var img := Image.new()
+		img.load_png_from_buffer(Marshalls.base64_to_raw(WHALE_PNG))
+		_whale = Spr.new()
+		_whale.tex = ImageTexture.create_from_image(img)
+		_whale.w = img.get_width() / 2.0
+		_whale.h = img.get_height() / 2.0
+		_whale.ox = -floorf(_whale.w) / 2.0
+		_whale.oy = 4.0 - _whale.h
+	return _whale

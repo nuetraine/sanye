@@ -140,7 +140,7 @@ func _draw_hud_sprites(c: CanvasItem) -> void:
 	elif S == "chars":
 		for i in CHARS.size():
 			var r := char_rect(i)
-			c.draw_set_transform(o + Vector2(r.position.x + r.size.x / 2.0, r.position.y + (19.0 if i == 4 else 15.0) + (sin(T * 3) * 1.0 if i == char_sel else 0.0)) * U, 0, Vector2((1.0 if i == 4 else 2.0) * U, (1.0 if i == 4 else 2.0) * U))
+			c.draw_set_transform(o + Vector2(r.position.x + r.size.x / 2.0, r.position.y + (29.5 if i == 4 else 15.0) + (sin(T * 3) * 1.0 if i == char_sel else 0.0)) * U, 0, Vector2((1.0 if i == 4 else 2.0) * U, (1.0 if i == 4 else 2.0) * U))
 			draw_pc(i, 0, 0, int(T * 4) % 2 if i == char_sel else 0, 0, fmod(T + i, 3.0) < 0.15)
 	elif S == "codex":
 		var t: String = ORDER[codex_sel]
