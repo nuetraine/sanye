@@ -90,6 +90,9 @@ func _ready() -> void:
 	if args0.has("--ch=2"):
 		chapter = 2
 		unlocked = 2
+	if args0.has("--ch=3"):
+		chapter = 3
+		unlocked = 3
 	_bot_god = args0.has("--god")
 	var t0 := Time.get_ticks_msec()
 	new_world()
@@ -178,6 +181,12 @@ func _input(e: InputEvent) -> void:
 			elif touch_btn(4).has_point(pos) and near_kiln():
 				kind = "btn"
 				jp[KEY_C] = true
+			elif touch_btn(5).has_point(pos):
+				kind = "btn"
+				jp["skill"] = true
+			elif skill_rect().has_point(pos):
+				kind = "btn"
+				jp["skill_next"] = true
 			elif touch_btn(3).has_point(pos) and near_kiln() and unlocked >= 2:
 				kind = "btn"
 				jp[KEY_G] = true
@@ -276,6 +285,7 @@ func step(dt: float) -> void:
 			upd_bullets(dt)
 			upd_bombs(dt)
 			upd_world2(dt)
+			upd_world3(dt)
 			upd_pickups(dt)
 			upd_beacons(dt)
 			upd_spawns(dt)
@@ -354,9 +364,9 @@ func step(dt: float) -> void:
 			upd_creatures(dt)
 			if end_t > 7 and (pressed(KEY_ENTER) or pressed(KEY_KP_ENTER) or click_q):
 				S = "play"
-				if chapter == 1:
-					goto_chapter(2)
-					toast("想回第一章，在炉灯边按 G（或点「翻章」）。", C_DIM, 6)
+				if chapter < 3:
+					goto_chapter(chapter + 1)
+					toast("想回前面的章节，在炉灯边按 G（或点「翻章」）。", C_DIM, 6)
 				else:
 					free_mode = true
 					toast("自由探索：残烛还在打寒颤，宇宙还有很多散页。", C_DIM, 5)
@@ -424,9 +434,9 @@ func _gallery_step() -> void:
 		tide_t = 0.0
 		var n := 0
 		for t in ORDER:
-			if t == "serp" or t == "redact":
+			if is_boss_t(t):
 				continue
-			var c := mk(t, -125 + (n % 6) * 50, -28 if n < 6 else 58)
+			var c := mk(t, -125 + (n % 6) * 50, -62 + (n / 6) * 50)
 			n += 1
 			c.hx = c.x
 			c.hy = c.y
@@ -450,6 +460,9 @@ func _gallery_step() -> void:
 						c.seg[i] = Vector2(c.x - (i + 1) * 3.4, c.y - sin(i * 0.8) * 2)
 				"wisp":
 					c.open = 1
+				"tick":
+					c.st = "tired"
+					c.tm = 99
 		var bl := mk("blotlet", 138, 58)
 		bl.hx = bl.x
 		bl.hy = bl.y
@@ -517,7 +530,7 @@ func _autoplay_step(dt: float) -> void:
 	if OS.get_cmdline_user_args().has("--gallery"):
 		_gallery_step()
 		return
-	var shots := _shots if chapter == 1 else _shots2
+	var shots := _shots if chapter == 1 else (_shots2 if chapter == 2 else _shots3)
 	for k in shots.keys():
 		if _ap_t >= k:
 			var img := get_viewport().get_texture().get_image()
@@ -573,6 +586,9 @@ func _autoplay_step(dt: float) -> void:
 		codex_sel = 5
 	if chapter == 2 and _ap_t > 9.9:
 		_ap2_step()
+		return
+	if chapter == 3 and _ap_t > 9.9:
+		_ap3_step()
 		return
 	if _once(10.0):
 		jp[KEY_TAB] = true
@@ -639,7 +655,7 @@ func _bot_step(dt: float) -> void:
 
 func _bot_tick(dt: float) -> void:
 	_bot_t += dt
-	unlocked = 2
+	unlocked = 3
 	if S == "title" or S == "intro" or S == "ending":
 		click_q = true
 		if S == "intro":
@@ -649,7 +665,7 @@ func _bot_tick(dt: float) -> void:
 		jp[[KEY_A, KEY_D, KEY_ENTER, KEY_C][randi() % 4]] = true
 		return
 	if S == "menu":
-		jp[KEY_1 + randi() % 8] = true
+		jp[KEY_1 + randi() % 9] = true
 		if randf() < 0.05:
 			jp[KEY_E] = true
 		return
@@ -679,7 +695,7 @@ func _bot_tick(dt: float) -> void:
 			goal = Vector2(P.x, P.y) + Vector2.from_angle(randf() * TAU) * 300
 		_bot_dir = (goal - Vector2(P.x, P.y)).normalized().rotated((randf() - 0.5) * 0.8)
 		if randf() < 0.2:
-			jp[[KEY_Q, KEY_B, KEY_F, KEY_TAB, KEY_E, KEY_SPACE, KEY_R, KEY_C, KEY_C, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5][randi() % 12]] = true
+			jp[[KEY_Q, KEY_B, KEY_F, KEY_TAB, KEY_E, KEY_SPACE, KEY_R, KEY_C, KEY_X, KEY_Z, KEY_X, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5][randi() % 14]] = true
 		if near_kiln() and randf() < 0.5:
 			jp[KEY_E] = true
 		if near_kiln() and randf() < 0.04:
@@ -762,3 +778,82 @@ func _ap2_step() -> void:
 
 var _bot_god := false
 var _shots2 := {1.0: "title", 5.2: "hall", 9.0: "codex", 12.2: "stacks", 14.6: "dark", 16.8: "ink", 20.6: "boss", 22.6: "boss2"}
+var _shots3 := {1.0: "title", 5.2: "tower", 9.0: "codex3", 12.2: "wind", 14.8: "gear", 17.4: "flare", 18.6: "flare2", 22.9: "boss3", 24.0: "boss3b", 25.9: "skills"}
+
+func _ap3_step() -> void:
+	# 第三章的自动截图：页风回廊、齿轮钟室、烛焰台、装订师、技能
+	P.hp = 99
+	if _once(10.0):
+		S = "play"
+		var q: Dictionary = WINDS[WINDS.size() - 1]
+		P.x = q.x - cos(q.a) * q.len * 0.6
+		P.y = q.y - sin(q.a) * q.len * 0.6
+		cam_pos = Vector2(P.x, P.y)
+		for i in 3:
+			var c := mk("dove", P.x + 60 + i * 10, P.y - 40 + i * 6)
+			c.hx = c.x
+			c.hy = c.y
+			c.off = i
+	if _once(12.6):
+		var q: Dictionary = CLOCKS[0]
+		P.x = q.x + q.r + 22
+		P.y = q.y + 10
+		cam_pos = Vector2(P.x, P.y)
+		_ap_aim = Vector2(-1, 0) * 60
+		var c := mk("tick", P.x + 20, P.y + 30)
+		init_c(c)
+		var c2 := mk("tick", P.x - 10, P.y - 34)
+		init_c(c2)
+		c2.st = "tired"
+		c2.tm = 99
+		init_c(mk("stamp", P.x + 50, P.y - 10))
+	if _once(15.2):
+		var best: Rock = null
+		for r in rocks:
+			if r.zone == "flare" and r.R > 14 and (best == null or Vector2(r.x, r.y + 500).length() < Vector2(best.x, best.y + 500).length()):
+				best = r
+		P.x = best.x + 30
+		P.y = best.y + best.R + 8
+		cam_pos = Vector2(P.x - 20, P.y - 20)
+		for i in 3:
+			init_c(mk("cinder", P.x + 40 + i * 20, P.y - 30 - i * 10))
+		flare_st = 0
+		flare_t = 0.5
+		_ap_aim = Vector2(1, -0.5) * 60
+	if _once(19.0):
+		P.x = PAGES[2].x + 110
+		P.y = PAGES[2].y + 70
+		cam_pos = Vector2(P.x, P.y)
+		flare_st = 0
+		flare_t = 99
+	if _ap_t > 19.0 and binder:
+		_ap_aim = Vector2(binder.x - P.x, binder.y - P.y)
+		if _once(22.2):
+			binder.burst_t = 0
+			binder.sing = 0
+			binder.off = 1
+	if _once(24.6):
+		UP.seal = 3
+		P.sk = 1
+		P.sk_cd = 0
+		jp[KEY_X] = true
+	if _once(25.4):
+		P.sk = 0
+		P.sk_cd = 0
+		jp[KEY_X] = true
+	if _once(26.4) and binder:
+		kill(binder, true)
+	if _once(27.0):
+		P.carry = [0, 1, 2]
+		for pg in PAGES:
+			pg.state = "carried"
+		P.x = 0
+		P.y = 20
+		cam_pos = Vector2(0, 20)
+	if _once(35.0):
+		get_viewport().get_texture().get_image().save_png("user://shot_ending3.png")
+		print("ending3 S=%s unlocked=%d dashk=%.2f skk=%.2f" % [S, unlocked, P.dashk, P.skk])
+	_ap_fire = _ap_t > 10.3 and _ap_t < 24.4
+	joy = Vector2.ZERO
+	if _ap_t > 35.5:
+		get_tree().quit()
