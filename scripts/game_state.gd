@@ -1450,8 +1450,6 @@ func upd_player(dt: float) -> void:
 		P.inv = maxf(P.inv, 0.28)
 		P.dash_cd = (0.75 if UP.puff else 1.3) * chr().dash
 		ram_hit.clear()
-		if P.ch == 4:
-			spout()
 		if P.ch == 2:
 			P.inv = maxf(P.inv, 0.4)
 		Sfx.play("dash")
@@ -1529,7 +1527,7 @@ func upd_player(dt: float) -> void:
 	if pressed(KEY_Q):
 		if P.ember > 0:
 			P.ember -= 1
-			P.warm = minf(P.maxwarm, P.warm + (55 if P.ch == 4 else 35))
+			P.warm = minf(P.maxwarm, P.warm + 35)
 			Sfx.play("eat")
 			burst(P.x, P.y, 14, EMBER, 5, 40, 0.7)
 		else:
@@ -2453,7 +2451,7 @@ func upd_beacons(dt: float) -> void:
 	BEA = BEA.filter(func(b): return b.hp > 0)
 
 func upd_pickups(dt: float) -> void:
-	var mag := (40.0 + (15.0 if P.bound >= 1 else 0.0)) * (2.0 if P.ch == 4 else 1.0)
+	var mag := 40.0 + (15.0 if P.bound >= 1 else 0.0)
 	var keep: Array[Pick] = []
 	for p in PK:
 		if p.k == "eaten":
@@ -3032,7 +3030,7 @@ func chr() -> Dictionary:
 	return CHARS[P.ch]
 
 func char_rect(i: int) -> Rect2:
-	return Rect2(18 + i * 57, 28, 54, 68)
+	return Rect2(19 + i * 71, 30, 68, 118)
 
 func set_char(i: int) -> void:
 	# 在炉灯里换一副陶身：升级、字、书页都带着走
@@ -3096,28 +3094,6 @@ const CHARS := [
 	{"name": "小瓷", "tag": "轻快 · 怕摔", "desc": "一只薄胎青花小瓷瓶。飞得快，冲刺恢复快，不怕冷；但是少一颗心。", "hp": -1, "sp": 1.22, "dash": 0.65, "drain": 0.7, "slot": 0},
 	{"name": "阿砖", "tag": "结实 · 会撞", "desc": "烧过了头的老窑砖。多两颗心，飞得慢；冲刺会撞伤路上的敌人，也撞得碎石头。", "hp": 2, "sp": 0.82, "dash": 1.0, "drain": 1.0, "slot": 0},
 	{"name": "墨墨", "tag": "多一格 · 怕冷", "desc": "一只会走路的墨水瓶。句子多一格，墨池拖不住它；但是少一颗心，冷得更快。", "hp": -1, "sp": 1.0, "dash": 1.0, "drain": 1.25, "slot": 1},
-	{"name": "蓝色大肥鱼", "tag": "大嘴 · 稍慢", "desc": "深蓝长发、鲸鳍耳朵、女仆装、肥嘟嘟尾巴的鲸鱼娘。嘴大：吸页尘范围翻倍，吞余烬回暖更多；冲刺喷一圈水花，冲掉敌弹、推开敌人。代价是飞得稍慢。", "hp": 0, "sp": 0.9, "dash": 1.0, "drain": 1.0, "slot": 0},
 ]
 var char_sel := 0
 var ram_hit := {}
-
-func spout() -> void:
-	# 蓝色大肥鱼的冲刺：喷一圈水花，冲掉附近的敌弹，把敌人推开
-	for b in EB:
-		if Vector2(b.x - P.x, b.y - P.y).length() < 34:
-			b.life = 0
-			burst(b.x, b.y, 3, ICE, 6, 30, 0.3)
-	for c in cr:
-		if can_hit(c) and not is_boss(c) and c.t != "clam":
-			var v := Vector2(c.x - P.x, c.y - P.y)
-			var d := v.length()
-			if d < 30 and d > 0.1:
-				c.vx += v.x / d * 160
-				c.vy += v.y / d * 160
-				c.x += v.x / d * 6
-				c.y += v.y / d * 6
-	for k in 24:
-		var a := k / 24.0 * TAU
-		part(P.x + cos(a) * 4, P.y + sin(a) * 4, cos(a) * 110, sin(a) * 110, 0.45, ICE if k % 2 else JELLY, 6, true)
-	Sfx.play("cold", 1.6)
-

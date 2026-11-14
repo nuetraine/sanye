@@ -140,7 +140,7 @@ func _draw_hud_sprites(c: CanvasItem) -> void:
 	elif S == "chars":
 		for i in CHARS.size():
 			var r := char_rect(i)
-			c.draw_set_transform(o + Vector2(r.position.x + r.size.x / 2.0, r.position.y + (29.5 if i == 4 else 15.0) + (sin(T * 3) * 1.0 if i == char_sel else 0.0)) * U, 0, Vector2((1.0 if i == 4 else 2.0) * U, (1.0 if i == 4 else 2.0) * U))
+			c.draw_set_transform(o + Vector2(r.position.x + r.size.x / 2.0, r.position.y + 16 + (sin(T * 3) * 1.0 if i == char_sel else 0.0)) * U, 0, Vector2(2 * U, 2 * U))
 			draw_pc(i, 0, 0, int(T * 4) % 2 if i == char_sel else 0, 0, fmod(T + i, 3.0) < 0.15)
 	elif S == "codex":
 		var t: String = ORDER[codex_sel]
@@ -580,17 +580,14 @@ func draw_chars() -> void:
 		var sel := i == char_sel
 		box(r.position.x, r.position.y, r.size.x, r.size.y, Pal.rc(RUIN, 3) if sel else Pal.rc(SPACE, 2), Pal.rc(GOLD, 5) if sel else Pal.rc(RUIN, 4))
 		var cx := r.position.x + r.size.x / 2.0
-		text(c.name, cx, r.position.y + 31, 10, C_GOLD if sel else C_TXT, C_SH, 1.0, true)
-		text(c.tag, cx, r.position.y + 45, 7, C_TEAL, C_SH)
+		text(c.name, cx, r.position.y + 30, 11, C_GOLD, C_SH, 1.0, true)
+		text(c.tag, cx, r.position.y + 45, 8, C_TEAL, C_SH)
+		var ls := wrap_text(c.desc, 8, r.size.x - 8)
+		for j in ls.size():
+			text(ls[j], cx, r.position.y + 58 + j * 10, 8, C_TXT, null)
 		if i == P.ch:
-			text("现在的样子", cx, r.position.y + r.size.y - 11, 7, C_DIM, null)
-	# 选中的那只：详细说明
-	var c2: Dictionary = CHARS[char_sel]
-	box(18, 100, 284, 54, Pal.rc(SPACE, 1), Pal.rc(RUIN, 4))
-	var ls := wrap_text(c2.desc, 9, 268)
-	for j in ls.size():
-		text(ls[j], 160, 104 + j * 11, 9, C_TXT, C_SH)
-	if char_sel != P.ch:
-		text("%s换上「%s」" % ["点它的卡片" if touch_mode else "Enter ", c2.name], 160, 104 + ls.size() * 11 + 1, 8, C_GOLD, null, 0.7 + 0.3 * sin(T * 4))
-	text("升级、字和书页都会带着走，随时能换回来 · %s" % ("点外面关闭" if touch_mode else "A/D 选 · C 关闭"), 160, 159, 8, C_DIM, null)
+			text("现在的样子", cx, r.position.y + r.size.y - 12, 8, C_DIM, null)
+		elif sel:
+			text("点一下换上", cx, r.position.y + r.size.y - 12, 8, C_GOLD, null, 0.7 + 0.3 * sin(T * 4))
+	text("升级、字和书页都会带着走，随时能换回来 · %s" % ("点外面关闭" if touch_mode else "A/D 选 · Enter 换上 · C 关闭"), 160, 159, 8, C_DIM, null)
 
