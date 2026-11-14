@@ -64,7 +64,8 @@ godot --path .
 ## 目前进度
 
 网页原型的玩法已经全部移植到 Godot：
-- 320×180 像素画面，整数倍放大，像素不会糊
+- 640×360 精细像素画面（原型的两倍精细），整数倍放大不会糊，并且铺满整个窗口不留黑边
+- 进度自动存档：升级、字、书页、信标都会记住，下次打开可以「继续旅程」
 - 移动、冲刺、射击；小行星逐像素可打碎，带实时光照
 - 体温、炉灯暖圈、暗潮循环（150 秒一轮）、冻伤与死亡重生
 - 炉灯工坊 6 种升级：信标、炉火、字弹、陶壳、保温釉、喷气孔
@@ -81,17 +82,17 @@ godot --path .
 ## 文件说明
 
 ```
-project.godot         Godot 项目配置（像素完美设置都在这里）
+project.godot         Godot 项目配置
 main.tscn             主场景
 scripts/game.gd       入口：搭场景、输入、主循环、自动试玩
 scripts/game_hud.gd   界面：状态栏、工坊、句子面板、图鉴、标题、结局
-scripts/game_art.gd   世界里的像素绘制：炉灯、生物、子弹、小克
+scripts/game_art.gd   世界里的像素绘制：炉灯、生物、子弹、小克（先烤成小贴图再贴）
 scripts/game_state.gd 玩法逻辑：世界生成、玩家、生物、字句构筑、子弹、存档
 data/words.json       字句构筑的数据表
 scripts/rock.gd       可破坏的小行星
 scripts/pal.gd        调色板、抖动矩阵、噪声
 scripts/sfx.gd        程序化音效
-shaders/              远景、小行星打光、暗潮压暗
+shaders/              远景、小行星打光、精灵查色板、暗潮压暗
 prototype/            最初的网页原型
 ```
 
@@ -102,6 +103,13 @@ godot --path . -- --autoplay
 ```
 
 会自动开始游戏、乱飞乱打，并把几张截图存到 Godot 的用户数据文件夹，然后自动退出。
+
+另外两个测试开关：
+
+```bash
+godot --path . -- --autoplay --gallery   # 把八种生物摆在炉灯旁拍一张“全家福”
+godot --path . -- --bot --bot-secs=900   # 机器人快进乱玩 15 分钟，用来揪运行时报错
+```
 
 ## 发布网页版
 

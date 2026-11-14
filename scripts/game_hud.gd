@@ -393,7 +393,7 @@ func draw_menu() -> void:
 	var br := buy_rect()
 	box(br.position.x, br.position.y, br.size.x, br.size.y, Pal.rc(CLAY, 3) if can2 else Pal.rc(SPACE, 2), Pal.rc(GOLD, 5) if can2 else Pal.rc(RUIN, 4))
 	text("打造" if not full2 else "已满", br.get_center().x, br.position.y + 2, 10, C_GOLD if can2 else C_DIM, C_SH, 1.0, true)
-	text("点卡片选择 · 点「打造」 · 点外面关闭" if touch_mode else "数字键直接打造 · 点卡片选择 · E 关闭", 160, 161, 8, C_DIM, null)
+	text("点卡片选择 · 点「打造」 · 点外面关闭" if touch_mode else "数字键直接打造 · 点卡片选择 · E 关闭", 160, 159.5, 8, C_DIM, null)
 
 func draw_codex() -> void:
 	box(8, 8, 304, 164, C_PANEL, C_LINE)
