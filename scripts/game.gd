@@ -561,8 +561,22 @@ func _autoplay_step(dt: float) -> void:
 		jp[KEY_C] = true
 		_shots[7.9] = "chars"
 	if _once(8.0) and OS.get_cmdline_user_args().has("--chars"):
-		jp[KEY_C] = true
-		set_char(int(Time.get_ticks_msec()) % 3 + 1)
+		char_sel = 4
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--char="):
+				char_sel = int(a.substr(7))
+		S = "chars"
+		_shots[8.4] = "chars2"
+	if _once(8.6) and OS.get_cmdline_user_args().has("--chars"):
+		set_char(char_sel)
+		S = "play"
+		_shots[9.5] = "charplay"
+	if OS.get_cmdline_user_args().has("--chars") and _ap_t > 7.5 and _ap_t < 10.0:
+		if _ap_t > 8.6:
+			P.x = 0
+			P.y = 30
+			_ap_fire = false
+			joy = Vector2.ZERO
 		return
 	if _once(8.0):
 		jp[KEY_E] = true
