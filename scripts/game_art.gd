@@ -1173,7 +1173,7 @@ func draw_pc(ci: int, x: float, y: float, fr: int, ex: int, blink: bool, frost :
 		draw_clawd(x, y, fr, ex, blink, frost, flash)
 		return
 	if ci == 4:
-		sd(bake("whale3|%d|%d|%s|%s" % [fr, ex, blink, frost], 13, 10.5, _p_whale.bind(fr, ex, blink, frost)), x, y - 6, 0, flash)
+		sd(bake("whale4|%d|%d|%s|%s" % [fr, ex, blink, frost], 14, 11, _p_whale.bind(fr, ex, blink, frost)), x, y - 6.5, 0, flash)
 		return
 	sd(bake("ch|%d|%d|%d|%s|%s" % [ci, fr, ex, blink, frost], 7, 6, _p_char.bind(ci, fr, ex, blink, frost)), x, y, 0, flash)
 
@@ -1280,53 +1280,55 @@ func _p_char(ci: int, fr: int, ex: int, blink: bool, frost: bool) -> void:
 			_eyes(ex, blink, -2, SPACE, 0)
 			_feet(fr, [-6, 4], 7, GRAV)
 
-## 蓝色大肥鱼：Q 版蓝鲸女仆，约三头身。照 Eric 给的设定画：深海蓝渐变长发、呆毛、斜刘海、蕾丝发箍和两枚蓝蝴蝶结、
-## 鲸鳍耳（内缘白色波浪褶边）、大眼睛、深蓝白女仆裙（高领衬衫、蓝宝石领结、蓬袖、小蓝鲸围裙、金色十字星）、
-## 白花边袜和深蓝玛丽珍鞋、身后一条双叉尾鳍的肥鲸尾。一格 = 一个精细像素
+## 蓝色大肥鱼：照 Eric 给的设定图画的 Q 版蓝鲸女仆。圈形呆毛、大荷叶边发箍、蓝蝴蝶结、下垂的深蓝鲸鳍耳（下缘白色绒边）、
+## 从深蓝渐变到浅蓝的大波浪长发、张嘴笑、深蓝长袖女仆裙（蓝宝石领结、小蓝鲸围裙、金色蝴蝶结）、白花边袜、深蓝玛丽珍鞋、
+## 身后翘起的鲸尾。一格 = 一个精细像素
 const WHALE_A := [
-	"................oIIo..........................",
-	"...............oIooIooooo.....................",
-	"..............ooWmWmWmWmWoo...................",
-	"...........o.oWmWWWWWWWWWmWo.o................",
-	"..........oCoCWWLLHHHHHLLWWCoCo...............",
-	"..o.......oHbWLLHHHHHHHHHLLWbHo.......o.......",
-	".oFo......oCHCHHHHHHHHHHHHHCHCo......oFo......",
-	".oFFo....oHHHHHHHHHHHHHHHHHHHHHo....oFFo......",
-	".oFFFoo..oHHHHIHHIHHIHHIHHHIHHHo..ooFFFo......",
-	"..oFFFFooHHIIIHHIHHIHIHHIHIHIIHHooFFFFo.......",
-	"..oFFFFFFHHIIHHIHHIHHHIHHIHHIIHHFFFFFFo.......",
-	"..owFFFFFFHIEEEEEESSSSSEEEEEEIHFFFFFFwo.......",
-	"...owwFFFFHIIExeeESSSSSExeeEIIHFFFFwwo......oo",
-	"....oowwFHHIIEeeeESSSSSEeeeEIIHHFwwTTTo....oTT",
-	"......ooHHHIIEeppESSSSSEeppEIIHHHoTTTTTo..oTTT",
-	".......oHHHIHEpqpESSSSSEpqpEHIHHHoTTTTTTooTTVT",
-	".......oHHHIrrEEESSSSSSSEEErrIHHHooUVTTTTTTTTU",
-	".......oHHHIHISSSSSSMSSSSSSIHIHHHo.oUUTTTTTTUo",
-	".......oHHHIHILDSSSSSSSSSDLIHIHHHo..oooTTTToo.",
-	"......oHHHHDddDDDDSSSSSDDDDddDHHHHo...oTTTo...",
-	"......oIIIhDDDDDDDWmgmWDDDDDDDhIIIo..oTTTTo...",
-	"......oIIIIDDDDDDDWmkmWDDDDDDDIIIIo..oTTTUo...",
-	"......oIIIhDDDDDWmWWWWWmWDDDDDhIIIo.oTTTTUo...",
-	"......oIIIIwwwwDWWWWWWWWWDwwwwIIIIo.oTTTTUo...",
-	"......oIIIhISSIDmWWWWWWWmDISSIhIIIooTTTTTUo...",
-	".....oIIIIIIIDDWWWWCWCWWWWDDIIIIIIITTTTTVo....",
-	".....oLLLLILDDdmWWWWCWWWWmDDDLILLLLTTTTTUo....",
-	".....oLLLLLDDdWWWWBBBWWWWWWDgDLLLLLTTTTUo.....",
-	".....oLLLLDDdDmWWBBBBBbWWWmdDDDLLLLTTTTVo.....",
-	".....oLLLDDdDWWWWWBBBBWWWWWWDDDdLLLTTTUo......",
-	".....oQQDDdDDmWWWWWWWWWWWWWmDDdDDQQTTVUo......",
-	"....oQoDDdDDWWWWWWWWWWWWWWWWWdDDDDQQUoo.......",
-	"....oQDDdDDDWmWmWmWmWmWmWmWmWDDDDdDQo.........",
-	"....oQwwwwwwwwwwwwwwwwwwwwwwwwwwwwwQo.........",
-	".....owmwmwmwmwmwmwmwmwmwmwmwmwmwmwo..........",
-	"......oooooooooooSSoooSSooooooooooo...........",
-	"................owwo.owwo.....................",
-	"...............oJwwJoJwwJo....................",
-	"...............oJgJJoJJgJo....................",
-	"...............ojJJjojJJjo....................",
-	"................oooo.oooo.....................",
+	".................oIIIo..........................",
+	"................oIooLIo.........................",
+	"................oIo.oIo.........................",
+	"...............oooIooooooo......................",
+	".............oomWmWmWmWmWmoo....................",
+	"..........ooomWWWWWWWWWWWWWmooo.................",
+	".........oHmWWWmmmmmmmmmmmWWWmHo................",
+	"........oHHWWmmHHHHHHHHHHHmmWWHHo...............",
+	".......oCCHCCHLLLHHHHHHHLLLHCCHCCo..............",
+	"......oHCCbCCLHHHHHHHHHHHHHLCCbCCHo.............",
+	".......oCHHHCHHHIHHHIHHHHHHHCHHHCo..............",
+	"....oooFFFFFHIHIHHHIHHHHIHIHHFFFFFooo...........",
+	"..ooFFFfffffIHIHHIHHHIHIHIHIIfffffFFFoo.........",
+	".oFFffffffffISSSSSISSSHSSSSSIffffffffFFo........",
+	"oFffffffffffEEEEEESSSSIEEEEEEffffffffffFo.......",
+	"offfffffffFIIExeeESSSSSExeeEIIFfffffffffo.......",
+	"owwwwwwwfFHIIEeEeESSSSSEeEeEIIHFfwwwwwwwo.......",
+	"omwmwmwwIIHIIEeeeESSSSSEeeeEIIHIIwwmwmwmo.......",
+	".oooooIIHIHIIEppqESSSSSEppqEIIHIIIHooooo........",
+	".....oIIHIHISSEEESSxMMSSEEESSIHHIIIo............",
+	"....ooIIHIHIrrSSSSSSnSSSSSSrrIHIHIIoo...........",
+	"...oIHIIIHHISIIISSSSSSSSSIIISIHIHIIHIo.......oo.",
+	"..oIIHIIIIHIDDDDdDDSSSdDDDDDDIIIHIIHTTo.....oTTo",
+	"..oIIIHIIIHIDDDDdDDZZDdDDDDDDIIIHIHITTTo...oTTTo",
+	"..oLLLLILLIDDDDDDdDoddmDDDDDDDLLIILLTTTToooTTTUo",
+	"...oLLLILLDDDDDDDDmWkWmDDDDDDDDILILLLTTTTTTTTUo.",
+	"...oLLLILIdgDDDDDDmWWWmDDDDDDgdLLILLLoUTTTTTUo..",
+	"...oLLLILIdDDDDDDDmWkWmDDDDDDDdLLILLLoooTTToo...",
+	"..oLLLILIwdDDDLDddgdddgddDLDDDdwLILLLLo.oTTTo...",
+	".oLLLLILwwwLDDDDmWWWWWWWmDDDDLwwwLILLLLoTTTTo...",
+	".oQQQLQSSQQQDDDmWWWCWCWWWmDDDQQLSSQLQQQoTTTUo...",
+	"..oQQLQQLQQDDDDWWWWWCWWWWWDDDDQLQQQLQQoTTTUUo...",
+	"...oQLQQQLDDDDWWWWWBBBWWWWWDDDDQLQQLQooTTTUUo...",
+	"....oLQQoDDDgGWWWWBBBBbWWWWGgDDDoQQLoTTTTTUUo...",
+	"....oQLQDDDDDmWWWWWBBWWWWWWmDDDDDQLQTTTTTUUo....",
+	"....oQQDgDDgWmWmWmWmWmWmWmWmWgDDgDTTTTTTTUUo....",
+	"....oQwwwwwwwwwwwwwwwwwwwwwwwwwwwwwTTTTTUUo.....",
+	"....oQwmwmwmwmwmwmwmwmwmwmwmwmwmwmwTTTTUUUo.....",
+	".....ooooooooooooSSoooSSTTTTTTTTTTTTTTUUUo......",
+	"...............owmwwowwmwTTTUUTTTTTTTUUoo.......",
+	"...............ogJJJoJJJgoTUUUUUUUUUUUo.........",
+	"...............ojJJjojJJjoooooUUUUoooo..........",
+	"................oooo.oooo.....oooo..............",
 ]
-const WHALE_MAP := {"B": [5, 3], "C": [5, 4], "D": [5, 2], "E": [5, 1], "F": [5, 3], "H": [5, 2], "I": [5, 3], "J": [5, 1], "L": [5, 4], "M": [11, 4], "Q": [8, 5], "S": [4, 6], "T": [5, 3], "U": [5, 4], "V": [9, 5], "W": [12, 6], "b": [5, 5], "d": [5, 1], "e": [5, 4], "g": [13, 5], "h": [5, 1], "j": [5, 0], "k": [5, 0], "m": [10, 5], "o": [5, 0], "p": [8, 4], "q": [8, 6], "r": [11, 6], "w": [12, 6], "x": [12, 6]}
+const WHALE_MAP := {"B": [5, 3], "C": [5, 4], "D": [5, 1], "E": [5, 1], "F": [5, 2], "G": [13, 4], "H": [5, 3], "I": [5, 4], "J": [5, 1], "L": [5, 5], "M": [15, 3], "Q": [8, 5], "S": [4, 6], "T": [5, 1], "U": [5, 3], "W": [12, 6], "Z": [8, 5], "b": [5, 5], "d": [5, 0], "e": [5, 3], "f": [5, 1], "g": [13, 5], "j": [5, 0], "k": [13, 5], "m": [10, 5], "n": [11, 5], "o": [5, 0], "p": [5, 4], "q": [8, 6], "r": [11, 6], "w": [12, 6], "x": [12, 6]}
 const WHALE_EYE := "Exepq"
 
 func _p_whale(fr: int, ex: int, blink: bool, frost: bool) -> void:
@@ -1338,28 +1340,28 @@ func _p_whale(fr: int, ex: int, blink: bool, frost: bool) -> void:
 				var ch := row[i]
 				if ch == ".":
 					continue
-				var eye := j >= 11 and j <= 16 and i >= 13 and i <= 27 and WHALE_EYE.contains(ch)
+				var eye := j >= 14 and j <= 19 and i >= 12 and i <= 28 and (i < 18 or i > 22) and WHALE_EYE.contains(ch)
 				if pass_ == 1 and not eye:
 					continue
 				if pass_ == 0 and eye:
-					ipx(i - 20, j - 20, CLAY, 6)
+					ipx(i - 20, j - 21, CLAY, 6)
 					continue
 				var q: Array = WHALE_MAP[ch]
 				var m: int = q[0]
 				var l: float = q[1]
 				if eye:
 					if blink:
-						if j != 14:
+						if j != 17:
 							continue
 						m = JELLY
 						l = 1
-					ipx(i - 20 + ex, j - 20, m, l, (ch == "x" or ch == "q") and not blink)
+					ipx(i - 20 + ex, j - 21, m, l, (ch == "x" or ch == "q") and not blink)
 					continue
 				# 走路：两只脚轮流抬起一格
 				var dy := 0
-				if j >= 35 and ((fr == 0 and i < 20) or (fr == 1 and i > 20)):
+				if j >= 38 and ((fr == 0 and i < 20) or (fr == 1 and i > 20)):
 					dy = -1
 				if frost and (ch == "H" or ch == "I" or ch == "W") and (i + j) % 2 == 0:
 					m = ICE
 					l = 6
-				ipx(i - 20, j - 20 + dy, m, l)
+				ipx(i - 20, j - 21 + dy, m, l)
