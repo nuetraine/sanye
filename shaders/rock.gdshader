@@ -10,6 +10,8 @@ uniform float amb = 0.08;
 uniform float time = 0.0;
 varying vec2 wpos;
 const vec3 SUNV = vec3(-0.5496, -0.4997, 0.6695);
+// 色调表：和 rock.gd 的 TINTS 一一对应
+const float TINT[8] = { 1.0, 10.0, 15.0, 12.0, 14.0, 9.0, 13.0, 5.0 };
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
@@ -48,9 +50,9 @@ void fragment() {
 		if (as && bs) t = a; else discard;
 	}
 	vec2 w = floor(wpos * 2.0);
-	int code = int(t.r * 255.0 / 30.0 + 0.5);
-	float tint = code >= 4 ? 10.0 : 1.0;
-	int v = code >= 4 ? code - 4 : code;
+	int code = int(t.r * 255.0 / 8.0 + 0.5);
+	int v = code & 3;
+	float tint = TINT[(code >> 2) & 7];
 	vec2 ng = t.gb;
 	if (cs && as) ng += (a.gb - c.gb) * 0.25;
 	if (cs && bs) ng += (b.gb - c.gb) * 0.25;

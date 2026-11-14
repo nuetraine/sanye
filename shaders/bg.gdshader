@@ -4,6 +4,7 @@ shader_type canvas_item;
 uniform vec2 cam;
 uniform float tide = 0.0;
 uniform float time = 0.0;
+uniform float chap = 1.0;
 uniform vec2 res = vec2(640.0, 360.0);
 
 float h2(vec2 p) {
@@ -35,6 +36,8 @@ void fragment() {
 	float l = pow(max(0.0, a - 0.35) * 2.3, 1.6) * 4.2;
 	if (c2 > 0.56 && c2 > a) { m = 2.0; l = (c2 - 0.56) * 9.0; }
 	if (hot > 0.45 && hot * 1.4 > l * 0.45) { m = 15.0; l = (hot - 0.45) * 4.5; }
+	// 第二章：星云换成墨紫色
+	if (chap > 1.5) { if (m == 2.0) m = 9.0; else if (m == 15.0) m = 11.0; }
 	float li = floor(l + b - 0.5);
 	vec4 col;
 	if (tide > 0.02 && b < tide) {

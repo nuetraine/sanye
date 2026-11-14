@@ -137,7 +137,7 @@ func _draw_hud_sprites(c: CanvasItem) -> void:
 		draw_clawd(0, 0, int(T * 4) % 2, 0, fmod(T, 3.0) < 0.15)
 	elif S == "codex":
 		var t: String = ORDER[codex_sel]
-		draw_portrait(t, 212, 58, 1 if t == "serp" else 2, known(t))
+		draw_portrait(t, 214, 58, 1 if t == "serp" else 2, known(t))
 	c.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 	no_cull = false
 
@@ -179,14 +179,17 @@ func draw_hud_play() -> void:
 	text_r(clock, W - 4, 2, 9, C_RED if dark else C_GOLD, C_SH)
 	draw_minimap(W - 46, 15, 42)
 	draw_sentence_hud()
-	text_r("书页 %d/3" % P.bound, W - 4, 59, 9, C_TEAL, C_SH)
+	draw_pen_hud()
+	text_r("%s书页 %d/3" % ["" if unlocked < 2 else ("一·" if chapter == 1 else "二·"), ch_bound()], W - 4, 59, 9, C_TEAL, C_SH)
 	# 首领血条
-	if serp and (serp.st == "fight" or serp.st == "rise"):
-		var hk := clampf(serp.hp / DEF.serp.hp, 0.0, 1.0)
-		text("回声蛇", W / 2.0, 3, 9, Color("#e57cb6"), C_SH)
-		box(W / 2.0 - 60, 15, 120, 4, C_SH, Pal.rc(SERP, 3))
-		rect(W / 2.0 - 59.5, 15.5, 119 * hk, 3, Pal.rc(SERP, 4))
-		rect(W / 2.0 - 59.5, 15.5, 119 * hk, 1, Pal.rc(SERP, 5))
+	var bs := boss()
+	if bs and (bs.st == "fight" or bs.st == "rise"):
+		var hk := clampf(bs.hp / DEF[bs.t].hp, 0.0, 1.0)
+		var bm := SERP if bs.t == "serp" else WINE
+		text(DEF[bs.t].name, W / 2.0, 3, 9, Pal.rc(bm, 5), C_SH)
+		box(W / 2.0 - 60, 15, 120, 4, C_SH, Pal.rc(bm, 3))
+		rect(W / 2.0 - 59.5, 15.5, 119 * hk, 3, Pal.rc(bm, 4))
+		rect(W / 2.0 - 59.5, 15.5, 119 * hk, 1, Pal.rc(bm, 5))
 	# 区域名
 	var z: String = ZNAME[zn(P.x, P.y)]
 	if z != zone_name:
@@ -220,7 +223,7 @@ func draw_hud_play() -> void:
 					hp(bx + 0.5, by + 0.5, C_SH)
 					hp(bx, by, col)
 	# 提示条：屏幕下方居中，带半透明底，不压到两边的按钮
-	var ty := H - 31.0
+	var ty := H - (46.0 if P.pens > 1 else 31.0)
 	var tw := minf(300.0, W - (110.0 if touch_mode else 40.0))
 	for i in range(toasts.size() - 1, -1, -1):
 		var t: Dictionary = toasts[i]
@@ -233,7 +236,7 @@ func draw_hud_play() -> void:
 			ty -= 12
 		ty -= 1
 	if S == "play" and near_kiln() and not touch_mode:
-		text("按 E 打开工坊", P.x - ox, P.y - oy - 22, 8, C_GOLD, C_SH, 0.8 + 0.2 * sin(T * 4))
+		text("按 E 打开工坊" if unlocked < 2 else "E 工坊 · G 翻到第%s章" % ("二" if chapter == 1 else "一"), P.x - ox, P.y - oy - 22, 8, C_GOLD, C_SH, 0.8 + 0.2 * sin(T * 4))
 
 ## 左下角的小句子：每格一个字，金色字发光
 func draw_sentence_hud() -> void:
@@ -294,8 +297,10 @@ func draw_minimap(x: float, y: float, s: float) -> void:
 	var cx := x + s / 2.0
 	var cy := y + s / 2.0
 	for r in rocks:
-		var c := Pal.rc(MIRROR if r.zone == "echo" else RUIN, 6 if r.R > 18 else 5)
-		if r.R > 18:
+		var c := Pal.rc(MIRROR if r.zone == "echo" else (WINE if r.box else RUIN), (4 if r.box else 6) if r.R > 18 else 5)
+		if r.box:
+			rect(snap(cx + (r.x - r.hw) * k), snap(cy + (r.y - r.hh) * k), maxf(0.5, snap(r.hw * 2 * k)), maxf(0.5, snap(r.hh * 2 * k)), c)
+		elif r.R > 18:
 			rect(snap(cx + r.x * k), snap(cy + r.y * k), 1, 1, c)
 		else:
 			hp(cx + r.x * k, cy + r.y * k, c)
@@ -308,8 +313,14 @@ func draw_minimap(x: float, y: float, s: float) -> void:
 			var qy := snap(cy + pg.y * k)
 			rect(qx - 0.5, qy - 1, 1.5, 2, Pal.rc(ORE, 4))
 			rect(qx, qy - 0.5, 0.5, 1, Pal.rc(ORE, 6))
-	if serp and serp.st == "fight":
-		rect(snap(cx + serp.x * k) - 0.5, snap(cy + serp.y * k) - 0.5, 1.5, 1.5, Pal.rc(SERP, 6))
+	for q in INK:
+		rect(snap(cx + q.x * k) - 0.5, snap(cy + q.y * k) - 0.5, 1.5 if q.z > 30 else 1.0, 1.5 if q.z > 30 else 1.0, Pal.rc(GRAV, 3))
+	for l in LAMPS:
+		if l.lit > 0:
+			hp(cx + l.x * k, cy + l.y * k, Pal.rc(GOLD, 6))
+	var bs := boss()
+	if bs and bs.st == "fight":
+		rect(snap(cx + bs.x * k) - 0.5, snap(cy + bs.y * k) - 0.5, 1.5, 1.5, Pal.rc(SERP, 6))
 	var px := snap(cx + P.x * k)
 	var py := snap(cy + P.y * k)
 	if sin(T * 8) > 0:
@@ -322,7 +333,8 @@ func touch_btn(i: int) -> Rect2:
 	match i:
 		0: return Rect2(W - 42, H - 42, 36, 36)
 		1: return Rect2(W - 42, H - 76, 36, 30)
-		_: return Rect2(W - 42, H - 110, 36, 30)
+		2: return Rect2(W - 42, H - 110, 36, 30)
+		_: return Rect2(W - 82, H - 36, 36, 30)
 
 func draw_touch_ui() -> void:
 	for t in touches.values():
@@ -333,14 +345,16 @@ func draw_touch_ui() -> void:
 				hp(st.x + cos(a) * 18, st.y + sin(a) * 18, Pal.rc(RUIN, 6))
 			var kp: Vector2 = st + joy * 18
 			box(kp.x - 3, kp.y - 3, 6, 6, Pal.rc(CLAY, 4), Pal.rc(CLAY, 6))
-	var names := ["冲", "烬", "坊" if near_kiln() else "标"]
-	var mats := [CLAY, EMBER, GOLD]
-	for i in 3:
+	var names := ["冲", "烬", "坊" if near_kiln() else "标", "翻章"]
+	var mats := [CLAY, EMBER, GOLD, ORE]
+	for i in 4:
 		if i == 2 and not near_kiln() and P.beacons == 0:
+			continue
+		if i == 3 and not (near_kiln() and unlocked >= 2):
 			continue
 		var r := touch_btn(i)
 		box(r.position.x, r.position.y, r.size.x, r.size.y, Color(0.04, 0.04, 0.1, 0.55), Pal.rc(mats[i], 4))
-		text(names[i], r.get_center().x, r.get_center().y - 8, 12, C_TXT if i == 0 else C_GOLD, C_SH)
+		text(names[i], r.get_center().x, r.get_center().y - (8 if i < 3 else 6), 12 if i < 3 else 9, C_TXT if i == 0 else C_GOLD, C_SH)
 
 func draw_menu() -> void:
 	box(12, 8, 296, 164, C_PANEL, Pal.rc(CLAY, 4))
@@ -401,23 +415,23 @@ func draw_codex() -> void:
 	for t in ORDER:
 		if known(t):
 			n += 1
-	text("星海生物图鉴  %d/8" % n, 160, 11, 11, C_GOLD, C_SH, 1.0, true)
+	text("星海生物图鉴  %d/%d" % [n, ORDER.size()], 160, 11, 11, C_GOLD, C_SH, 1.0, true)
 	for i in ORDER.size():
 		var t: String = ORDER[i]
-		var y := 34 + i * 16
+		var r := codex_rect(i)
 		if i == codex_sel:
-			rect(14, y - 2, 96, 15, Pal.rc(RUIN, 3))
-		text_l(DEF[t].name if known(t) else "？？？", 20, y - 1, 10, C_TXT if known(t) else C_DIM, C_SH)
+			rect(r.position.x, r.position.y, r.size.x, r.size.y, Pal.rc(RUIN, 3))
+		text_l(DEF[t].name if known(t) else "？？？", r.position.x + 3, r.position.y + 1, 9, (C_RED if is_boss_t(t) else C_TXT) if known(t) else C_DIM, C_SH)
 	var t: String = ORDER[codex_sel]
 	if known(t):
-		text(DEF[t].name, 212, 85, 12, C_GOLD, C_SH, 1.0, true)
-		text(LORE[t][0], 212, 101, 9, C_TEAL, C_SH)
+		text(DEF[t].name, 214, 85, 12, C_GOLD, C_SH, 1.0, true)
+		text(LORE[t][0], 214, 101, 9, C_TEAL, C_SH)
 		var ls := wrap_text(LORE[t][1], 9, 180)
 		for i in ls.size():
-			text(ls[i], 212, 113 + i * 11, 9, C_TXT, C_SH)
+			text(ls[i], 214, 113 + i * 11, 9, C_TXT, C_SH)
 	else:
-		text("还没遇到过。去更远的地方找找。", 212, 100, 9, C_DIM, C_SH)
-	text("点名字查看 · 点外面关闭" if touch_mode else "W/S 或鼠标选择 · Tab 关闭", 160, 158, 8, C_DIM, C_SH)
+		text("还没遇到过。去更远的地方找找。", 214, 100, 9, C_DIM, C_SH)
+	text("点名字查看 · 点外面关闭" if touch_mode else "WASD 或鼠标选择 · Tab 关闭", 160, 158, 8, C_DIM, C_SH)
 
 ## 图鉴肖像：用同一套绘制函数，画在放大的坐标系里
 func draw_portrait(t: String, cx: float, cy: float, sc: int, k: bool) -> void:
@@ -431,6 +445,7 @@ func draw_portrait(t: String, cx: float, cy: float, sc: int, k: bool) -> void:
 	dm.open = 1
 	dm.ang = PI * 0.75
 	dm.na = -PI / 2
+	dm.r = DEF[t].r
 	if t == "leech":
 		for i in range(12, 0, -1):
 			dm.tr.append(-i * 1.2)
@@ -439,6 +454,16 @@ func draw_portrait(t: String, cx: float, cy: float, sc: int, k: bool) -> void:
 		dm.st = "fight"
 		for i in 12:
 			dm.seg.append(Vector2(-6 - i * 4.5, sin(T * 2 + i * 0.6) * 3))
+	if t == "worm":
+		dm.ang = 0
+		dm.x = 8
+		for i in 7:
+			dm.seg.append(Vector2(8 - (i + 1) * 3.4, sin(T * 3 + i * 0.8) * 1.6))
+	if t == "redact":
+		dm.st = "fight"
+		dm.ha = T * 0.6
+	if t == "blot":
+		dm.sp = 0.5 + 0.5 * sin(T * 3)
 	if t == "clam":
 		dm.y = 3
 	cv.draw_set_transform((PO + Vector2(cx, cy)) * U, 0, Vector2(sc * U, sc * U))
@@ -452,18 +477,22 @@ func draw_ending() -> void:
 	dim()
 	OFS = PO
 	box(50, 28, 220, 128, C_PANEL, Pal.rc(GOLD, 4))
-	text("第一章 · 已装订", 160, 36, 14, C_GOLD, C_SH, 1.0, true)
+	text("%s · 已装订" % ("第一章" if chapter == 1 else "第二章"), 160, 36, 14, C_GOLD, C_SH, 1.0, true)
 	var lines := [
 		"用时  %d 分 %d 秒" % [int(gt / 60), int(fmod(gt, 60))],
 		"碎掉过  %d 次" % P.deaths,
 		"熬过暗潮  %d 次" % tides,
-		"遇见生物  %d / 8 种" % seen.size(),
+		"遇见生物  %d / %d 种" % [seen.size(), ORDER.size()],
 		"拾回页尘  %d" % P.dust_total,
 	]
 	for i in lines.size():
 		text(lines[i], 160, 61 + i * 13, 10, C_TXT, C_SH)
-	text("图书馆的第一层亮了。还有九千九百九十九层。", 160, 127, 9, C_TEAL, C_SH)
-	text("%s 继续自由探索" % ("点一下" if touch_mode else "Enter / 点击"), 160, 140, 8, C_DIM, C_SH, 0.6 + 0.4 * sin(T * 3))
+	if chapter == 1:
+		text("图书馆的第一层亮了。再往里，是阅览室的残骸。", 160, 127, 9, C_TEAL, C_SH)
+		text("%s 前往第二章" % ("点一下" if touch_mode else "Enter / 点击"), 160, 140, 8, C_GOLD, C_SH, 0.6 + 0.4 * sin(T * 3))
+	else:
+		text("图书馆的第二层亮了。还有九千九百九十八层。", 160, 127, 9, C_TEAL, C_SH)
+		text("%s 继续自由探索" % ("点一下" if touch_mode else "Enter / 点击"), 160, 140, 8, C_DIM, C_SH, 0.6 + 0.4 * sin(T * 3))
 
 func draw_title() -> void:
 	dim()
@@ -507,3 +536,28 @@ func draw_dead() -> void:
 		dim()
 		text("小克碎了", W / 2.0, H / 2.0 - 20, 16, C_CLAY, C_SH, a, true)
 		text("炉灯正在把它重新烧好……", W / 2.0, H / 2.0 + 6, 10, C_DIM, C_SH, a)
+
+func pen_rect() -> Rect2:
+	# 左下角句子上方的“笔”按钮
+	return Rect2(4, H - 33, 44, 13)
+
+func draw_pen_hud() -> void:
+	if P.pens <= 1:
+		return
+	var r := pen_rect()
+	box(r.position.x, r.position.y, r.size.x, r.size.y, Color(0.03, 0.03, 0.08, 0.75), Pal.rc(CLAY, 4))
+	if P.pen == 4 and P.charge > 0:
+		rect(r.position.x + 0.5, r.position.y + r.size.y - 2, (r.size.x - 1) * P.charge, 1.5, Pal.rc(GOLD if P.charge >= 1.0 else EMBER, 5))
+	text_l(PENS[P.pen].name, r.position.x + 3, r.position.y + 0.5, 9, C_CLAY, C_SH)
+	for i in P.pens:
+		rect(r.position.x + 25 + i * 3.5, r.position.y + 5.5, 2.5, 2.5, Pal.rc(CLAY, 6) if i == P.pen else Pal.rc(RUIN, 6))
+	if not touch_mode:
+		text_l("R 换笔", r.position.x + r.size.x + 3, r.position.y + 1.5, 8, C_DIM, C_SH)
+
+func codex_rect(i: int) -> Rect2:
+	# 图鉴名单：左边两列，每列 7 个
+	return Rect2(12 + (i / 7) * 50, 32 + (i % 7) * 16, 49, 15)
+
+func is_boss_t(t: String) -> bool:
+	return t == "serp" or t == "redact"
+

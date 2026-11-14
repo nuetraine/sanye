@@ -125,9 +125,21 @@ func ball(cx: float, cy: float, r: float, m: int, base: float, sh: int, alpha :=
 # ---------- 暖圈 ----------
 func _draw_zones(c: CanvasItem) -> void:
 	cv = c
+	for q in INK:
+		if not on_screen(q.x, q.y, q.z + 6):
+			continue
+		sd(bake("ink|%d" % int(q.z), q.z + 2, q.z + 2, _p_ink.bind(q.z)), q.x, q.y)
+		# 墨面上慢慢游动的反光
+		for i in 7:
+			var a: float = T * (0.25 + i * 0.03) + i * 1.9 + q.x
+			var rr: float = q.z * (0.25 + 0.09 * i)
+			sp(q.x + cos(a) * rr, q.y + sin(a * 1.3) * rr * 0.8, GRAV, 4 if i % 2 == 0 else 3, 0, 1.0 if i % 3 == 0 else 0.5)
 	draw_ring(0, 0, kiln_r(), GOLD)
 	for b in BEA:
 		draw_ring(roundi(b.x), roundi(b.y), 56, EMBER)
+	for l in LAMPS:
+		if l.lit > 0:
+			draw_ring(roundi(l.x), roundi(l.y), 40, GOLD)
 
 ## 暖圈：一圈缓缓转动的虚线 + 圈里稀疏的暗红点
 func draw_ring(x: int, y: int, r: float, m: int) -> void:
@@ -155,11 +167,12 @@ func _draw_world(c: CanvasItem) -> void:
 	cv = c
 	draw_kiln()
 	draw_beacons()
+	draw_lamps()
 	draw_pages()
 	draw_cocoon()
 	draw_pickups()
 	for cc in cr:
-		if cc.dead or not on_screen(cc.x, cc.y, 30):
+		if cc.dead or not on_screen(cc.x, cc.y, 40):
 			continue
 		var sh := shift_at(cc.x, cc.y)
 		if cc.t == "moth":
@@ -167,8 +180,17 @@ func _draw_world(c: CanvasItem) -> void:
 		if cc.flash > 0:
 			sh = 2
 		draw_creature(cc, sh)
+		if cc.mark > 0 and sin(T * 12) > -0.4:
+			# “蚀”的记号
+			sp(cc.x - 0.5, cc.y - cc.r - 5, GRAV, 6, 0, 1.0)
+			sp(cc.x - 0.25, cc.y - cc.r - 6, GRAV, 5)
+			sp(cc.x - 0.25, cc.y - cc.r - 3.5, GRAV, 5)
+	draw_hazards()
 	draw_bullets()
+	draw_bombs()
 	draw_player()
+	draw_aim()
+	draw_fx()
 	draw_particles()
 	if S == "ending":
 		draw_ending_world()
@@ -183,6 +205,11 @@ func draw_creature(cc: Creature, sh: int) -> void:
 		"grav": draw_grav(cc, sh)
 		"mite": draw_mite(cc, sh)
 		"serp": draw_serp(cc, sh)
+		"comma": draw_comma(cc, sh)
+		"blot", "blotlet": draw_blot(cc, sh)
+		"worm": draw_worm(cc, sh)
+		"wisp": draw_wisp(cc, sh)
+		"redact": draw_redact(cc, sh)
 
 # ---------- 书页 ----------
 func _p_page(s: float) -> void:
@@ -309,7 +336,7 @@ func draw_kiln() -> void:
 			var l := floorf(f * 3.6 + 1 + Pal.bay(ii, jj) * 0.6)
 			sp(x, y, GOLD if l >= 4 else EMBER, minf(6, l))
 	for i in P.bound:
-		var a := T * 0.8 + i * TAU / 3
+		var a := T * 0.8 + i * TAU / maxi(3, P.bound)
 		draw_page_icon(cos(a) * 22, -6 + sin(a) * 8)
 
 # ---------- 信标 ----------
@@ -767,3 +794,377 @@ func draw_clam(c: Creature, sh: int) -> void:
 	sd(bake("clam|%d|%d|%s" % [ai, oi, pearl], 8, 8, _p_clam.bind(ai, oi, pearl)), c.x, c.y, sh)
 	if c.flash > 0:
 		sp(c.x - 0.5, c.y - 0.5, PAPER, 6, 0, 1.0)
+
+func _p_ink(r: float) -> void:
+	# 墨池：边缘不规则的一摊黑，边上一圈发紫
+	var R := ceili(r * 2.0)
+	for jj in range(-R, R):
+		for ii in range(-R, R):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			var d := sqrt(x * x + y * y)
+			var a := atan2(y, x)
+			var rr := r * (0.84 + 0.16 * Pal.n2(cos(a) * 2.2 + r, sin(a) * 2.2))
+			if d > rr:
+				continue
+			if d > rr - 1.0:
+				ipx(ii, jj, GRAV, 3)
+			elif d > rr - 2.5:
+				ipx(ii, jj, GRAV, 2 if Pal.bay(ii, jj) > 0.4 else 1)
+			else:
+				var n := Pal.n2(x * 0.22 + r, y * 0.22)
+				ipx(ii, jj, GRAV if n > 0.62 else SPACE, 1 if n > 0.62 else 0)
+
+func _p_lamp(lit: bool) -> void:
+	for jj in range(-16, 9):
+		for ii in range(-1, 1):
+			ipx(ii, jj, MIRROR, 3 if ii < 0 else 2)
+	for jj in range(9, 11):
+		for ii in range(-5, 5):
+			ipx(ii, jj, MIRROR, 3 if jj == 9 else 1)
+	for jj in range(-26, -16):
+		for ii in range(-5, 5):
+			var edge := ii == -5 or ii == 4 or jj == -26 or jj == -17
+			if edge:
+				ipx(ii, jj, MIRROR, 4 if ii < 0 or jj == -26 else 2)
+			elif lit:
+				var core := absi(ii * 2 + 1) < 5 and jj > -24
+				ipx(ii, jj, GOLD if core else EMBER, 6 if core else 5, true)
+			else:
+				ipx(ii, jj, RUIN, 3 if (ii + jj) % 3 else 4)
+	for ii in range(-3, 3):
+		ipx(ii, -27, MIRROR, 3)
+	ipx(-1, -28, MIRROR, 4)
+	ipx(0, -28, MIRROR, 3)
+
+func draw_lamps() -> void:
+	for l in LAMPS:
+		if not on_screen(l.x, l.y, 20):
+			continue
+		var lit: bool = l.lit > 0 and (l.lit > 6 or sin(T * 18) > 0)
+		sd(bake("lamp|%s" % lit, 3.5, 15, _p_lamp.bind(lit)), l.x, l.y, 0 if lit else maxi(-2, shift_at(l.x, l.y)))
+		if lit:
+			for i in 3:
+				var a: float = T * 2.0 + i * 2.1
+				sp(l.x + cos(a) * 4, l.y - 10.5 + sin(a) * 3, GOLD, 5)
+
+func draw_hazards() -> void:
+	for h in HZ:
+		var ca := cos(h.a)
+		var sa := sin(h.a)
+		if h.t > 0:
+			# 预告：一条闪烁的细虚线，越接近落下越密
+			var gap := 3 if h.t > 0.35 else 1
+			var u: float = -h.len
+			var i := 0
+			while u <= h.len:
+				if (i + int(T * 14)) % (gap + 2) < 2:
+					sp(h.x + ca * u, h.y + sa * u, WINE, 6)
+				u += 1.0
+				i += 1
+		elif h.dmg:
+			# 删除线落下：一道粗黑杠，中间一线白
+			var k: float = 1.0 + h.t / 0.3
+			var w: float = maxf(1.0, h.w * 2.0 * k)
+			var u: float = -h.len
+			while u <= h.len:
+				var x: float = h.x + ca * u
+				var y: float = h.y + sa * u
+				if on_screen(x, y, 8):
+					sr(x - w / 2.0, y - w / 2.0, w, w, SPACE, 0)
+				u += 2.0
+			u = -h.len
+			while u <= h.len:
+				sp(h.x + ca * u - 0.5, h.y + sa * u - 0.5, PAPER if k > 0.5 else WINE, 6, 0, 1.0)
+				u += 1.0
+
+func draw_bombs() -> void:
+	for b in BM:
+		ball(b.x, b.y, 2.5, GRAV, 3, 0)
+		sp(b.x - 1, b.y - 1, PAPER, 6)
+		sp(b.x - b.vx * 0.02, b.y - b.vy * 0.02 - 2, GOLD if sin(T * 40) > 0 else EMBER, 6)
+
+func draw_fx() -> void:
+	for f in FX:
+		var k: float = f.t / f.max
+		match f.k:
+			"slash":
+				# 一弯刀光，从一头扫到另一头
+				var n := 34
+				for i in n:
+					var u := float(i) / (n - 1)
+					if absf(u - (1.0 - k)) > 0.4:
+						continue
+					var a: float = f.a - 1.0 + 2.0 * u
+					var thick := 1.0 - absf(u - (1.0 - k)) / 0.4
+					for q in 4:
+						var rr: float = f.r * (0.66 + q * 0.11)
+						if q < 3 and thick < 0.3 + q * 0.15:
+							continue
+						sp(f.x + cos(a) * rr - 0.5, f.y + sin(a) * rr - 0.5, PAPER if q == 3 else f.m, 6 if q >= 2 else 4 + q, 0, 1.0)
+			"boom":
+				var rr: float = f.r * (1.0 - k * 0.75)
+				var n := int(rr * 5)
+				for i in n:
+					var a := float(i) / n * TAU
+					if Pal.bay(i, i / 4) > k + 0.25:
+						continue
+					sp(f.x + cos(a) * rr - 0.5, f.y + sin(a) * rr - 0.5, f.m, 6, 0, 1.0)
+					sp(f.x + cos(a) * rr * 0.86, f.y + sin(a) * rr * 0.86, PAPER, 6)
+					if i % 3 == 0:
+						sp(f.x + cos(a) * rr * 0.6, f.y + sin(a) * rr * 0.6, f.m, 4)
+			"beam":
+				var dv := Vector2(f.x1 - f.x, f.y1 - f.y)
+				var L := maxf(0.001, dv.length())
+				var u := dv / L
+				var w: float = maxf(0.5, snap(f.w * 2.0 * k + 0.5))
+				var s := 0.0
+				while s < L:
+					var px: float = f.x + u.x * s
+					var py: float = f.y + u.y * s
+					if on_screen(px, py, 6):
+						sr(px - w / 2.0, py - w / 2.0, w, w, f.m, 6 if k > 0.5 else 5)
+						if w > 1.0:
+							sp(px - 0.25, py - 0.25, PAPER, 6)
+					s += maxf(0.5, w * 0.5)
+
+func draw_aim() -> void:
+	# 砚雷的落点 / 墨线的蓄力
+	if S != "play":
+		return
+	if P.pen == 3 and not touch_mode:
+		var d := clampf(P.aim_d, 30.0, 150.0)
+		var x := P.x + P.ax * d
+		var y := P.y + P.ay * d
+		for i in 4:
+			var a := i * PI / 2 + T * 2
+			sp(x + cos(a) * 3, y + sin(a) * 3, GOLD, 5)
+	if P.pen == 4 and P.charge > 0:
+		var m := pen_mat()
+		var n := int(8 + 40 * P.charge)
+		for i in n:
+			if (i + int(T * 30)) % 3 == 0:
+				continue
+			sp(P.x + P.ax * (8 + i * 3), P.y + P.ay * (8 + i * 3), m, 3 + int(P.charge * 3))
+		var rr := 14.0 * (1.0 - P.charge) + 5.0
+		for i in 8:
+			var a := T * 7 + i * TAU / 8
+			sp(P.x + cos(a) * rr - 0.25, P.y + sin(a) * rr - 0.25, m if i % 2 else PAPER, 6, 0, 1.0 if P.charge >= 1.0 else 0.5)
+
+func _p_comma(f: int, aim: bool) -> void:
+	# 逗号蜂：圆脑袋拖着一撇尾巴，黑黄相间
+	var m := EMBER if aim else GOLD
+	for q in 20:
+		var t := q / 19.0
+		var x := 0.6 - t * t * 3.4
+		var y := 0.8 + t * 5.0
+		var wd := 1.7 * (1 - t) + 0.25
+		var dark := q % 6 >= 3
+		var ii := -wd
+		while ii <= wd:
+			ip(x + ii, y, SPACE if dark else m, 2 if dark else (5 if ii < 0 else 4))
+			ii += 0.5
+	for jj in range(-7, 5):
+		for ii in range(-6, 6):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25 + 0.5
+			var d2 := x * x + y * y
+			if d2 > 8.0:
+				continue
+			var l := 4
+			if x + y < -1.2:
+				l = 5
+			if d2 > 5.6:
+				l = 3 if x + y > 0 else 5
+			ipx(ii, jj, m, l)
+	for e in [-3, 1]:
+		ipx(e, -3, PAPER, 6, true)
+		ipx(e + 1, -3, PAPER, 6, true)
+		ipx(e, -2, PAPER, 6, true)
+		ipx(e + 1, -2, SPACE, 0)
+	# 翅膀
+	for q in 7:
+		for s in [-1, 1]:
+			var wx: float = s * (2.0 + q * 0.5)
+			var wy: float = (-3.0 - q * 0.45) if f == 0 else (-2.0 - q * 0.1)
+			ip(wx, wy, MIRROR, 6 - q * 0.4)
+			ip(wx, wy + 0.5, MIRROR, 4 - q * 0.4)
+
+func draw_comma(c: Creature, sh: int) -> void:
+	var f := int(c.age * 22) % 2
+	var aim := c.st == "aim"
+	sd(bake("comma|%d|%s" % [f, aim], 5, 7, _p_comma.bind(f, aim)), c.x, c.y + sin(c.age * 5) * 0.8, 0 if aim else sh, c.flash > 0)
+
+func _p_blot(f: int, small: bool, hop: int) -> void:
+	# 墨团：一坨会晃的墨，边上发紫，两只青色的眼睛
+	var r := 4.0 if small else 7.0
+	var sq := 1.0 + hop * 0.12
+	var R := ceili(r * 2.0) + 4
+	for jj in range(-R, R):
+		for ii in range(-R, R):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			var a := atan2(y, x)
+			var rr := r * (0.86 + 0.14 * sin(a * 3 + f / 6.0 * TAU) + 0.05 * sin(a * 7 - f / 6.0 * TAU * 2))
+			var e := sqrt(x * x / (sq * sq) + y * y * sq * sq)
+			if e > rr:
+				continue
+			if e > rr - 0.8:
+				ipx(ii, jj, GRAV, 5 if x + y < 0 else 3)
+			elif e > rr - 1.8:
+				ipx(ii, jj, GRAV, 2)
+			else:
+				ipx(ii, jj, SPACE, 1 if Pal.bay(ii, jj) > 0.7 else 0)
+	# 高光
+	var hl := r * 0.45
+	ip(-hl, -hl, PAPER, 6)
+	ip(-hl + 0.5, -hl, PAPER, 5)
+	ip(-hl, -hl + 0.5, GRAV, 6)
+	for e in [-1.0, 1.0]:
+		var ex: float = e * r * 0.3
+		ip(ex, 0, ORE, 6, true)
+		ip(ex - 0.5, 0, ORE, 6, true)
+		if not small:
+			ip(ex, 0.5, ORE, 5, true)
+			ip(ex - 0.5, 0.5, ORE, 5, true)
+	# 往下滴的墨
+	for q in 3:
+		var dx := (q - 1) * r * 0.5
+		for t in 2 + (q + f) % 3:
+			ip(dx, r * 0.8 + t * 0.5, GRAV, 2)
+
+func draw_blot(c: Creature, sh: int) -> void:
+	var small := c.t == "blotlet"
+	var f := int(c.age * 6) % 6
+	var hop := clampi(roundi(c.sp * 2.0), 0, 2)
+	sd(bake("blot|%d|%s|%d" % [f, small, hop], 9 if not small else 6, 9 if not small else 6, _p_blot.bind(f, small, hop)), c.x, c.y - hop * 1.5, maxi(sh, -1), c.flash > 0)
+
+func draw_worm(c: Creature, sh: int) -> void:
+	# 书虫：一节一节的纸色身子，戴着一副小眼镜
+	var n := c.seg.size()
+	for i in range(n - 1, -1, -1):
+		var sg := c.seg[i]
+		ball(sg.x, sg.y, 3.0 - i * 0.2, PAPER if i % 2 == 0 else MOTH, 4 if i % 2 == 0 else 3, sh)
+	var fl := c.flash > 0
+	ball(c.x, c.y, 3.6, PAPER, 6 if fl else 5, 0 if fl else sh)
+	var fx := cos(c.ang)
+	var fy := sin(c.ang)
+	for s in [-1.0, 1.0]:
+		var ex: float = c.x + fx * 1.3 - fy * s * 1.6
+		var ey: float = c.y + fy * 1.3 + fx * s * 1.6
+		sp(ex - 0.75, ey - 0.75, ORE, 6, 0, 1.5)
+		sp(ex - 0.25, ey - 0.25, SPACE, 0)
+		# 大颚
+		var bite := 0.6 + 0.5 * sin(c.age * 14)
+		sp(c.x + fx * 4.0 - fy * s * bite - 0.25, c.y + fy * 4.0 + fx * s * bite - 0.25, WINE, 5)
+		sp(c.x + fx * 4.6 - fy * s * bite * 0.6 - 0.25, c.y + fy * 4.6 + fx * s * bite * 0.6 - 0.25, WINE, 4)
+
+func _p_wisp(f: int) -> void:
+	# 灯魇：一缕倒挂的冷火
+	var ph := f / 8.0 * TAU
+	for jj in range(-16, 14):
+		var y := jj * 0.5 + 0.25
+		var t := (y + 8.0) / 15.0
+		var wd := 5.2 * sin(clampf(t, 0.0, 1.0) * PI * 0.62 + 0.25) * (1.0 if y < 3 else 1.0 - (y - 3) / 5.0)
+		var sway := sin(ph + y * 0.5) * 0.9 * t
+		for ii in range(-14, 14):
+			var x := ii * 0.5 + 0.25
+			var e := absf(x - sway)
+			if e > wd:
+				continue
+			var rim := e > wd - 0.9
+			if not rim and Pal.bay(ii, jj) > 0.6:
+				continue
+			# 底下撕成几缕
+			if y > 3 and int(floorf((x - sway) * 1.0 + 20.0 + f * 0.25)) % 2 == 0:
+				continue
+			ipx(ii, jj, JELLY, 5 if rim else 3, rim)
+
+func draw_wisp(c: Creature, _sh: int) -> void:
+	var f := int(c.age * 7) % 8
+	var by := sin(c.age * 3) * 1.2
+	if c.open > 0.08:
+		sd(bake("wisp|%d" % f, 8, 9, _p_wisp.bind(f)), c.x, c.y + by, 0, c.flash > 0, c.open)
+	# 眼睛：暗处只看得见这个
+	if c.open > 0.5 or sin(c.age * 1.7 + c.ph) > -0.75:
+		for s in [-1.0, 1.0]:
+			sp(c.x + s * 1.8 - 0.5, c.y + by - 2.5, GOLD, 6, 0, 1.0)
+			sp(c.x + s * 1.8 - 0.5, c.y + by - 2.0, EMBER, 5, 0, 0.5)
+
+func _p_redact(ei: int, lid: int) -> void:
+	# 删节者：一块厚重的黑条，中间睁着一只眼。lid：0 全睁 1 半睁 2 闭眼
+	var HW := 34
+	var HH := 14
+	for jj in range(-HH, HH):
+		for ii in range(-HW, HW):
+			# 两头撕得参差不齐
+			var tear := int(Pal.n2(jj * 0.9, 3.7) * 5.0)
+			if ii < -HW + tear or ii >= HW - int(Pal.n2(jj * 0.9, 9.1) * 5.0):
+				continue
+			var edge := jj == -HH or jj == HH - 1
+			var l := 0.0
+			var m := SPACE
+			if edge or jj == -HH + 1:
+				m = MIRROR
+				l = 5 if jj < 0 else 2
+			elif ii < -HW + tear + 2 or ii >= HW - int(Pal.n2(jj * 0.9, 9.1) * 5.0) - 2:
+				m = MIRROR
+				l = 3
+			elif (jj + HH) % 6 == 3 and absi(ii) > 13 and (ii + jj * 7) % 11 != 0:
+				# 被涂掉的一行行字
+				m = RUIN
+				l = 5
+			ipx(ii, jj, m, l)
+	# 眼睛
+	var a := ei / 16.0 * TAU
+	var px := roundi(cos(a) * 4.0)
+	var py := roundi(sin(a) * 2.0)
+	for jj in range(-9, 9):
+		for ii in range(-13, 13):
+			var x := (ii + 0.5) / 12.5
+			var y := (jj + 0.5) / 8.5
+			var open := 1.0 if lid == 0 else (0.45 if lid == 1 else 0.12)
+			if x * x + y * y / (open * open) > 1.0:
+				continue
+			if lid == 2:
+				ipx(ii, jj, WINE, 4)
+				continue
+			var dx := ii - px
+			var dy := jj - py
+			var d2 := dx * dx + dy * dy
+			if d2 <= 5:
+				ipx(ii, jj, SPACE, 0)
+			elif d2 <= 22:
+				ipx(ii, jj, WINE, 5 if dx + dy < 0 else 4, true)
+			else:
+				ipx(ii, jj, PAPER, 6 if jj < 3 else 5, true)
+	if lid < 2:
+		ipx(px - 2, py - 2, PAPER, 6, true)
+
+func draw_redact(c: Creature, sh: int) -> void:
+	if c.st == "dead":
+		return
+	var lid := 0
+	if c.st == "sleep":
+		lid = 2
+	elif c.st == "rise":
+		lid = 1
+	elif fmod(c.age, 3.1) < 0.12:
+		lid = 1
+	var ei := posmod(roundi(c.ha / TAU * 16.0), 16)
+	var x := c.x
+	var y := c.y + sin(c.age * 1.4) * 1.5
+	if c.st == "rise":
+		x += (randf() - 0.5) * 2
+	sd(bake("redact|%d|%d" % [ei if lid < 2 else 0, lid], 17.5, 7.5, _p_redact.bind(ei if lid < 2 else 0, lid)), x, y, 0 if c.st != "sleep" else maxi(sh, -1), c.flash > 0)
+	if c.st == "sleep":
+		return
+	# 绕着它转的碎字：一小段一小段被划掉的横线
+	for i in 10:
+		var a := c.age * (0.9 if i % 2 == 0 else -0.7) + i * TAU / 10
+		var rr := 24.0 + (i % 3) * 4
+		var qx := x + cos(a) * rr
+		var qy := y + sin(a) * rr * 0.55
+		sr(qx - 2, qy, 4, 0.5, RUIN, 6)
+		sr(qx - 2.5, qy + 0.5, 5, 0.5, WINE if c.sing > 0 else SPACE, 5 if c.sing > 0 else 0)
+

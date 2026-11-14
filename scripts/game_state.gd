@@ -18,17 +18,26 @@ const SUNV := Vector3(-0.5496, -0.4997, 0.6695)
 
 enum { SPACE, ROCK, ORE, EMBER, CLAY, JELLY, MOTH, LEECH, ICE, GRAV, MIRROR, SERP, PAPER, GOLD, RUIN, WINE }
 
-const ZNAME := {"shallow": "浅页带", "leech": "蛭环", "nursery": "坍缩苗圃", "echo": "回声深处", "drift": "冷寂漂流区"}
+const ZNAME := {
+	"shallow": "浅页带", "leech": "蛭环", "nursery": "坍缩苗圃", "echo": "回声深处", "drift": "冷寂漂流区",
+	"hall": "前厅", "stacks": "书架迷宫", "dark": "熄灯区", "ink": "墨海",
+}
+## m = 打散时迸出的碎屑颜色；as = 在图鉴里算作哪一种
 const DEF := {
-	"hush": {"name": "静默水母", "hp": 3, "r": 6, "dust": 3, "ember": 0.0},
-	"folio": {"name": "书鳐", "hp": 8, "r": 7, "dust": 10, "ember": 0.0},
-	"clam": {"name": "冰核贝", "hp": 2, "r": 5, "dust": 2, "ember": 3.0},
-	"moth": {"name": "蚀字蛾", "hp": 1, "r": 3, "dust": 1, "ember": 0.0},
-	"leech": {"name": "轨道蛭", "hp": 4, "r": 5, "dust": 5, "ember": 0.3},
-	"mite": {"name": "镜螨", "hp": 4, "r": 5, "dust": 8, "ember": 0.0},
-	"grav": {"name": "引力胎", "hp": 10, "r": 6, "dust": 16, "ember": 0.0},
-	"serp": {"name": "回声蛇", "hp": 48, "r": 8, "dust": 40, "ember": 4.0},
-
+	"hush": {"name": "静默水母", "hp": 3, "r": 6, "dust": 3, "ember": 0.0, "m": JELLY},
+	"folio": {"name": "书鳐", "hp": 8, "r": 7, "dust": 10, "ember": 0.0, "m": PAPER},
+	"clam": {"name": "冰核贝", "hp": 2, "r": 5, "dust": 2, "ember": 3.0, "m": ICE},
+	"moth": {"name": "蚀字蛾", "hp": 1, "r": 3, "dust": 1, "ember": 0.0, "m": MOTH},
+	"leech": {"name": "轨道蛭", "hp": 4, "r": 5, "dust": 5, "ember": 0.3, "m": LEECH},
+	"mite": {"name": "镜螨", "hp": 4, "r": 5, "dust": 8, "ember": 0.0, "m": MIRROR},
+	"grav": {"name": "引力胎", "hp": 10, "r": 6, "dust": 16, "ember": 0.0, "m": GRAV},
+	"comma": {"name": "逗号蜂", "hp": 3, "r": 4, "dust": 5, "ember": 0.15, "m": GOLD},
+	"serp": {"name": "回声蛇", "hp": 48, "r": 8, "dust": 40, "ember": 4.0, "m": SERP},
+	"blot": {"name": "墨团", "hp": 6, "r": 7, "dust": 6, "ember": 0.0, "m": GRAV},
+	"blotlet": {"name": "小墨团", "hp": 2, "r": 4, "dust": 2, "ember": 0.0, "m": GRAV, "as": "blot"},
+	"worm": {"name": "书虫", "hp": 7, "r": 5, "dust": 9, "ember": 0.0, "m": PAPER},
+	"wisp": {"name": "灯魇", "hp": 5, "r": 5, "dust": 7, "ember": 1.0, "m": JELLY},
+	"redact": {"name": "删节者", "hp": 90, "r": 11, "dust": 60, "ember": 5.0, "m": RUIN},
 }
 
 const LORE := {
@@ -39,17 +48,30 @@ const LORE := {
 	"leech": ["伏击 · 绕石而居", "一生绕着一颗石头转，像在念一句咒语。看到路过的小陶灵会停下、发红、然后直线扑来。躲开那一下就好。"],
 	"mite": ["反射 · 只能打背面", "背着一面磨得发亮的壳，会把你说过的话原样还给你——正面射它，字弹会被弹回来。它转身很慢，绕到背后打那块粉色软肉。"],
 	"grav": ["幼体黑洞 · 贪吃", "还没长大的黑洞幼体，正处在什么都想往嘴里塞的年纪。会把你、你的字弹、地上的页尘一起往里拽。"],
-	"serp": ["守页者 · 首领", "吞下所有在虚空里说出口的话，然后一遍遍复述。它走的路，永远是你刚刚走过的路——别回头踩自己的脚印。只有头会受伤。"],
-
+	"comma": ["远程 · 保持距离", "一句话说到一半停下来喘气的地方，长出了翅膀。它不靠近你，只在远处绕着飞，隔一会儿朝你甩一个绿色的墨点。它发红的那一下就是要甩了。"],
+	"serp": ["守页者 · 第一章首领", "吞下所有在虚空里说出口的话，然后一遍遍复述。它走的路，永远是你刚刚走过的路——别回头踩自己的脚印。只有头会受伤。快不行的时候，它会停下来瞄准，然后直直撞过来。"],
+	"blot": ["分裂 · 墨海里滋生", "打翻的墨水学会了自己爬。一跳一跳地扑过来，打散以后会裂成两团小的——小的跳得更快。"],
+	"worm": ["钻洞 · 啃书架", "把书从第一页啃到最后一页，再把书架也啃了。石头和书架挡不住它，它会直接钻过来。它啃出来的洞里常常掉出页尘。"],
+	"wisp": ["潜行 · 只在光里显形", "熄了的灯里住着的东西。在暗处你只看得见一双眼睛，字弹会直接穿过去；把它引到亮处——路灯、信标、炉灯——它才有身体可以打。"],
+	"redact": ["删节者 · 第二章首领", "图书馆里最后一位审稿人，早就忘了自己在审什么，只记得要划掉。它画的线要过一会儿才落下：看见细线就赶紧让开。"],
 }
 
-const ORDER := ["hush", "folio", "clam", "moth", "leech", "mite", "grav", "serp"]
-const TARGET := {"hush": 15, "folio": 9, "leech": 15, "grav": 7, "mite": 10}
+## 五种笔：同一句话，换一支笔就是另一种打法
+const PENS := [
+	{"name": "毛笔", "desc": "一发一发的字弹，句子里的字全都生效"},
+	{"name": "排刷", "desc": "一次刷出一片短射程的字弹，贴脸最疼"},
+	{"name": "刻刀", "desc": "身前挥一刀：伤害高，能劈开敌人的子弹，镜螨要绕后"},
+	{"name": "砚雷", "desc": "朝准星扔一团墨，炸开一片，连镜螨的正面也炸得到"},
+	{"name": "墨线", "desc": "按住蓄力，松开射出一道穿透一切的墨线"},
+]
+const ORDER := ["hush", "folio", "clam", "moth", "leech", "mite", "grav", "comma", "serp", "blot", "worm", "wisp", "redact"]
 const PAGE_TXT := [
 	"「寒冷不是热的缺席，而是一切停止说话的声音。」——体温上限 +30，保温 +15%",
 	"「万物彼此吸引，因为它们都想被读到。」——字弹伤害 +1",
 	"「宇宙说出的第一个字还在回响，它叫『在』。」",
-
+	"「沉默不是空的，它只是把话都收好了。」——生命上限 +1，并补满",
+	"「被忘掉的字并没有消失，它们只是在等人再念一遍。」——所有的笔出手快 15%",
+	"「留白是写给后来人的。」",
 ]
 
 const INTRO := [
@@ -97,6 +119,7 @@ class Creature:
 	var burn_t := 0.0
 	var slow := 0.0
 	var calm := 0.0
+	var mark := 0.0
 
 class EBullet:
 	var x := 0.0
@@ -139,6 +162,18 @@ class Bullet:
 	var sp := 265.0
 	var hit: Array = []
 	var w := {}
+	var bounce := 0
+	var chain := 0
+	var mark := 0.0
+	var crit := 0.0
+
+class Bomb:
+	var x := 0.0
+	var y := 0.0
+	var vx := 0.0
+	var vy := 0.0
+	var dist := 0.0
+	var age := 0.0
 
 class Pick:
 	var x := 0.0
@@ -194,6 +229,11 @@ class PlayerState:
 	var bag: Array = []        # 背包里的字 {"c": "穿", "gold": false}
 	var slots: Array = []      # 句槽，空位为 null
 	var shot_i := 0
+	var pen := 0               # 当前拿着的笔
+	var pens := 1              # 已经有几支笔
+	var charge := 0.0          # 墨线蓄力 0~1
+	var aim_d := 60.0          # 准星离小克多远（砚雷用）
+	var haste := 1.0           # 出手间隔的倍数（越小越快）
 
 # ---------- 状态 ----------
 var S := "title"
@@ -234,7 +274,9 @@ var WD := {}                 # data/words.json
 var LO := {}                 # 当前句子算出的字弹配置
 var word_sel := -1
 var PAGES: Array[Dictionary] = []
-var UP := {"kiln": 0, "bolt": 0, "shell": 0, "glaze": 0, "puff": 0}
+var UP := {"kiln": 0, "bolt": 0, "shell": 0, "glaze": 0, "puff": 0, "pen": 0}
+var BM: Array[Bomb] = []
+var FX: Array = []           # 刀光 / 墨线 / 爆炸圈 这些一闪而过的效果
 var BEA: Array[Beacon] = []
 var EB: Array[EBullet] = []
 var serp: Creature = null
@@ -255,6 +297,7 @@ var SHOP: Array[Dictionary] = [
 	{"k": "glaze", "name": "保温釉", "desc": "在外面体温流失 -20%", "cost": [30, 75], "max": 2},
 	{"k": "puff", "name": "喷气孔", "desc": "冲刺冷却减半", "cost": [50], "max": 1},
 	{"k": "forge", "name": "炼字", "desc": "用页尘炼出一个随机的字", "cost": [30], "max": 999},
+	{"k": "pen", "name": "笔架", "desc": "多一支笔：排刷、刻刀、砚雷、墨线（数字键或 R 换笔）", "cost": [40, 70, 110, 150], "max": 4},
 ]
 
 # 画图鉴肖像时：不按摄像机裁剪，可选单色剪影
@@ -303,6 +346,14 @@ var C_LINE := Color("#3a3f66")
 func zn(x: float, y: float) -> String:
 	var d := sqrt(x * x + y * y)
 	var a := atan2(y, x)
+	if chapter == 2:
+		if d < 420.0:
+			return "hall"
+		if absf(a) < 1.05:
+			return "stacks"
+		if a < -1.05 and a > -2.2:
+			return "ink"
+		return "dark"
 	if d < 480.0:
 		return "shallow"
 	if absf(a) < 0.95:
@@ -317,7 +368,7 @@ func _gkey(gx: int, gy: int) -> Vector2i:
 	return Vector2i(gx, gy)
 
 func grid_add(r: Rock) -> void:
-	for gy in range(floori(float(r.y - r.c) / GC), floori(float(r.y + r.c) / GC) + 1):
+	for gy in range(floori(float(r.y - r.ch) / GC), floori(float(r.y + r.ch) / GC) + 1):
 		for gx in range(floori(float(r.x - r.c) / GC), floori(float(r.x + r.c) / GC) + 1):
 			var k := Vector2i(gx, gy)
 			if not grid.has(k):
@@ -345,15 +396,20 @@ func gen_rocks() -> void:
 			r.spr.queue_free()
 	rocks.clear()
 	grid.clear()
+	if chapter == 2:
+		_gen_stacks()
+	var cap := 200 if chapter == 1 else rocks.size() + 105
 	var t := 0
-	while t < 5000 and rocks.size() < 200:
+	while t < 5000 and rocks.size() < cap:
 		t += 1
 		var a := R0.randf() * TAU
 		var d := sqrt(R0.randf()) * WR
 		var x := cos(a) * d
 		var y := sin(a) * d
 		var z := zn(x, y)
-		if z == "echo" and R0.randf() < 0.45:
+		if z == "stacks":
+			continue
+		if (z == "echo" and R0.randf() < 0.45) or (z == "ink" and R0.randf() < 0.5):
 			continue
 		var R := 0.0
 		match z:
@@ -361,6 +417,9 @@ func gen_rocks() -> void:
 			"shallow": R = 8 + R0.randf() * 18
 			"leech": R = 11 + R0.randf() * 24
 			"echo": R = 9 + R0.randf() * 18
+			"hall": R = 7 + R0.randf() * 13
+			"dark": R = 10 + R0.randf() * 24
+			"ink": R = 8 + R0.randf() * 14
 			_: R = 10 + R0.randf() * 28
 		var ok := d >= 120 + R and d <= WR - 30
 		for pg in PAGES:
@@ -373,13 +432,13 @@ func gen_rocks() -> void:
 					break
 		if ok:
 			rocks.append(Rock.build(roundi(x), roundi(y), roundi(R), z, R0))
-	# 回声茧周围一圈白石
+	# 首领周围一圈石头
 	for k in 9:
 		var a := k / 9.0 * TAU + 0.3
 		var x: float = PAGES[2].x + cos(a) * 120
 		var y: float = PAGES[2].y + sin(a) * 120
 		if Vector2(x, y).length() < WR - 20:
-			rocks.append(Rock.build(roundi(x), roundi(y), 7 + (k % 3) * 3, "echo", R0))
+			rocks.append(Rock.build(roundi(x), roundi(y), 7 + (k % 3) * 3, "echo" if chapter == 1 else "ink", R0))
 	for r in rocks:
 		grid_add(r)
 		_make_sprite(r)
@@ -413,17 +472,37 @@ func zone_spot(t: String) -> Vector2:
 		var d := sqrt(randf()) * WR
 		var x := cos(a) * d
 		var y := sin(a) * d
-		if d < 150 or Vector2(x - P.x, y - P.y).length() < 230 or rock_at(x, y):
+		if d < 150 or Vector2(x - P.x, y - P.y).length() < 230:
 			continue
-		if t == "hush" and d < 170:
-			continue
-		if t == "folio" and (d < 200 or d > 950):
+		if t != "worm" and rock_at(x, y):
 			continue
 		var z := zn(x, y)
-		if t == "grav" and z != "nursery":
-			continue
-		if t == "mite" and not (z == "echo" or (z == "leech" and d > 650) or (z == "drift" and d > 700)):
-			continue
+		if chapter == 1:
+			if t == "hush" and d < 170:
+				continue
+			if t == "folio" and (d < 200 or d > 950):
+				continue
+			if t == "grav" and z != "nursery":
+				continue
+			if t == "mite" and not (z == "echo" or (z == "leech" and d > 650) or (z == "drift" and d > 700)):
+				continue
+			if t == "comma" and not (z == "drift" or (z == "leech" and d > 600)):
+				continue
+		else:
+			if t == "blot" and z != "ink" and not (z == "stacks" and randf() < 0.12):
+				continue
+			if t == "worm" and z != "stacks" and not (z == "hall" and d > 260):
+				continue
+			if t == "wisp" and z != "dark":
+				continue
+			if t == "comma" and (z == "ink" or d < 250):
+				continue
+			if t == "hush" and (z == "stacks" or d < 170):
+				continue
+			if t == "mite" and not ((z == "stacks" and d > 600) or (z == "dark" and d > 700)):
+				continue
+			if t == "folio" and (d < 200 or d > 950):
+				continue
 		if Vector2(x - PAGES[2].x, y - PAGES[2].y).length() < 150:
 			continue
 		return Vector2(x, y)
@@ -457,15 +536,13 @@ func spawn(t: String) -> void:
 			c.ph = ph
 			c.off = i
 		return
-	var c := mk(t, p.x, p.y)
-	if t == "mite":
-		c.ang = randf() * TAU
+	init_c(mk(t, p.x, p.y))
 
 func gen_clams() -> void:
 	var n := 0
 	var cand: Array[Rock] = []
 	for r in rocks:
-		if r.R >= 11 and r.zone != "nursery" and r.zone != "echo":
+		if r.R >= 11 and not r.box and r.zone != "nursery" and r.zone != "echo" and r.zone != "ink":
 			cand.append(r)
 	if cand.is_empty():
 		return
@@ -494,38 +571,68 @@ func gen_clams() -> void:
 		n += 1
 
 func new_world() -> void:
-	PAGES = [
-		{"id": 0, "x": cos(0.12) * 1080, "y": sin(0.12) * 1080, "name": "论寒冷", "state": "free"},
-		{"id": 1, "x": cos(2.25) * 1050, "y": sin(2.25) * 1050, "name": "论引力", "state": "free"},
-		{"id": 2, "x": 0.0, "y": -1110.0, "name": "论回声", "state": "sealed"},
-	]
+	R0.seed = 20261108 + (chapter - 1) * 977
+	if chapter == 1:
+		PAGES = [
+			{"id": 0, "gid": 0, "x": cos(0.12) * 1080, "y": sin(0.12) * 1080, "name": "论寒冷", "state": "free"},
+			{"id": 1, "gid": 1, "x": cos(2.25) * 1050, "y": sin(2.25) * 1050, "name": "论引力", "state": "free"},
+			{"id": 2, "gid": 2, "x": 0.0, "y": -1110.0, "name": "论回声", "state": "sealed"},
+		]
+	else:
+		PAGES = [
+			{"id": 0, "gid": 3, "x": cos(0.1) * 1080, "y": sin(0.1) * 1080, "name": "论沉默", "state": "free"},
+			{"id": 1, "gid": 4, "x": cos(2.4) * 1050, "y": sin(2.4) * 1050, "name": "论遗忘", "state": "free"},
+			{"id": 2, "gid": 5, "x": 0.0, "y": -1110.0, "name": "论空白", "state": "sealed"},
+		]
 	gen_rocks()
 	cr.clear()
 	PB.clear()
 	EB.clear()
 	PK.clear()
-	PT.clear()
 	BEA.clear()
+	BM.clear()
+	FX.clear()
+	HZ.clear()
+	LAMPS.clear()
+	INK.clear()
+	spawn_q.clear()
+	serp = null
+	redact = null
 	gen_clams()
-	for t in TARGET:
+	if chapter == 2:
+		gen_ch2()
+	for t in targets():
 		var g := 0
-		while count_type(t) < TARGET[t] and g < 60:
+		while count_type(t) < targets()[t] and g < 60:
 			g += 1
 			spawn(t)
-	# 守页的生物：第一页周围一窝轨道蛭，第二页旁边两只引力胎
-	for i in 4:
-		var c := mk("leech", PAGES[0].x, PAGES[0].y)
-		c.orR = 30 if i < 2 else 46
-		c.ang = i * 1.6
-		c.w = (-1.0 if i % 2 else 1.0) * 0.7
-		c.st = "orbit"
-	for a in [0.4, 2.6]:
-		mk("grav", PAGES[1].x + cos(a) * 55, PAGES[1].y + sin(a) * 55)
-	serp = mk("serp", PAGES[2].x, PAGES[2].y)
-	serp.st = "sleep"
-	serp.burst_t = 4
-	for i in 18:
-		serp.seg.append(Vector2(PAGES[2].x, PAGES[2].y + i * 2))
+	if chapter == 1:
+		# 守页的生物：第一页周围一窝轨道蛭，第二页旁边两只引力胎
+		for i in 4:
+			var c := mk("leech", PAGES[0].x, PAGES[0].y)
+			c.orR = 30 if i < 2 else 46
+			c.ang = i * 1.6
+			c.w = (-1.0 if i % 2 else 1.0) * 0.7
+			c.st = "orbit"
+		for a in [0.4, 2.6]:
+			mk("grav", PAGES[1].x + cos(a) * 55, PAGES[1].y + sin(a) * 55)
+		serp = mk("serp", PAGES[2].x, PAGES[2].y)
+		serp.st = "sleep"
+		serp.burst_t = 4
+		for i in 18:
+			serp.seg.append(Vector2(PAGES[2].x, PAGES[2].y + i * 2))
+	else:
+		# 第一页：书架深处一窝书虫；第二页：三只灯魇守着三盏熄掉的灯
+		for i in 3:
+			init_c(mk("worm", PAGES[0].x + cos(i * 2.1) * 40, PAGES[0].y + sin(i * 2.1) * 40))
+		for i in 3:
+			mk("wisp", PAGES[1].x + cos(i * 2.1 + 1) * 80, PAGES[1].y + sin(i * 2.1 + 1) * 80)
+		redact = mk("redact", PAGES[2].x, PAGES[2].y)
+		redact.st = "sleep"
+	apply_pages()
+	zone_name = ""
+	if bg_mat:
+		bg_mat.set_shader_parameter("chap", float(chapter))
 
 func load_save() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
@@ -607,6 +714,9 @@ func warm_zone(x: float, y: float) -> int:
 	for b in BEA:
 		if Vector2(x - b.x, y - b.y).length() < 56:
 			return 1
+	for l in LAMPS:
+		if l.lit > 0 and Vector2(x - l.x, y - l.y).length() < 40:
+			return 1
 	return 0
 
 func key(k: int) -> bool:
@@ -647,10 +757,7 @@ func clear_run() -> void:
 func save_run() -> void:
 	if S == "title" or S == "intro" or P.hp <= 0:
 		return
-	var pgs := []
-	for pg in PAGES:
-		var carried: bool = pg.state == "carried"
-		pgs.append({"state": "free" if carried else pg.state, "x": P.x if carried else pg.x, "y": P.y if carried else pg.y})
+	stash_pages()
 	var bea := []
 	for b in BEA:
 		bea.append([b.x, b.y, b.hp])
@@ -658,8 +765,8 @@ func save_run() -> void:
 		"dust": P.dust, "ember": P.ember, "beacons": P.beacons, "hp": P.hp, "maxhp": P.maxhp,
 		"warm": P.warm, "maxwarm": P.maxwarm, "glaze": P.glaze, "dmg": P.dmg, "deaths": P.deaths,
 		"dust_total": P.dust_total, "kills": P.kills, "slots": P.slots, "bag": P.bag, "up": UP,
-		"pages": pgs, "bea": bea, "gt": gt, "tides": tides, "seen": seen.keys(), "tips": tips.keys(),
-		"serp_dead": serp != null and serp.st == "dead", "free": free_mode,
+		"pstore": page_store, "bea": bea, "gt": gt, "tides": tides, "seen": seen.keys(), "tips": tips.keys(),
+		"free": free_mode, "pen": P.pen, "ch": chapter, "unlocked": unlocked, "haste": P.haste,
 	}
 	persist()
 
@@ -671,18 +778,21 @@ func load_run() -> void:
 	P.dust = int(r.get("dust", 0))
 	P.ember = int(r.get("ember", 1))
 	P.beacons = int(r.get("beacons", 0))
-	P.maxhp = clampi(int(r.get("maxhp", 5)), 5, 7)
+	P.maxhp = clampi(int(r.get("maxhp", 5)), 5, 8)
 	P.hp = clampi(int(r.get("hp", 5)), 1, P.maxhp)
 	P.maxwarm = float(r.get("maxwarm", 100.0))
 	P.warm = clampf(float(r.get("warm", 100.0)), 40.0, P.maxwarm)
 	P.glaze = float(r.get("glaze", 0.0))
 	P.dmg = int(r.get("dmg", 1))
+	P.haste = clampf(float(r.get("haste", 1.0)), 0.5, 1.0)
 	P.deaths = int(r.get("deaths", 0))
 	P.dust_total = int(r.get("dust_total", 0))
 	P.kills = int(r.get("kills", 0))
 	var up: Dictionary = r.get("up", {})
 	for k in UP:
 		UP[k] = int(up.get(k, 0))
+	P.pens = 1 + UP.pen
+	P.pen = clampi(int(r.get("pen", 0)), 0, P.pens - 1)
 	P.slots.clear()
 	for w in r.get("slots", []):
 		P.slots.append({"c": w.c, "gold": bool(w.get("gold", false))} if _word_ok(w) else null)
@@ -692,18 +802,28 @@ func load_run() -> void:
 	for w in r.get("bag", []):
 		if _word_ok(w):
 			P.bag.append({"c": w.c, "gold": bool(w.get("gold", false))})
-	var pgs: Array = r.get("pages", [])
-	P.bound = 0
-	for i in mini(pgs.size(), PAGES.size()):
-		PAGES[i].state = str(pgs[i].get("state", PAGES[i].state))
-		PAGES[i].x = float(pgs[i].get("x", PAGES[i].x))
-		PAGES[i].y = float(pgs[i].get("y", PAGES[i].y))
-		if PAGES[i].state == "bound":
-			P.bound += 1
-	if bool(r.get("serp_dead", false)) and serp:
-		serp.st = "dead"
-		serp.hp = 0
-	BEA.clear()
+	# 书页：新存档按章节记；旧存档只有第一章的三张
+	page_store = {}
+	var ps = r.get("pstore")
+	if ps is Dictionary:
+		for k in ps:
+			if ps[k] is Array:
+				page_store[str(k)] = ps[k]
+	elif r.get("pages") is Array:
+		page_store["1"] = r.pages
+	unlocked = clampi(int(r.get("unlocked", 1)), 1, 2)
+	var b1 := 0
+	for q in page_store.get("1", []):
+		if str(q.get("state", "")) == "bound":
+			b1 += 1
+	if b1 >= 3:
+		unlocked = 2
+	var ch := clampi(int(r.get("ch", 1)), 1, unlocked)
+	if ch != chapter:
+		chapter = ch
+		new_world()
+	else:
+		apply_pages()
 	for q in r.get("bea", []):
 		var b := Beacon.new()
 		b.x = float(q[0])
@@ -750,6 +870,11 @@ func try_buy(i: int) -> void:
 			UP.shell += 1
 			P.maxhp += 1
 			P.hp = P.maxhp
+		"pen":
+			UP.pen += 1
+			P.pens = 1 + UP.pen
+			P.pen = P.pens - 1
+			toast("新笔「%s」：%s" % [PENS[P.pen].name, PENS[P.pen].desc], C_TEAL, 6)
 		_: UP[it.k] += 1
 	Sfx.play("buy")
 	save_run()
@@ -936,6 +1061,13 @@ func fire_sentence() -> float:
 			orbit = 0.9 * slv
 	if has_word("穿针"):
 		sp *= 1.2
+	if has_word("暴雨") and LO.shape == "雨":
+		n += 2
+	if P.pen == 1:
+		n += 4
+		spread = 0.13 if spread == 0.0 else spread * 0.8
+		life *= 0.42
+		cd *= 2.1
 	var mat := GOLD
 	if mod("火"):
 		mat = EMBER
@@ -971,6 +1103,14 @@ func fire_sentence() -> float:
 		b.frost = mod("霜") * 1.5
 		b.grav = mod("重")
 		b.calm = mod("静") * 3.0
+		b.bounce = mod("弹") * 2
+		b.chain = (mod("连") + 2) if has_word("连环") else mod("连")
+		b.mark = mod("蚀") * 4.0
+		b.crit = 0.2 * mod("暴")
+		if P.pen == 1:
+			var k2 := 0.8 + randf() * 0.4
+			b.vx *= k2
+			b.vy *= k2
 		for w in LO.words:
 			b.w[w] = true
 		PB.append(b)
@@ -987,6 +1127,206 @@ func fire_sentence() -> float:
 	P.shot_i += 1
 	Sfx.play("shoot", pitch)
 	return cd
+
+func set_pen(i: int) -> void:
+	if i == P.pen or i < 0 or i >= P.pens:
+		return
+	P.pen = i
+	P.charge = 0.0
+	Sfx.play("ping", 0.7 + i * 0.12)
+	toast("换笔：%s" % PENS[i].name, C_TEAL, 1.6)
+
+## 这个生物现在能不能被打到
+func can_hit(c: Creature) -> bool:
+	if c.dead:
+		return false
+	if c.t == "serp" or c.t == "redact":
+		return c.st == "fight"
+	if c.t == "wisp":
+		return c.open > 0.5
+	return true
+
+## 镜螨的正面会挡住从 (x, y) 方向来的攻击
+func mite_blocks(c: Creature, x: float, y: float) -> bool:
+	if c.t != "mite":
+		return false
+	var hx := x - c.x
+	var hy := y - c.y
+	var hl := maxf(0.0001, sqrt(hx * hx + hy * hy))
+	return (cos(c.ang) * hx + sin(c.ang) * hy) / hl > 0.2
+
+## 刻刀 / 砚雷 / 墨线命中：伤害 + 句子里“性”字的效果
+func fx_hit(c: Creature, dmg: int, x: float, y: float) -> void:
+	if c.t == "clam" and c.st == "grow" and mod("火") > 0:
+		c.st = "open"
+		c.tm = 1.5
+		c.open = 1.0
+	if randf() < 0.2 * mod("暴"):
+		dmg *= 3
+		burst(c.x, c.y, 8, GOLD, 6, 50, 0.4)
+	if c.mark > 0:
+		dmg += 1
+	hurt_c(c, dmg, x, y)
+	if mod("火") > 0:
+		c.burn = maxf(c.burn, mod("火") * 1.5)
+	if mod("霜") > 0:
+		c.slow = maxf(c.slow, mod("霜") * 1.5)
+		burst(c.x, c.y, 4, ICE, 6, 20, 0.4)
+	if mod("静") > 0:
+		c.calm = maxf(c.calm, mod("静") * 3.0)
+	if mod("蚀") > 0:
+		c.mark = maxf(c.mark, mod("蚀") * 4.0)
+
+func pen_mat() -> int:
+	if mod("火"):
+		return EMBER
+	if mod("霜"):
+		return ICE
+	if mod("蚀"):
+		return GRAV
+	return GOLD
+
+## 刻刀：身前一个扇形
+func slash() -> float:
+	var a0 := atan2(P.ay, P.ax)
+	var reach := 30.0 + (8.0 if LO.shape == "针" else 0.0)
+	var dmg: int = 2 + P.dmg + (LO.shape_lv if LO.shape == "石" else 0)
+	for c in cr:
+		if not can_hit(c):
+			continue
+		var v := Vector2(c.x - P.x, c.y - P.y)
+		if v.length() > reach + c.r or absf(angle_difference(a0, v.angle())) > 1.0:
+			continue
+		if mite_blocks(c, P.x, P.y):
+			Sfx.play("ping")
+			burst(c.x, c.y, 4, MIRROR, 6, 30, 0.3)
+			tip("mite", "镜螨的正面挡住了！绕到它背后打粉色的软肉。")
+			continue
+		fx_hit(c, dmg, c.x, c.y)
+	for b in EB:
+		var v := Vector2(b.x - P.x, b.y - P.y)
+		if v.length() < reach and absf(angle_difference(a0, v.angle())) < 1.0:
+			b.life = 0
+			burst(b.x, b.y, 4, b.m, 6, 30, 0.3)
+	for k in 5:
+		var a := a0 + (k - 2) * 0.4
+		var px := P.x + cos(a) * reach * 0.7
+		var py := P.y + sin(a) * reach * 0.7
+		var r := rock_at(px, py)
+		if r:
+			carve(r, px, py, 4.5)
+	FX.append({"k": "slash", "x": P.x, "y": P.y, "a": a0, "r": reach, "t": 0.16, "max": 0.16, "m": pen_mat()})
+	P.vx += P.ax * 45
+	P.vy += P.ay * 45
+	Sfx.play("dash", 1.7)
+	return 0.36
+
+## 砚雷：朝准星扔出去，到地方 / 撞到东西就炸
+func throw_bomb() -> float:
+	var b := Bomb.new()
+	b.x = P.x + P.ax * 5
+	b.y = P.y + P.ay * 5
+	b.vx = P.ax * 175
+	b.vy = P.ay * 175
+	b.dist = clampf(P.aim_d, 30.0, 150.0)
+	BM.append(b)
+	P.vx -= P.ax * 12
+	P.vy -= P.ay * 12
+	Sfx.play("dash", 0.6)
+	return 0.8
+
+func explode(x: float, y: float) -> void:
+	var rad: float = 24.0 + (7.0 * LO.shape_lv if LO.shape == "石" else 0.0)
+	for c in cr:
+		if can_hit(c) and Vector2(c.x - x, c.y - y).length() < rad + c.r:
+			fx_hit(c, 2 + P.dmg, x, y)
+	for b in EB:
+		if Vector2(b.x - x, b.y - y).length() < rad:
+			b.life = 0
+	for k in 9:
+		var a := k / 8.0 * TAU
+		var d := 0.0 if k == 8 else rad * 0.45
+		var px := x + cos(a) * d
+		var py := y + sin(a) * d
+		var r := rock_at(px, py)
+		if r:
+			carve(r, px, py, 7.0)
+	if mod("裂") > 0:
+		var src := Bullet.new()
+		src.mat = pen_mat()
+		src.burn = mod("火") * 1.5
+		src.frost = mod("霜") * 1.5
+		for i in 6 * mod("裂"):
+			spawn_small(x, y, i / (6.0 * mod("裂")) * TAU, src)
+	FX.append({"k": "boom", "x": x, "y": y, "r": rad, "t": 0.3, "max": 0.3, "m": pen_mat()})
+	burst(x, y, 26, pen_mat(), 6, 90, 0.6)
+	burst(x, y, 14, SPACE, 3, 50, 0.9, false)
+	shk = maxf(shk, 3.5)
+	Sfx.play("rock", 0.5)
+	Sfx.play("kill", 0.6)
+
+func upd_bombs(dt: float) -> void:
+	for b in BM:
+		b.age += dt
+		b.x += b.vx * dt
+		b.y += b.vy * dt
+		b.dist -= 175.0 * dt
+		var hit := b.dist <= 0 or rock_at(b.x, b.y) != null
+		if not hit:
+			for c in cr:
+				if can_hit(c) and Vector2(c.x - b.x, c.y - b.y).length() < c.r + 2:
+					hit = true
+					break
+		if hit:
+			explode(b.x, b.y)
+			b.age = -1
+		elif randf() < 0.6:
+			part(b.x, b.y, (randf() - 0.5) * 10, (randf() - 0.5) * 10, 0.4, pen_mat(), 4)
+	BM = BM.filter(func(b): return b.age >= 0)
+	for f in FX:
+		f.t -= dt
+	FX = FX.filter(func(f): return f.t > 0)
+
+## 墨线：蓄力越久越粗越疼，穿过所有敌人，石头只能钻一小段
+func fire_beam(ch: float) -> void:
+	var dmg := roundi(1 + ch * 4) + P.dmg
+	var x := P.x + P.ax * 6
+	var y := P.y + P.ay * 6
+	var rock_budget := 10 + int(ch * 26)
+	var done := {}
+	var n := 0
+	while n < 115:
+		n += 1
+		x += P.ax * 2
+		y += P.ay * 2
+		var r := rock_at(x, y)
+		if r:
+			carve(r, x, y, 2.0 + ch * 1.5)
+			rock_budget -= 1
+			if rock_budget <= 0:
+				break
+		var stop := false
+		for c in cr:
+			if done.has(c) or not can_hit(c):
+				continue
+			if Vector2(c.x - x, c.y - y).length() < c.r + 2 + ch * 2:
+				if mite_blocks(c, P.x, P.y):
+					Sfx.play("ping")
+					burst(x, y, 8, MIRROR, 6, 40, 0.4)
+					stop = true
+					break
+				done[c] = true
+				fx_hit(c, dmg, x, y)
+		if stop:
+			break
+		if n % 3 == 0:
+			part(x, y, (randf() - 0.5) * 30, (randf() - 0.5) * 30, 0.35, pen_mat(), 5, true)
+	FX.append({"k": "beam", "x": P.x + P.ax * 6, "y": P.y + P.ay * 6, "x1": x, "y1": y, "w": 0.5 + ch * 1.5, "t": 0.2, "max": 0.2, "m": pen_mat()})
+	P.vx -= P.ax * (30 + ch * 60)
+	P.vy -= P.ay * (30 + ch * 60)
+	shk = maxf(shk, 1.5 + ch * 3)
+	Sfx.play("roar", 2.2)
+	Sfx.play("shoot", 0.5)
 
 func spawn_small(x: float, y: float, a: float, src: Bullet) -> void:
 	var b := Bullet.new()
@@ -1066,6 +1406,7 @@ func upd_player(dt: float) -> void:
 	else:
 		aim = _ap_aim
 	if aim.length() > 2:
+		P.aim_d = aim.length() if not touch_mode or touch_fire else 90.0
 		aim = aim.normalized()
 		P.ax = aim.x
 		P.ay = aim.y
@@ -1073,6 +1414,11 @@ func upd_player(dt: float) -> void:
 	P.vx += ix * ACC * dt
 	P.vy += iy * ACC * dt
 	var drag := 0.6 if P.dash_t > 0 else 2.35
+	if chapter == 2 and P.dash_t <= 0 and in_ink(P.x, P.y):
+		drag = 7.0
+		tip("ink", "墨池会拖住脚步。冲刺可以滑过去。")
+		if P.moving and randf() < 0.3:
+			part(P.x, P.y + 3, (randf() - 0.5) * 20, (randf() - 0.5) * 20, 0.5, GRAV, 3)
 	P.vx *= exp(-drag * dt)
 	P.vy *= exp(-drag * dt)
 	# 引力胎把人往里拽
@@ -1114,12 +1460,33 @@ func upd_player(dt: float) -> void:
 		part(P.x - ix * 5 + (randf() - 0.5) * 3, P.y - iy * 4 + 3, -ix * 25 + (randf() - 0.5) * 10, -iy * 25 + (randf() - 0.5) * 10, 0.35, PAPER, 3)
 	P.anim += dt * (10.0 if P.moving else 3.0)
 	# 射击
-	P.fire_cd -= dt
+	P.fire_cd -= dt / P.haste
 	var firing := (mouse_down and not fire_locked()) or touch_fire or (_autoplay and _ap_fire)
-	if firing and P.fire_cd <= 0 and S == "play":
-		P.fire_cd = fire_sentence()
-		P.vx -= P.ax * 5
-		P.vy -= P.ay * 5
+	for i in P.pens:
+		if pressed(KEY_1 + i) and P.pen != i:
+			set_pen(i)
+	if pressed(KEY_R) or pressed("wheel_dn"):
+		set_pen((P.pen + 1) % P.pens)
+	if pressed("wheel_up"):
+		set_pen((P.pen + P.pens - 1) % P.pens)
+	if P.pen == 4:
+		if firing:
+			if P.charge == 0.0:
+				Sfx.play("warn", 2.4)
+			P.charge = minf(1.0, P.charge + dt / 0.9)
+		elif P.charge > 0.0:
+			if P.charge > 0.2 and P.fire_cd <= 0:
+				fire_beam(P.charge)
+				P.fire_cd = 0.25
+			P.charge = 0.0
+	elif firing and P.fire_cd <= 0 and S == "play":
+		match P.pen:
+			2: P.fire_cd = slash()
+			3: P.fire_cd = throw_bomb()
+			_:
+				P.fire_cd = fire_sentence()
+				P.vx -= P.ax * 5
+				P.vy -= P.ay * 5
 	# 体温
 	var wz := warm_zone(P.x, P.y)
 	var in_kiln := wz == 2
@@ -1190,6 +1557,13 @@ func upd_player(dt: float) -> void:
 			Sfx.play("beacon")
 		else:
 			toast("要在炉灯的暖圈里才能打开工坊。", C_DIM)
+	if S == "play" and pressed(KEY_G):
+		if unlocked < 2:
+			toast("装订完这一章的三张书页，才能翻到下一章。", C_DIM)
+		elif not in_kiln:
+			toast("要在炉灯的暖圈里才能翻章。", C_DIM)
+		else:
+			goto_chapter(3 - chapter)
 	# 拾起失落之页
 	for pg in PAGES:
 		if pg.state == "free" and Vector2(pg.x - P.x, pg.y - P.y).length() < 11:
@@ -1206,24 +1580,32 @@ func upd_player(dt: float) -> void:
 	tr_i = (tr_i + 1) % 400
 
 func bind_page(id: int) -> void:
+	var gid: int = PAGES[id].gid
 	Sfx.play("page")
 	shk = 5
 	burst(0, -4, 60, ORE, 6, 90, 1.6)
 	toast("装订：失落之页「%s」" % PAGES[id].name, C_GOLD, 5)
-	toast(PAGE_TXT[id], C_TEAL, 6)
-	if id == 0:
-		P.maxwarm += 30
-		P.warm = P.maxwarm
-		P.glaze += 0.15
-	elif id == 1:
-		P.dmg += 1
+	toast(PAGE_TXT[gid], C_TEAL, 6)
+	match gid:
+		0:
+			P.maxwarm += 30
+			P.warm = P.maxwarm
+			P.glaze += 0.15
+		1:
+			P.dmg += 1
+		3:
+			P.maxhp += 1
+			P.hp = P.maxhp
+		4:
+			P.haste = 0.85
 	if id == 2:
 		S = "ending"
 		end_t = 0
 		save.clears = int(save.clears) + 1
+		unlocked = 2
 		persist()
-	elif P.bound < 3:
-		toast("还剩 %d 页。" % (3 - P.bound), C_DIM, 4)
+	elif ch_bound() < 3:
+		toast("这一章还剩 %d 页。" % (3 - ch_bound()), C_DIM, 4)
 	save_run()
 
 func collide_p() -> void:
@@ -1266,6 +1648,7 @@ func player_die() -> void:
 	S = "dead"
 	dead_t = 0
 	P.deaths += 1
+	P.charge = 0
 	Sfx.play("die")
 	burst(P.x, P.y, 40, CLAY, 4, 90, 1.2, false)
 	var lose := P.dust / 2
@@ -1278,17 +1661,30 @@ func player_die() -> void:
 		PAGES[id].x = P.x + (randf() - 0.5) * 20
 		PAGES[id].y = P.y + (randf() - 0.5) * 20
 	P.carry.clear()
-	if serp and serp.st != "sleep" and serp.st != "dead":
+	var b := boss()
+	if b and b.st != "sleep" and b.st != "dead":
 		reset_serp()
+	HZ.clear()
 
 func reset_serp() -> void:
-	serp.st = "sleep"
-	serp.hp = DEF.serp.hp
-	serp.x = PAGES[2].x
-	serp.y = PAGES[2].y
-	for i in serp.seg.size():
-		serp.seg[i] = Vector2(serp.x, serp.y)
+	# 首领回到沉睡（两章通用）
+	var b := boss()
+	if b == null:
+		return
+	b.st = "sleep"
+	b.hp = DEF[b.t].hp
+	b.x = PAGES[2].x
+	b.y = PAGES[2].y
+	b.vx = 0
+	b.vy = 0
+	b.off = 0
+	b.orR = 0
+	b.sing = 0
+	b.burn = 0
+	for i in b.seg.size():
+		b.seg[i] = Vector2(b.x, b.y)
 	EB.clear()
+	HZ.clear()
 
 func respawn() -> void:
 	S = "play"
@@ -1315,12 +1711,13 @@ func upd_creatures(dt: float) -> void:
 		var dx := P.x - c.x
 		var dy := P.y - c.y
 		var d := maxf(0.0001, sqrt(dx * dx + dy * dy))
-		if d > 700 and c.t != "moth" and c.t != "serp":
+		if d > 700 and c.t != "moth" and not is_boss(c):
 			continue
 		# 字句效果：灼烧、减速、安静
 		c.slow -= dt
 		c.calm -= dt
-		if c.t == "serp" and c.st != "fight":
+		c.mark -= dt
+		if is_boss(c) and c.st != "fight":
 			c.burn = 0
 		if c.burn > 0:
 			c.burn -= dt
@@ -1521,7 +1918,17 @@ func upd_creatures(dt: float) -> void:
 					hurt_player(1, c.x, c.y)
 			"serp":
 				upd_serp(c, cdt, d)
-		if c.t != "clam" and c.t != "leech" and c.t != "serp" and not c.dead:
+			"redact":
+				upd_redact(c, cdt, d)
+			"comma":
+				upd_comma(c, cdt, d, dx, dy)
+			"blot", "blotlet":
+				upd_blot(c, cdt, d, dx, dy)
+			"worm":
+				upd_worm(c, cdt, d, dx, dy)
+			"wisp":
+				upd_wisp(c, cdt, d, dx, dy)
+		if not (c.t in ["clam", "leech", "serp", "redact", "worm", "wisp"]) and not c.dead:
 			var r := rock_at(c.x, c.y)
 			if r:
 				var ex := c.x - r.x
@@ -1549,16 +1956,52 @@ func upd_serp(c: Creature, dt: float, d: float) -> void:
 		if c.tm <= 0:
 			c.st = "fight"
 		return
-	var hpk := c.hp / DEF.serp.hp
-	var delay := 84 if hpk > 0.5 else 62
-	var k := posmod(tr_i - delay, 400)
-	var ex := TRX[k] - c.x
-	var ey := TRY[k] - c.y
-	var el := maxf(0.0001, sqrt(ex * ex + ey * ey))
-	var sp := minf(el * 5, 150.0)
-	c.x += ex / el * sp * dt
-	c.y += ey / el * sp * dt
-	c.ha = atan2(ey, ex)
+	var hpk: float = c.hp / DEF.serp.hp
+	var p3 := hpk <= 0.25
+	if p3 and c.orR == 0:
+		c.orR = 1
+		c.sing = 1.5
+		shk = 6
+		toast("回声蛇不再只跟着脚印了——看到细线，它就要直直撞过来！", C_RED, 4)
+	if c.off == 1:
+		# 第三阶段：停下来瞄准
+		c.tm -= dt
+		if c.tm <= 0:
+			c.off = 2
+			c.tm = 0.55
+			c.vx = cos(c.ha) * 340
+			c.vy = sin(c.ha) * 340
+			Sfx.play("roar", 1.4)
+	elif c.off == 2:
+		# 直线冲撞，沿路撒下回声
+		c.tm -= dt
+		c.x += c.vx * dt
+		c.y += c.vy * dt
+		c.w -= dt
+		if c.w <= 0:
+			c.w = 0.045
+			add_eb(c.x, c.y, (randf() - 0.5) * 24, (randf() - 0.5) * 24, 2.6, SERP)
+		if c.tm <= 0:
+			c.off = 0
+			c.sing = 4.2
+	else:
+		var delay := 84 if hpk > 0.5 else 62
+		var k := posmod(tr_i - delay, 400)
+		var ex := TRX[k] - c.x
+		var ey := TRY[k] - c.y
+		var el := maxf(0.0001, sqrt(ex * ex + ey * ey))
+		var sp := minf(el * 5, 150.0)
+		c.x += ex / el * sp * dt
+		c.y += ey / el * sp * dt
+		c.ha = atan2(ey, ex)
+		if p3:
+			c.sing -= dt
+			if c.sing <= 0 and d < 260:
+				c.off = 1
+				c.tm = 0.8
+				c.ha = atan2(P.y - c.y, P.x - c.x)
+				HZ.append({"x": c.x + cos(c.ha) * 95, "y": c.y + sin(c.ha) * 95, "a": c.ha, "t": 0.8, "w": 5.0, "len": 95.0, "dmg": false})
+				Sfx.play("warn", 1.5)
 	var prev := Vector2(c.x, c.y)
 	for i in c.seg.size():
 		var sv := c.seg[i] - prev
@@ -1567,7 +2010,7 @@ func upd_serp(c: Creature, dt: float, d: float) -> void:
 			c.seg[i] = prev + sv / sl * 5.5
 		prev = c.seg[i]
 	c.burst_t -= dt
-	if c.burst_t <= 0:
+	if c.burst_t <= 0 and c.off == 0:
 		c.burst_t = 4.6 if hpk > 0.5 else 3.3
 		var n := 10 if hpk > 0.5 else 12
 		var o := randf() * TAU
@@ -1614,7 +2057,7 @@ func hurt_c(c: Creature, dmg: int, bx: float, by: float) -> void:
 		for f in cr:
 			if f.t == "folio" and f.hx == c.hx:
 				f.flee = 3
-	if c.t != "clam" and c.t != "serp":
+	if c.t != "clam" and not is_boss(c):
 		var dx := c.x - P.x
 		var dy := c.y - P.y
 		var d := maxf(0.0001, sqrt(dx * dx + dy * dy))
@@ -1624,7 +2067,7 @@ func hurt_c(c: Creature, dmg: int, bx: float, by: float) -> void:
 		kill(c, true)
 
 func kill(c: Creature, drop: bool) -> void:
-	if c.dead or (c.t == "serp" and c.st == "dead") or (c.t == "clam" and c.st == "empty"):
+	if c.dead or (is_boss(c) and c.st == "dead") or (c.t == "clam" and c.st == "empty"):
 		return
 	var D: Dictionary = DEF[c.t]
 	if c.t == "clam":
@@ -1648,7 +2091,8 @@ func kill(c: Creature, drop: bool) -> void:
 			p.gold = randf() < float(WD.gold_chance)
 			PK.append(p)
 		return
-	c.dead = c.t != "serp"
+	var big := is_boss(c)
+	c.dead = not big
 	if drop and randf() < float(WD.drop.get(c.t, 0.0)):
 		var keys: Array = WD.chars.keys()
 		var p := Pick.new()
@@ -1658,7 +2102,7 @@ func kill(c: Creature, drop: bool) -> void:
 		p.vy = (randf() - 0.5) * 30
 		p.k = "word"
 		p.wc = keys[randi() % keys.size()]
-		p.gold = c.t == "serp" or randf() < float(WD.gold_chance)
+		p.gold = big or randf() < float(WD.gold_chance)
 		PK.append(p)
 	if drop:
 		P.kills += 1
@@ -1669,23 +2113,34 @@ func kill(c: Creature, drop: bool) -> void:
 		if em >= 1.0 or (em > 0.0 and randf() < fmod(em, 1.0)):
 			for i in maxi(1, floori(em)):
 				add_pick(c.x, c.y, "ember", (randf() - 0.5) * 40, (randf() - 0.5) * 40)
-	var m: int = {"hush": JELLY, "folio": PAPER, "moth": MOTH, "leech": LEECH, "mite": MIRROR, "grav": GRAV, "serp": SERP}[c.t]
-	var big := c.t == "serp"
+	var m: int = D.m
 	burst(c.x, c.y, 80 if big else 14, m, 5, 110 if big else 45, 1.6 if big else 0.6)
 	if c.t == "folio" and drop:
 		toast("一本书鳐散成了纸片……", C_DIM)
 	if c.t == "grav":
 		burst(c.x, c.y, 30, GOLD, 6, 80, 0.8)
 		shk = 4
+	if c.t == "blot":
+		# 打散以后裂成两团小的
+		for s in [-1.0, 1.0]:
+			spawn_q.append(["blotlet", c.x + s * 5, c.y, s * 60, -20.0])
+	if c.t == "worm":
+		for sg in c.seg:
+			burst(sg.x, sg.y, 3, PAPER, 5, 30, 0.5)
 	if big:
 		c.st = "dead"
 		shk = 12
 		PAGES[2].state = "free"
-		toast("回声蛇散成了一千句回声。", C_GOLD, 5)
-		toast("第三页「论回声」从茧里漂了出来。", C_TEAL, 5)
+		if c.t == "serp":
+			toast("回声蛇散成了一千句回声。", C_GOLD, 5)
+			toast("第三页「论回声」从茧里漂了出来。", C_TEAL, 5)
+		else:
+			toast("删节者把自己也划掉了。", C_GOLD, 5)
+			toast("第三页「论空白」露了出来。", C_TEAL, 5)
 		for sg in c.seg:
-			burst(sg.x, sg.y, 8, SERP, 5, 50, 1)
+			burst(sg.x, sg.y, 8, m, 5, 50, 1)
 		EB.clear()
+		HZ.clear()
 
 # ---------- 子弹 / 挖矿 ----------
 func carve(r: Rock, x: float, y: float, rad: float) -> int:
@@ -1697,7 +2152,7 @@ func carve(r: Rock, x: float, y: float, rad: float) -> int:
 	var got := 0
 	for j in range(cj - R, cj + R + 1):
 		for i in range(ci - R, ci + R + 1):
-			if i < 1 or j < 1 or i >= r.S - 1 or j >= r.S - 1:
+			if i < 1 or j < 1 or i >= r.S - 1 or j >= r.SH - 1:
 				continue
 			var k := j * r.S + i
 			var v := r.m[k]
@@ -1729,7 +2184,7 @@ func carve(r: Rock, x: float, y: float, rad: float) -> int:
 			dirty.erase(r)
 			r.spr.queue_free()
 			r.spr = null
-			for k in r.S * r.S:
+			for k in r.S * r.SH:
 				if r.m[k] and randf() < 0.5:
 					part(r.x0 + k % r.S, r.y0 + k / r.S, (randf() - 0.5) * 30, (randf() - 0.5) * 30, 0.8, r.tint, 3)
 		else:
@@ -1764,7 +2219,7 @@ func upd_bullets(dt: float) -> void:
 				var best: Creature = null
 				var bd := 110.0
 				for c in cr:
-					if c.dead or b.hit.has(c) or (c.t == "serp" and c.st != "fight"):
+					if b.hit.has(c) or not can_hit(c):
 						continue
 					var cd := Vector2(c.x - b.x, c.y - b.y).length()
 					if cd < bd:
@@ -1784,6 +2239,11 @@ func upd_bullets(dt: float) -> void:
 			if b.returning:
 				var to := Vector2(P.x - b.x, P.y - b.y)
 				var v := to.normalized() * b.sp * 0.9
+				if b.w.has("寻回"):
+					for c in cr:
+						if can_hit(c) and not b.hit.has(c) and Vector2(c.x - b.x, c.y - b.y).length() < 60:
+							v = Vector2(c.x - b.x, c.y - b.y).normalized() * b.sp * 0.9
+							break
 				b.vx = v.x
 				b.vy = v.y
 				b.life = maxf(b.life, 0.1)
@@ -1819,6 +2279,24 @@ func upd_bullets(dt: float) -> void:
 				b.x += b.vx * dt / 2
 				b.y += b.vy * dt / 2
 			var r := rock_at(b.x, b.y)
+			if r and b.bounce > 0 and b.orbit <= 0:
+				b.bounce -= 1
+				var nrm := rock_normal(r, b.x, b.y)
+				var bv := Vector2(b.vx, b.vy)
+				if bv.dot(nrm) < 0:
+					bv = bv.bounce(nrm)
+				b.x -= b.vx * dt / 2
+				b.y -= b.vy * dt / 2
+				b.vx = bv.x
+				b.vy = bv.y
+				b.life = maxf(b.life, 0.35)
+				b.hit.clear()
+				if b.w.has("重弹"):
+					b.dmg += 1
+				carve(r, b.x - nrm.x * 2, b.y - nrm.y * 2, 1.6)
+				burst(b.x, b.y, 3, b.mat, 6, 30, 0.25)
+				Sfx.play("ping", 1.3)
+				continue
 			if r:
 				carve(r, b.x, b.y, b.carve_r)
 				if b.w.has("火石"):
@@ -1858,7 +2336,13 @@ func upd_bullets(dt: float) -> void:
 						Sfx.play("ping")
 						break
 					continue
-				if Vector2(b.x - c.x, b.y - c.y).length() < c.r + (2.5 if b.big else 1.5):
+				if not can_hit(c):
+					if c.t == "redact" and c.st == "sleep" and Vector2(b.x - c.x, b.y - c.y).length() < 15:
+						b.life = 0
+						burst(b.x, b.y, 3, RUIN, 6, 20, 0.3)
+						break
+					continue
+				if hit_dist(c, b.x, b.y) < c.r + (2.5 if b.big else 1.5):
 					if c.t == "mite":
 						var hx := b.x - c.x
 						var hy := b.y - c.y
@@ -1896,7 +2380,15 @@ func bullet_hit(b: Bullet, c: Creature) -> void:
 		c.tm = 1.5
 		c.open = 1.0
 		tip("fireclam", "「火」把冰核贝烫开了！")
-	hurt_c(c, b.dmg, b.x, b.y)
+	var dmg := b.dmg
+	if b.crit > 0 and randf() < b.crit:
+		dmg *= 3
+		burst(c.x, c.y, 8, GOLD, 6, 50, 0.4)
+	if c.mark > 0:
+		dmg += 1
+	hurt_c(c, dmg, b.x, b.y)
+	if b.mark > 0:
+		c.mark = maxf(c.mark, b.mark)
 	if b.burn > 0:
 		c.burn = maxf(c.burn, b.burn)
 	if b.frost > 0:
@@ -1911,6 +2403,26 @@ func bullet_hit(b: Bullet, c: Creature) -> void:
 		var a := atan2(b.vy, b.vx)
 		for i in 3 * b.split:
 			spawn_small(b.x, b.y, a + (i - (3 * b.split - 1) / 2.0) * 0.5, b)
+	if b.chain > 0:
+		var best: Creature = null
+		var bd := 75.0
+		for o in cr:
+			if o == c or b.hit.has(o) or not can_hit(o):
+				continue
+			var od := Vector2(o.x - c.x, o.y - c.y).length()
+			if od < bd:
+				bd = od
+				best = o
+		if best:
+			b.chain -= 1
+			var v := Vector2(best.x - b.x, best.y - b.y).normalized() * maxf(b.sp, 220.0)
+			b.vx = v.x
+			b.vy = v.y
+			b.life = maxf(b.life, 0.35)
+			b.orbit = 0
+			b.returning = false
+			burst(b.x, b.y, 5, ORE, 6, 40, 0.3)
+			return
 	if b.pierce > 0:
 		b.pierce -= 1
 	else:
@@ -1967,8 +2479,9 @@ func upd_spawns(dt: float) -> void:
 	if spawn_t > 0:
 		return
 	spawn_t = 4
-	for t in TARGET:
-		if count_type(t) < TARGET[t]:
+	var tg := targets()
+	for t in tg:
+		if count_type(t) < tg[t]:
 			spawn(t)
 
 func upd_particles(dt: float) -> void:
@@ -1986,28 +2499,40 @@ func upd_particles(dt: float) -> void:
 
 func check_discover() -> void:
 	for c in cr:
-		if seen.has(c.t) or c.dead:
+		var t: String = DEF[c.t].get("as", c.t)
+		if seen.has(t) or c.dead:
 			continue
 		if Vector2(c.x - P.x, c.y - P.y).length() < 130:
-			if c.t == "serp" and c.st == "sleep":
+			if (is_boss(c) and c.st == "sleep") or (c.t == "wisp" and c.open < 0.5):
 				continue
-			seen[c.t] = true
-			toast("新生物 ·「%s」  (Tab 图鉴)" % DEF[c.t].name, C_GOLD, 4)
+			seen[t] = true
+			toast("新生物 ·「%s」  (Tab 图鉴)" % DEF[t].name, C_GOLD, 4)
 			Sfx.play("note")
 			persist()
 
 # 画面
 func build_lights() -> void:
+	SUNE = SUN * (1.0 - 0.85 * zone_dark)
 	lights.clear()
 	var f := 0.92 + 0.08 * sin(T * 11) * sin(T * 4.3)
 	lights.append(Vector4(0, -2, kiln_r() * 1.8, 1.25 * f))
 	for b in BEA:
 		lights.append(Vector4(b.x, b.y - 5, 90, 0.9 * f * ((0.5 + 0.5 * sin(T * 20)) if b.hp < 3 else 1.0)))
 	if S != "title" and S != "intro":
-		lights.append(Vector4(P.x, P.y, 62, 0.75))
+		lights.append(Vector4(P.x, P.y, 62 + 30 * P.charge, 0.75 + 0.4 * P.charge))
 	for pg in PAGES:
 		if pg.state == "free":
 			lights.append(Vector4(pg.x, pg.y, 55, 0.8))
+	for l in LAMPS:
+		if l.lit > 0 and absf(l.x - cam_pos.x) < 280 and absf(l.y - cam_pos.y) < 200:
+			lights.append(Vector4(l.x, l.y - 10, 85, 0.95 * f * (1.0 if l.lit > 6 else 0.5 + 0.5 * sin(T * 18))))
+	for fx in FX:
+		if fx.k == "boom":
+			lights.append(Vector4(fx.x, fx.y, 80, 1.4 * fx.t / fx.max))
+		elif fx.k == "beam":
+			lights.append(Vector4((fx.x + fx.x1) / 2.0, (fx.y + fx.y1) / 2.0, 110, 1.0 * fx.t / fx.max))
+	for b in BM:
+		lights.append(Vector4(b.x, b.y, 26, 0.6))
 	var n := 0
 	for b in PB:
 		n += 1
@@ -2019,13 +2544,13 @@ func build_lights() -> void:
 			break
 		if c.t == "hush" and absf(c.x - cam_pos.x) < 220 and absf(c.y - cam_pos.y) < 150:
 			lights.append(Vector4(c.x, c.y, 34, 0.35))
-		if c.t == "serp" and c.st != "dead":
+		if is_boss(c) and c.st != "dead":
 			lights.append(Vector4(c.x, c.y, 60, 0.5 if c.st == "sleep" else 0.7))
 	if lights.size() > 24:
 		lights.resize(24)
 
 func light_at(x: float, y: float) -> float:
-	var L := AMB + SUN * 0.55
+	var L := AMB + SUNE * 0.55
 	for l in lights:
 		var dx := l.x - x
 		var dy := l.y - y
@@ -2038,3 +2563,451 @@ func light_at(x: float, y: float) -> float:
 # 自动试玩（仅用于测试：godot -- --autoplay）
 var _ap_aim := Vector2.RIGHT
 var _ap_fire := false
+
+func targets() -> Dictionary:
+	return TARGETS[chapter]
+
+func boss() -> Creature:
+	return serp if serp != null else redact
+
+func is_boss(c: Creature) -> bool:
+	return c.t == "serp" or c.t == "redact"
+
+func ch_bound() -> int:
+	var n := 0
+	for pg in PAGES:
+		if pg.state == "bound":
+			n += 1
+	return n
+
+func rock_normal(r: Rock, x: float, y: float) -> Vector2:
+	# 石头表面朝外的方向（书架是长方形，按哪一面更近来算）
+	if r.box:
+		var dx := (x - r.x) / maxf(1.0, r.hw)
+		var dy := (y - r.y) / maxf(1.0, r.hh)
+		return Vector2(signf(dx), 0) if absf(dx) > absf(dy) else Vector2(0, signf(dy))
+	return Vector2(x - r.x, y - r.y).normalized()
+
+func _gen_stacks() -> void:
+	# 书架迷宫：一格一格地摆横着或竖着的书架，留出能走的过道
+	var gy := -WR
+	while gy < WR:
+		var gx := 380.0
+		while gx < WR:
+			var x := gx + (R0.randf() - 0.5) * 22
+			var y := gy + (R0.randf() - 0.5) * 16
+			var roll := R0.randf()
+			gx += 112
+			if zn(x, y) != "stacks" or Vector2(x, y).length() > WR - 70 or Vector2(x, y).length() < 450:
+				continue
+			if Vector2(x - PAGES[0].x, y - PAGES[0].y).length() < 80:
+				continue
+			if roll < 0.42:
+				rocks.append(Rock.build_box(roundi(x), roundi(y), 26 + R0.randi() % 14, 5, "stacks", R0))
+			elif roll < 0.78:
+				rocks.append(Rock.build_box(roundi(x), roundi(y), 5, 20 + R0.randi() % 12, "stacks", R0))
+		gy += 84
+
+func gen_ch2() -> void:
+	# 墨海里的墨池
+	var t := 0
+	while t < 500 and INK.size() < 16:
+		t += 1
+		var a := -1.08 - R0.randf() * 1.08
+		var d := 480 + R0.randf() * 790
+		var p := Vector2(cos(a) * d, sin(a) * d)
+		var r: float = [24.0, 34.0, 46.0][R0.randi() % 3]
+		if p.distance_to(Vector2(PAGES[2].x, PAGES[2].y)) < 150 + r:
+			continue
+		var ok := true
+		for q in INK:
+			if Vector2(q.x - p.x, q.y - p.y).length() < q.z + r + 30:
+				ok = false
+		if ok:
+			INK.append(Vector3(p.x, p.y, r))
+	for k in 6:
+		var a := k / 6.0 * TAU + 0.5
+		var p := Vector2(PAGES[2].x + cos(a) * 170, PAGES[2].y + sin(a) * 170)
+		if p.length() < WR - 30:
+			INK.append(Vector3(p.x, p.y, 24.0))
+	# 熄灯区的路灯
+	t = 0
+	while t < 800 and LAMPS.size() < 17:
+		t += 1
+		var a := 1.1 + R0.randf() * 2.93
+		var d := 470 + R0.randf() * 790
+		var p := Vector2(cos(a) * d, sin(a) * d)
+		if rock_at(p.x, p.y) or rock_at(p.x, p.y - 10):
+			continue
+		var ok := true
+		for l in LAMPS:
+			if Vector2(l.x - p.x, l.y - p.y).length() < 150:
+				ok = false
+		if ok:
+			LAMPS.append({"x": p.x, "y": p.y, "lit": 0.0})
+	for k in 3:
+		var a := k / 3.0 * TAU + 0.9
+		LAMPS.append({"x": PAGES[1].x + cos(a) * 58, "y": PAGES[1].y + sin(a) * 58 + 8, "lit": 0.0})
+
+func in_ink(x: float, y: float) -> bool:
+	for q in INK:
+		if absf(x - q.x) < q.z and Vector2(x - q.x, y - q.y).length() < q.z - 2:
+			return true
+	return false
+
+func init_c(c: Creature) -> void:
+	# 新生物出生时各自要准备的东西
+	match c.t:
+		"mite":
+			c.ang = randf() * TAU
+		"comma":
+			c.off = randi() % 2
+			c.tm = 1.0 + randf() * 2.0
+		"blot", "blotlet":
+			c.tm = randf()
+		"worm":
+			c.ang = randf() * TAU
+			c.seg.clear()
+			for i in 7:
+				c.seg.append(Vector2(c.x, c.y))
+
+func apply_pages() -> void:
+	# 把记下来的书页状态套到当前这一章的世界上
+	var st: Array = page_store.get(str(chapter), [])
+	for i in mini(st.size(), PAGES.size()):
+		PAGES[i].state = str(st[i].get("state", PAGES[i].state))
+		PAGES[i].x = float(st[i].get("x", PAGES[i].x))
+		PAGES[i].y = float(st[i].get("y", PAGES[i].y))
+	var b := boss()
+	if b and PAGES[2].state != "sealed":
+		b.st = "dead"
+		b.hp = 0
+	P.bound = 0
+	for k in page_store:
+		for q in page_store[k]:
+			if str(q.get("state", "")) == "bound":
+				P.bound += 1
+
+func stash_pages() -> void:
+	var pgs := []
+	for pg in PAGES:
+		var carried: bool = pg.state == "carried"
+		pgs.append({"state": "free" if carried else pg.state, "x": P.x if carried else pg.x, "y": P.y if carried else pg.y})
+	page_store[str(chapter)] = pgs
+
+func goto_chapter(n: int) -> void:
+	# 翻到另一章：炉灯跟着走，带出去的信标收回来
+	if n == chapter or n < 1 or n > unlocked or not P.carry.is_empty():
+		return
+	stash_pages()
+	P.beacons += BEA.size()
+	chapter = n
+	new_world()
+	P.x = 0
+	P.y = 34
+	P.vx = 0
+	P.vy = 0
+	P.inv = 1.5
+	P.charge = 0
+	cam_pos = Vector2(0, 30)
+	for i in 400:
+		TRX[i] = P.x
+		TRY[i] = P.y
+	toasts.clear()
+	shk = 6
+	Sfx.play("page")
+	burst(0, -4, 60, ORE, 6, 90, 1.6)
+	toast(CHNAME[n], C_GOLD, 5)
+	if n == 2:
+		toast("炉灯跟着你翻到了下一章。这里的三张书页在书架迷宫、熄灯区和墨海。", C_TEAL, 6)
+	save_run()
+
+func hit_dist(c: Creature, x: float, y: float) -> float:
+	# 字弹离这只生物有多远（书虫的身子也算）
+	var d := Vector2(x - c.x, y - c.y).length()
+	if c.t == "worm":
+		for sg in c.seg:
+			d = minf(d, Vector2(x - sg.x, y - sg.y).length() + 1.5)
+	return d
+
+func fx_near(f: Dictionary, x: float, y: float) -> bool:
+	# 刀光 / 爆炸 / 墨线有没有扫到 (x, y)
+	match f.k:
+		"boom":
+			return Vector2(x - f.x, y - f.y).length() < f.r + 4
+		"slash":
+			var v := Vector2(x - f.x, y - f.y)
+			return v.length() < f.r + 4 and absf(angle_difference(f.a, v.angle())) < 1.0
+		"beam":
+			var a := Vector2(f.x, f.y)
+			var b := Vector2(f.x1, f.y1)
+			return Geometry2D.get_closest_point_to_segment(Vector2(x, y), a, b).distance_to(Vector2(x, y)) < 6
+	return false
+
+func upd_world2(dt: float) -> void:
+	# 第二章的环境：熄灯区变暗、路灯、删除线，还有排队等着出生的生物
+	var dk := 1.0 if chapter == 2 and zn(P.x, P.y) == "dark" else 0.0
+	zone_dark += (dk - zone_dark) * minf(1.0, dt * 1.5)
+	if dk > 0:
+		tip("dark", "熄灯区很暗。朝路灯开一枪能把它点亮：亮一分钟，周围暖和。")
+	for l in LAMPS:
+		if l.lit > 0:
+			l.lit -= dt
+			continue
+		if Vector2(l.x - P.x, l.y - P.y).length() > 280:
+			continue
+		var hit := false
+		for b in PB:
+			if Vector2(b.x - l.x, b.y - (l.y - 10)).length() < 7:
+				hit = true
+				break
+		if not hit:
+			for f in FX:
+				if f.t > f.max - 0.05 and fx_near(f, l.x, l.y - 10):
+					hit = true
+		if hit:
+			l.lit = 60.0
+			Sfx.play("beacon", 1.3)
+			burst(l.x, l.y - 10, 14, GOLD, 6, 40, 0.6)
+			tip("lamp", "路灯点亮了。灯魇只有在亮处才有身体，把它们引到灯下再打。")
+	for h in HZ:
+		var was: float = h.t
+		h.t -= dt
+		if was > 0 and h.t <= 0 and h.dmg:
+			Sfx.play("rock", 0.6)
+			shk = maxf(shk, 2.5)
+		if h.t <= 0 and h.dmg and S == "play":
+			var px: float = P.x - h.x
+			var py: float = P.y - h.y
+			var al: float = px * cos(h.a) + py * sin(h.a)
+			var pe: float = -px * sin(h.a) + py * cos(h.a)
+			if absf(pe) < h.w and absf(al) < h.len:
+				hurt_player(1, h.x + cos(h.a) * al, h.y + sin(h.a) * al)
+	HZ = HZ.filter(func(h): return h.t > (-0.3 if h.dmg else 0.0))
+	for q in spawn_q:
+		var c := mk(q[0], q[1], q[2])
+		init_c(c)
+		c.vx = q[3]
+		c.vy = q[4]
+		c.tm = 0.5
+		c.flash = 0.1
+	spawn_q.clear()
+
+func upd_comma(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 逗号蜂：不靠近，绕着小克飞，停一下、吐一个墨点
+	if d < 240 and c.calm <= 0:
+		var rad := clampf((d - 95.0) / 40.0, -1.0, 1.0)
+		var side := 1.0 if c.off == 0 else -1.0
+		var tx := dx / d * rad - dy / d * side * 0.8
+		var ty := dy / d * rad + dx / d * side * 0.8
+		var sp := 12.0 if c.st == "aim" else 55.0
+		c.vx += (tx * sp - c.vx) * dt * 2.5
+		c.vy += (ty * sp - c.vy) * dt * 2.5
+		c.tm -= dt
+		if c.st == "aim":
+			if c.tm <= 0:
+				c.st = "idle"
+				c.tm = 1.9 + randf()
+				add_eb(c.x, c.y, dx / d * 72, dy / d * 72, 3.2, LEECH)
+				Sfx.play("note", 1.6)
+				if randf() < 0.3:
+					c.off = 1 - c.off
+		elif c.tm <= 0 and d < 175 and S == "play":
+			c.st = "aim"
+			c.tm = 0.45
+	else:
+		c.st = "idle"
+		c.vx += (cos(c.age * 0.4 + c.ph) * 12 + (c.hx - c.x) * 0.03 - c.vx) * dt
+		c.vy += (sin(c.age * 0.5 + c.ph) * 10 + (c.hy - c.y) * 0.03 - c.vy) * dt
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	if d < c.r + 4:
+		hurt_player(1, c.x, c.y)
+
+func upd_blot(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 墨团：一跳一跳地扑过来
+	var small := c.t == "blotlet"
+	c.tm -= dt
+	if c.tm <= 0:
+		c.tm = (0.7 if small else 1.3) + randf() * 0.3
+		var a := randf() * TAU
+		var sp := 25.0
+		if d < 210 and c.calm <= 0 and S == "play":
+			a = atan2(dy, dx) + (randf() - 0.5) * 0.5
+			sp = 100.0 if small else 82.0
+		c.vx = cos(a) * sp
+		c.vy = sin(a) * sp
+		c.sp = 1.0
+		for i in 3:
+			part(c.x, c.y + 2, (randf() - 0.5) * 20, (randf() - 0.5) * 20, 0.6, GRAV, 3)
+	c.sp = maxf(0.0, c.sp - dt * 2.5)
+	c.vx *= exp(-2.2 * dt)
+	c.vy *= exp(-2.2 * dt)
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	if d < c.r + 3:
+		hurt_player(1, c.x, c.y)
+
+func upd_worm(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 书虫：像一枚会拐弯的慢导弹，石头和书架直接啃穿
+	c.flee -= dt
+	var chase := d < 175 and c.calm <= 0 and c.flee <= 0 and S == "play"
+	var want := c.ang + sin(c.age * 0.7 + c.ph) * 0.9
+	if chase:
+		want = atan2(dy, dx)
+	elif Vector2(c.hx - c.x, c.hy - c.y).length() > 170:
+		want = atan2(c.hy - c.y, c.hx - c.x)
+	c.ang += clampf(angle_difference(c.ang, want), -2.3 * dt, 2.3 * dt)
+	var hx := c.x + cos(c.ang) * 3
+	var hy := c.y + sin(c.ang) * 3
+	var r := rock_at(hx, hy)
+	var sp := (64.0 if chase else 30.0) * (0.55 if r else 1.0)
+	c.x += cos(c.ang) * sp * dt
+	c.y += sin(c.ang) * sp * dt
+	if r and c.cd <= 0 and d < 380:
+		carve(r, hx, hy, 3.2)
+		c.cd = 0.16
+	var prev := Vector2(c.x, c.y)
+	for i in c.seg.size():
+		var sv := c.seg[i] - prev
+		var sl := maxf(0.0001, sv.length())
+		if sl > 3.4:
+			c.seg[i] = prev + sv / sl * 3.4
+		prev = c.seg[i]
+	if d < c.r + 4:
+		hurt_player(1, c.x, c.y)
+		c.flee = 2.2
+
+func upd_wisp(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 灯魇：暗处只有一双眼睛、打不到、飘得快；亮处显形、变慢、能打
+	var lit := light_at(c.x, c.y) >= 0.4
+	c.open += ((1.0 if lit else 0.0) - c.open) * minf(1.0, dt * 5)
+	if d < 270 and c.calm <= 0 and S == "play":
+		var sp := 22.0 if lit else 72.0
+		var tx := P.x - P.ax * 12 - c.x
+		var ty := P.y - P.ay * 12 - c.y
+		var tl := maxf(0.0001, sqrt(tx * tx + ty * ty))
+		c.vx += (tx / tl * sp - c.vx) * dt * 2.0
+		c.vy += (ty / tl * sp - c.vy) * dt * 2.0
+	else:
+		c.vx += ((c.hx - c.x) * 0.05 + cos(c.age * 0.5 + c.ph) * 8 - c.vx) * dt
+		c.vy += ((c.hy - c.y) * 0.05 + sin(c.age * 0.4 + c.ph) * 8 - c.vy) * dt
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	if d < c.r + 4 and S == "play" and P.inv <= 0:
+		hurt_player(1, c.x, c.y)
+		P.warm = maxf(0.0, P.warm - 8)
+		burst(c.x, c.y, 10, JELLY, 4, 40, 0.5)
+		var a := randf() * TAU
+		c.x = P.x + cos(a) * 130
+		c.y = P.y + sin(a) * 130
+		c.vx = 0
+		c.vy = 0
+		tip("wisp", "灯魇只在光里才有身体：把它引到路灯、信标或炉灯旁边再打。")
+
+func upd_redact(c: Creature, dt: float, d: float) -> void:
+	# 第二章首领「删节者」：删除线、螺旋弹幕、召墨团；半血以后放完招就闪走
+	if c.st == "sleep":
+		if d < 230 and S == "play":
+			c.st = "rise"
+			c.tm = 2.0
+			Sfx.play("roar", 0.7)
+			shk = 8
+			toast("删节者睁开了眼睛。看到细线就躲开！", C_RED, 4)
+			tip("redact", "细线是预告：一眨眼之后那里会落下一道删除线。")
+		return
+	if c.st == "dead":
+		return
+	if c.st == "rise":
+		c.tm -= dt
+		shk = maxf(shk, 2)
+		if c.tm <= 0:
+			c.st = "fight"
+			c.burst_t = 1.2
+			c.off = 0
+		return
+	var hpk: float = c.hp / DEF.redact.hp
+	var p2 := hpk <= 0.5
+	if p2 and c.orR == 0:
+		c.orR = 1
+		shk = 8
+		Sfx.play("roar", 0.5)
+		toast("删节者开始乱划了！", C_RED, 3)
+	var dx := P.x - c.x
+	var dy := P.y - c.y
+	var k := clampf((d - 100.0) / 50.0, -1.0, 1.0)
+	c.vx += (dx / d * k * 42 - c.vx) * dt * 1.5
+	c.vy += (dy / d * k * 42 - c.vy) * dt * 1.5
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	c.ha = atan2(dy, dx)
+	c.burst_t -= dt
+	if c.sing > 0:
+		# 螺旋弹幕
+		c.sing -= dt
+		c.w -= dt
+		if c.w <= 0:
+			c.w = 0.12 if p2 else 0.16
+			c.ang += 0.41
+			var arms := 3 if p2 else 2
+			for s in arms:
+				var a := c.ang + s * TAU / arms
+				add_eb(c.x, c.y, cos(a) * 58, sin(a) * 58, 4.0, WINE)
+	elif c.burst_t <= 0:
+		var pat := c.off % 3
+		c.off += 1
+		c.flash = 0.25
+		Sfx.play("roar", 0.8)
+		match pat:
+			0:
+				var n := 5 if p2 else 3
+				for i in n:
+					var a := atan2(dy, dx) if i == 0 else randf() * PI
+					var o := Vector2.ZERO if i == 0 else Vector2.from_angle(randf() * TAU) * randf() * 55
+					HZ.append({"x": P.x + o.x, "y": P.y + o.y, "a": a, "t": 0.9 + i * 0.22, "w": 5.0, "len": 240.0, "dmg": true})
+				Sfx.play("warn", 1.4)
+				c.burst_t = 2.7 if p2 else 3.3
+			1:
+				c.sing = 2.6
+				c.w = 0
+				c.burst_t = 4.3 if p2 else 4.9
+			2:
+				if count_type("blotlet") < 8:
+					for i in (3 if p2 else 2):
+						spawn_q.append(["blotlet", c.x + cos(i * 2.1) * 16, c.y + sin(i * 2.1) * 16, cos(i * 2.1) * 70, sin(i * 2.1) * 70])
+				var o := randf() * TAU
+				for i in 10:
+					var a := o + i / 10.0 * TAU
+					add_eb(c.x, c.y, cos(a) * 50, sin(a) * 50, 4.2, WINE)
+				c.burst_t = 3.0 if p2 else 3.7
+		if p2 and pat != 1:
+			burst(c.x, c.y, 30, RUIN, 5, 70, 0.7)
+			var a := randf() * TAU
+			c.x = P.x + cos(a) * 118
+			c.y = P.y + sin(a) * 118
+			c.vx = 0
+			c.vy = 0
+			burst(c.x, c.y, 30, RUIN, 5, 70, 0.7)
+	if d < c.r + 4:
+		hurt_player(1, c.x, c.y)
+	if Vector2(P.x - PAGES[2].x, P.y - PAGES[2].y).length() > 620:
+		reset_serp()
+		toast("删节者合上了眼睛。", C_DIM)
+
+# ---------- 章节 / 第二章「阅览室残骸」 ----------
+var chapter := 1
+var unlocked := 1            # 已经能去到第几章
+var page_store := {}         # 每一章三张书页的状态："1" → [{state, x, y} ×3]
+var zone_dark := 0.0         # 熄灯区里画面压暗的程度
+var SUNE := 1.0              # 算上熄灯区之后，实际照到东西上的“太阳”亮度
+var LAMPS: Array = []        # 熄灯区的路灯 {x, y, lit}
+var INK: Array = []          # 墨海里的墨池 Vector3(x, y, 半径)
+var HZ: Array = []           # 预告线 / 删除线 {x, y, a, t, w, len, dmg}
+var spawn_q: Array = []      # 等这一帧结束再生出来的生物 [类型, x, y, vx, vy]
+var redact: Creature = null
+const CHNAME := ["", "第一章 · 星海散页", "第二章 · 阅览室残骸"]
+const TARGETS := [
+	{},
+	{"hush": 15, "folio": 9, "leech": 15, "grav": 7, "mite": 10, "comma": 5},
+	{"blot": 13, "worm": 8, "comma": 11, "wisp": 9, "hush": 6, "mite": 6, "folio": 3},
+]

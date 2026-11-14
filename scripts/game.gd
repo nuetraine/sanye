@@ -86,6 +86,11 @@ func _ready() -> void:
 	TRY.resize(400)
 	load_save()
 	load_words()
+	var args0 := OS.get_cmdline_user_args()
+	if args0.has("--ch=2"):
+		chapter = 2
+		unlocked = 2
+	_bot_god = args0.has("--god")
 	var t0 := Time.get_ticks_msec()
 	new_world()
 	print("world generated in %d ms, rocks=%d" % [Time.get_ticks_msec() - t0, rocks.size()])
@@ -95,6 +100,10 @@ func _ready() -> void:
 	if args.has("--bot"):
 		_bot = true
 		_autoplay = true
+	if args.has("--load") and has_run():
+		load_run()
+		S = "play"
+		print("loaded: ch=%d unlocked=%d bound=%d pens=%d" % [chapter, unlocked, P.bound, P.pens])
 	if _autoplay:
 		save.erase("run")
 
@@ -141,6 +150,10 @@ func _input(e: InputEvent) -> void:
 				fire_lock = false
 		elif e.button_index == MOUSE_BUTTON_RIGHT and e.pressed:
 			jp["dash"] = true
+		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN and e.pressed:
+			jp["wheel_dn"] = true
+		elif e.button_index == MOUSE_BUTTON_WHEEL_UP and e.pressed:
+			jp["wheel_up"] = true
 	elif e is InputEventMouseMotion:
 		touch_mode = false
 		mouse_moved = true
@@ -162,9 +175,15 @@ func _input(e: InputEvent) -> void:
 			elif touch_btn(2).has_point(pos) and (near_kiln() or P.beacons > 0):
 				kind = "btn"
 				jp[KEY_E if near_kiln() else KEY_B] = true
+			elif touch_btn(3).has_point(pos) and near_kiln() and unlocked >= 2:
+				kind = "btn"
+				jp[KEY_G] = true
 			elif pos.x > W - 48 and pos.y > 12 and pos.y < 60:
 				kind = "btn"
 				jp[KEY_TAB] = true
+			elif pen_rect().has_point(pos) and P.pens > 1:
+				kind = "btn"
+				jp[KEY_R] = true
 			elif pos.x < 6 + P.slots.size() * 15 and pos.y > H - 20:
 				kind = "btn"
 				jp[KEY_F] = true
@@ -252,6 +271,8 @@ func step(dt: float) -> void:
 			upd_player(dt)
 			upd_creatures(dt)
 			upd_bullets(dt)
+			upd_bombs(dt)
+			upd_world2(dt)
 			upd_pickups(dt)
 			upd_beacons(dt)
 			upd_spawns(dt)
@@ -298,13 +319,21 @@ func step(dt: float) -> void:
 				S = "play"
 				save_run()
 		"codex":
+			var cn := ORDER.size()
 			if pressed(KEY_W) or pressed(KEY_UP):
-				codex_sel = (codex_sel + 7) % 8
+				codex_sel = (codex_sel + cn - 1) % cn
 			if pressed(KEY_S) or pressed(KEY_DOWN):
-				codex_sel = (codex_sel + 1) % 8
+				codex_sel = (codex_sel + 1) % cn
+			if pressed(KEY_A) or pressed(KEY_LEFT):
+				codex_sel = maxi(0, codex_sel - 7)
+			if pressed(KEY_D) or pressed(KEY_RIGHT):
+				codex_sel = mini(cn - 1, codex_sel + 7)
 			var mp := ppointer()
-			var mi := floori((mp.y - 32) / 16.0)
-			if mp.x > 14 and mp.x < 110 and mi >= 0 and mi < 8 and (mouse_moved or click_q):
+			var mi := -1
+			for i in cn:
+				if codex_rect(i).has_point(mp):
+					mi = i
+			if mi >= 0 and (mouse_moved or click_q):
 				codex_sel = mi
 			elif click_q and not Rect2(8, 8, 304, 164).has_point(mp):
 				S = "play"
@@ -320,9 +349,13 @@ func step(dt: float) -> void:
 			upd_creatures(dt)
 			if end_t > 7 and (pressed(KEY_ENTER) or pressed(KEY_KP_ENTER) or click_q):
 				S = "play"
-				free_mode = true
-				toast("自由探索：残烛还在打寒颤，宇宙还有很多散页。", C_DIM, 5)
-				save_run()
+				if chapter == 1:
+					goto_chapter(2)
+					toast("想回第一章，在炉灯边按 G（或点「翻章」）。", C_DIM, 6)
+				else:
+					free_mode = true
+					toast("自由探索：残烛还在打寒颤，宇宙还有很多散页。", C_DIM, 5)
+					save_run()
 	if randf() < 0.3:
 		part(3 + (randf() - 0.5) * 3, -20, (randf() - 0.5) * 6, -10 - randf() * 8, 2.2, MOTH, 3)
 	upd_particles(dt)
@@ -358,14 +391,14 @@ func present() -> void:
 		arr[i] = lights[i]
 	rock_mat.set_shader_parameter("lights", arr)
 	rock_mat.set_shader_parameter("nlights", lights.size())
-	rock_mat.set_shader_parameter("sun", SUN)
+	rock_mat.set_shader_parameter("sun", SUNE)
 	rock_mat.set_shader_parameter("amb", AMB)
 	rock_mat.set_shader_parameter("time", T)
 	bg_mat.set_shader_parameter("cam", cam_pos)
 	bg_mat.set_shader_parameter("tide", TIDE)
 	bg_mat.set_shader_parameter("time", T)
 	var cold := (25.0 - P.warm) / 25.0 if S == "play" and P.warm < 25 else 0.0
-	vig_mat.set_shader_parameter("tide", TIDE)
+	vig_mat.set_shader_parameter("tide", maxf(TIDE, zone_dark * 0.7))
 	vig_mat.set_shader_parameter("cold", cold)
 	zone_painter.queue_redraw()
 	ent_painter.queue_redraw()
@@ -384,14 +417,15 @@ func _gallery_step() -> void:
 		cr.clear()
 		toasts.clear()
 		tide_t = 0.0
-		var xs := [-110, -80, -50, -20, 20, 50, 80, 110]
-		for i in ORDER.size():
-			var t: String = ORDER[i]
-			if t == "serp":
+		var n := 0
+		for t in ORDER:
+			if t == "serp" or t == "redact":
 				continue
-			var c := mk(t, xs[i], -48 if i % 2 == 0 else 52)
+			var c := mk(t, -125 + (n % 6) * 50, -28 if n < 6 else 58)
+			n += 1
 			c.hx = c.x
 			c.hy = c.y
+			init_c(c)
 			match t:
 				"leech":
 					c.st = "orbit"
@@ -405,17 +439,31 @@ func _gallery_step() -> void:
 				"folio":
 					c.vx = 20
 					c.vy = -8
-		serp.st = "fight"
-		serp.x = 60
-		serp.y = 20
-		serp.burst_t = 99
-		for i in serp.seg.size():
-			serp.seg[i] = Vector2(64 + i * 5, 22 + sin(i * 0.7) * 6)
+				"worm":
+					c.ang = 0.3
+					for i in c.seg.size():
+						c.seg[i] = Vector2(c.x - (i + 1) * 3.4, c.y - sin(i * 0.8) * 2)
+				"wisp":
+					c.open = 1
+		var bl := mk("blotlet", 138, 58)
+		bl.hx = bl.x
+		bl.hy = bl.y
+		var b := boss()
+		cr.append(b)
+		b.st = "fight"
+		b.burst_t = 99
+		for i in b.seg.size():
+			b.seg[i] = Vector2(64 + i * 5, 22 + sin(i * 0.7) * 6)
 		P.hp = 99
 		P.inv = 99
 		P.carry = [0]
 		P.bound = 1
 		P.dust = 37
+		UP.pen = 4
+		P.pens = 5
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--pen="):
+				P.pen = int(a.substr(6))
 		for i in 30:
 			add_pick(-60 + randf() * 120, 30 + randf() * 30, "dust" if i % 3 else "ember")
 		var w := Pick.new()
@@ -424,27 +472,36 @@ func _gallery_step() -> void:
 		w.k = "word"
 		w.age = -99
 		PK.append(w)
-		var b := Beacon.new()
-		b.x = -70
-		b.y = 20
-		BEA.append(b)
+		var be := Beacon.new()
+		be.x = -70
+		be.y = 20
+		BEA.append(be)
+		LAMPS.append({"x": -100.0, "y": 20.0, "lit": 60.0})
+		LAMPS.append({"x": 105.0, "y": 15.0, "lit": 0.0})
+		INK.append(Vector3(30, 78, 24))
+		HZ.append({"x": 0.0, "y": -20.0, "a": 0.4, "t": 9.0, "w": 5.0, "len": 80.0, "dmg": true})
 	for c in cr:
 		c.cd = 9
-		if c.t != "serp":
+		c.tm = maxf(c.tm, 1.0)
+		if not is_boss(c):
 			c.x = c.hx
 			c.y = c.hy
 	for p in PK:
 		p.age = minf(p.age, 0.0)
-	if serp:
-		serp.x = 60
-		serp.y = 20
+	var bb := boss()
+	if bb:
+		bb.x = 75
+		bb.y = 14
+		bb.vx = 0
+		bb.vy = 0
+		bb.burst_t = 99
 	if _ap_t > 1.5:
 		P.x = 0
 		P.y = 30
 		P.vx = 0
 		P.vy = 0
-	_ap_aim = Vector2(1, -0.3)
-	_ap_fire = _ap_t > 2.5
+	_ap_aim = Vector2(1, -0.3) * 60
+	_ap_fire = _ap_t > 2.5 and (P.pen != 4 or _ap_t < 3.05)
 	if _once(3.2):
 		get_viewport().get_texture().get_image().save_png("user://shot_gallery.png")
 	if _ap_t > 3.5:
@@ -455,12 +512,13 @@ func _autoplay_step(dt: float) -> void:
 	if OS.get_cmdline_user_args().has("--gallery"):
 		_gallery_step()
 		return
-	for k in _shots.keys():
+	var shots := _shots if chapter == 1 else _shots2
+	for k in shots.keys():
 		if _ap_t >= k:
 			var img := get_viewport().get_texture().get_image()
-			img.save_png("user://shot_%s.png" % _shots[k])
-			print("shot ", _shots[k], " S=", S)
-			_shots.erase(k)
+			img.save_png("user://shot_%s.png" % shots[k])
+			print("shot ", shots[k], " S=", S)
+			shots.erase(k)
 	if S == "title" and _ap_t > 0.5:
 		click_q = true
 	elif S == "intro" and _ap_t > 1.5:
@@ -474,6 +532,11 @@ func _autoplay_step(dt: float) -> void:
 					P.slots.append({"c": ch, "gold": false})
 		P.bag = [{"c": "穿", "gold": false}, {"c": "针", "gold": false}, {"c": "回", "gold": false}, {"c": "环", "gold": false}]
 		calc_loadout()
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--pen="):
+				UP.pen = 4
+				P.pens = 5
+				P.pen = int(a.substr(6))
 	if _once(4.2):
 		jp[KEY_F] = true
 	if _once(4.9):
@@ -494,6 +557,9 @@ func _autoplay_step(dt: float) -> void:
 	if _once(8.3):
 		jp[KEY_TAB] = true
 		codex_sel = 5
+	if chapter == 2 and _ap_t > 9.9:
+		_ap2_step()
+		return
 	if _once(10.0):
 		jp[KEY_TAB] = true
 		P.x = 200
@@ -523,9 +589,11 @@ func _autoplay_step(dt: float) -> void:
 				best = r
 		if best:
 			_ap_aim = Vector2(best.x - P.x, best.y - P.y)
-			_ap_fire = bd < 120
+			_ap_fire = bd < 120 and (P.pen != 4 or fmod(_ap_t, 1.3) < 1.0)
 			joy = _ap_aim.normalized() * (0.8 if bd > 60 else 0.0)
 	elif S == "play" and _ap_t > 14.0 and serp:
+		if _once(15.5) and OS.get_cmdline_user_args().has("--p3"):
+			serp.hp = 10
 		_ap_aim = Vector2(serp.x - P.x, serp.y - P.y)
 		_ap_fire = true
 		joy = Vector2.ZERO
@@ -557,13 +625,14 @@ func _bot_step(dt: float) -> void:
 
 func _bot_tick(dt: float) -> void:
 	_bot_t += dt
+	unlocked = 2
 	if S == "title" or S == "intro" or S == "ending":
 		click_q = true
 		if S == "intro":
 			intro_t = 99
 		return
 	if S == "menu":
-		jp[KEY_1 + randi() % 7] = true
+		jp[KEY_1 + randi() % 8] = true
 		if randf() < 0.05:
 			jp[KEY_E] = true
 		return
@@ -572,6 +641,7 @@ func _bot_tick(dt: float) -> void:
 			jp[KEY_F] = true
 		return
 	if S == "codex":
+		jp[[KEY_W, KEY_S, KEY_A, KEY_D][randi() % 4]] = true
 		if randf() < 0.1:
 			jp[KEY_TAB] = true
 		return
@@ -585,16 +655,18 @@ func _bot_tick(dt: float) -> void:
 			goal = Vector2.ZERO
 		elif r < 0.5:
 			for pg in PAGES:
-				if pg.state == "free" or (pg.state == "sealed" and P.bound >= 2):
+				if pg.state == "free" or (pg.state == "sealed" and ch_bound() >= 2):
 					goal = Vector2(pg.x, pg.y)
 					break
 		else:
 			goal = Vector2(P.x, P.y) + Vector2.from_angle(randf() * TAU) * 300
 		_bot_dir = (goal - Vector2(P.x, P.y)).normalized().rotated((randf() - 0.5) * 0.8)
-		if randf() < 0.15:
-			jp[[KEY_Q, KEY_B, KEY_F, KEY_TAB, KEY_E, KEY_SPACE][randi() % 6]] = true
+		if randf() < 0.2:
+			jp[[KEY_Q, KEY_B, KEY_F, KEY_TAB, KEY_E, KEY_SPACE, KEY_R, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5][randi() % 12]] = true
 		if near_kiln() and randf() < 0.5:
 			jp[KEY_E] = true
+		if near_kiln() and randf() < 0.04:
+			jp[KEY_G] = true
 		if randf() < 0.1:
 			P.dust += 40
 		if randf() < 0.05:
@@ -603,25 +675,73 @@ func _bot_tick(dt: float) -> void:
 		if randf() < 0.03:
 			for i in P.slots.size():
 				P.slots[i] = null
+		if _bot_god and P.hp < 3:
+			P.hp = P.maxhp
+			P.warm = P.maxwarm
 	joy = _bot_dir
 	var tgt: Creature = null
 	var bd := 140.0
 	for c in cr:
 		var d := Vector2(c.x - P.x, c.y - P.y).length()
-		if d < bd and not c.dead and not (c.t == "serp" and c.st != "fight"):
+		if d < bd and can_hit(c):
 			bd = d
 			tgt = c
-	_ap_aim = Vector2(tgt.x - P.x, tgt.y - P.y) if tgt else _bot_dir
-	_ap_fire = true
+	_ap_aim = Vector2(tgt.x - P.x, tgt.y - P.y) if tgt else _bot_dir * 60
+	_ap_fire = P.pen != 4 or fmod(_bot_t, 1.4) < 1.0
 	if OS.get_cmdline_user_args().has("--perf") and Engine.get_physics_frames() % 120 == 0:
 		print("perf: physics %.2f ms, process %.2f ms, fps %d, draws %d, cr %d, pt %d" % [Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000, Performance.get_monitor(Performance.TIME_PROCESS) * 1000, Engine.get_frames_per_second(), Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), cr.size(), PT.size()])
 	if _bot_t > _bot_secs:
-		print("bot done: t=%.0f gt=%.0f deaths=%d bound=%d dust=%d kills=%d tides=%d sprs=%d" % [_bot_t, gt, P.deaths, P.bound, P.dust_total, P.kills, tides, sprs.size()])
+		print("bot done: t=%.0f gt=%.0f ch=%d deaths=%d bound=%d dust=%d kills=%d tides=%d sprs=%d rocks=%d seen=%s" % [_bot_t, gt, chapter, P.deaths, P.bound, P.dust_total, P.kills, tides, sprs.size(), rocks.size(), seen.keys()])
 		get_tree().quit()
-
 
 func _once(t: float) -> bool:
 	if _ap_t > t and not _done.has(t):
 		_done[t] = true
 		return true
 	return false
+
+func _ap2_step() -> void:
+	# 第二章的自动截图：书架迷宫、熄灯区、墨海、首领
+	if _once(10.0):
+		jp[KEY_TAB] = true
+		var best: Rock = null
+		for r in rocks:
+			if r.box and r.hw > r.hh and (best == null or Vector2(r.x - 650, r.y - 60).length() < Vector2(best.x - 650, best.y - 60).length()):
+				best = r
+		P.x = best.x - 20
+		P.y = best.y + 22
+		cam_pos = Vector2(P.x, P.y)
+		_ap_aim = Vector2(20, -22)
+		init_c(mk("worm", P.x + 60, P.y - 30))
+		init_c(mk("comma", P.x - 60, P.y - 20))
+		P.hp = 99
+	if _once(12.4):
+		var l: Dictionary = LAMPS[0]
+		P.x = l.x + 26
+		P.y = l.y + 6
+		cam_pos = Vector2(P.x, P.y)
+		_ap_aim = Vector2(-26, -16)
+		mk("wisp", l.x - 20, l.y - 12)
+		mk("wisp", l.x + 90, l.y - 40)
+	if _once(14.8):
+		var q: Vector3 = INK[0]
+		P.x = q.x + q.z + 16
+		P.y = q.y
+		cam_pos = Vector2(P.x, P.y)
+		_ap_aim = Vector2(-1, 0.2) * 60
+		init_c(mk("blot", q.x - 10, q.y - 20))
+		init_c(mk("blot", q.x + 10, q.y + 30))
+	if _once(17.0):
+		P.x = PAGES[2].x + 110
+		P.y = PAGES[2].y + 70
+		cam_pos = Vector2(P.x, P.y)
+	if _ap_t > 17.0 and redact:
+		_ap_aim = Vector2(redact.x - P.x, redact.y - P.y)
+		P.hp = 99
+	_ap_fire = _ap_t > 10.3
+	joy = Vector2.ZERO
+	if _ap_t > 23.5:
+		get_tree().quit()
+
+var _bot_god := false
+var _shots2 := {1.0: "title", 5.2: "hall", 9.0: "codex", 12.2: "stacks", 14.6: "dark", 16.8: "ink", 20.6: "boss", 22.6: "boss2"}
