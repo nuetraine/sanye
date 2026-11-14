@@ -99,7 +99,10 @@
 		"binder": 1.0,
 		"chill": 0.15,
 		"icicle": 0.1,
-		"mothq": 1.0
+		"mothq": 1.0,
+		"snail": 0.2,
+		"borer": 0.3,
+		"comet": 0.15
 	},
 	"gold_chance": 0.05,
 	"forge_cost": 30,

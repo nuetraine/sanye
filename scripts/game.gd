@@ -286,6 +286,7 @@ func step(dt: float) -> void:
 			upd_bombs(dt)
 			upd_world2(dt)
 			upd_world3(dt)
+			upd_belt(dt)
 			upd_pickups(dt)
 			upd_beacons(dt)
 			upd_spawns(dt)
@@ -340,9 +341,9 @@ func step(dt: float) -> void:
 			if pressed(KEY_S) or pressed(KEY_DOWN):
 				codex_sel = (codex_sel + 1) % cn
 			if pressed(KEY_A) or pressed(KEY_LEFT):
-				codex_sel = maxi(0, codex_sel - 7)
+				codex_sel = maxi(0, codex_sel - 8)
 			if pressed(KEY_D) or pressed(KEY_RIGHT):
-				codex_sel = mini(cn - 1, codex_sel + 7)
+				codex_sel = mini(cn - 1, codex_sel + 8)
 			var mp := ppointer()
 			var mi := -1
 			for i in cn:
@@ -596,6 +597,9 @@ func _autoplay_step(dt: float) -> void:
 		return
 	if OS.get_cmdline_user_args().has("--penfx") and _ap_t > 9.9:
 		_penfx_step()
+		return
+	if OS.get_cmdline_user_args().has("--belt") and _ap_t > 9.9:
+		_belt_step()
 		return
 	if OS.get_cmdline_user_args().has("--tide") and _ap_t > 9.9:
 		_tide_step()
@@ -950,3 +954,74 @@ func _penfx_step() -> void:
 		_ap_fire = _ap_t - t0 < 1.3
 	else:
 		_ap_fire = true
+
+## 测试用：矿脉带、各种小行星、石蜗 / 钻岩虫 / 彗尾鱼、流星雨
+func _belt_step() -> void:
+	P.hp = 99
+	if _once(10.0):
+		S = "play"
+		# 1) 一排各种样子的石头
+		var base := Vector2(-260, -60)
+		var kinds := ["lump", "potato", "crater", "shale", "magma", "iron", "crystal", "geode", "moss"]
+		for r in rocks.duplicate():
+			if Vector2(r.x, r.y).distance_to(base + Vector2(0, 10)) < 140:
+				rocks.erase(r)
+				grid_del(r)
+				r.spr.queue_free()
+				r.spr = null
+		for i in kinds.size():
+			var rr := Rock.build(roundi(base.x + (i % 5 - 2) * 46), roundi(base.y + (i / 5) * 50 - 10), 15 if kinds[i] != "potato" else 17, "belt", R0, kinds[i])
+			rocks.append(rr)
+			grid_add(rr)
+			_make_sprite(rr)
+		P.x = base.x + 23
+		P.y = base.y + 15
+		cam_pos = Vector2(P.x, P.y)
+		for c in cr:
+			c.dead = true
+		_shots[11.0] = "rocks"
+	if _once(11.5):
+		# 2) 矿脉带里：石蜗、钻岩虫、彗尾鱼
+		var a := 3.05
+		var p := Vector2(cos(a), sin(a)) * 850
+		var best: Rock = null
+		for r in rocks:
+			if r.zone == "belt" and r.R > 14 and not r.box and (best == null or Vector2(r.x, r.y).distance_to(p) < Vector2(best.x, best.y).distance_to(p)):
+				best = r
+		P.x = best.x + best.R + 40
+		P.y = best.y + 10
+		cam_pos = Vector2(P.x - 20, P.y)
+		for i in 2:
+			var c := mk("snail", best.x, best.y)
+			c.home = best
+			c.ang = i * PI + 0.4
+			c.w = 1.0
+			c.st = "crawl"
+		var c2 := mk("comet", P.x - 30, P.y - 60)
+		c2.hx = c2.x
+		c2.hy = c2.y
+		var o: Rock = null
+		for r in rocks:
+			if r != best and r.R > 11 and not r.box and Vector2(r.x - P.x, r.y - P.y).length() < 140 and Vector2(r.x - P.x, r.y - P.y).length() > 50:
+				o = r
+				break
+		if o:
+			var c3 := mk("borer", o.x, o.y)
+			c3.home = o
+			c3.st = "lurk"
+			c3.cd = 2.5
+		_shots[12.5] = "belt_a"
+		_shots[14.6] = "belt_b"
+	if _once(15.0):
+		met_st = 1
+		met_t = 1.2
+		met_a = PI * 0.75
+		_shots[15.6] = "meteor_warn"
+		_shots[17.0] = "meteor"
+		_shots[18.0] = "meteor2"
+	var t := near_c(P.x, P.y, 120.0)
+	_ap_aim = Vector2(t.x - P.x, t.y - P.y) if t else Vector2(-1, 0) * 60
+	_ap_fire = _ap_t > 13.0 and fmod(_ap_t, 1.5) < 0.8
+	if _ap_t > 19.0:
+		print("belt test: snail=", count_type("snail"), " borer=", count_type("borer"), " comet=", count_type("comet"), " zone=", zn(P.x, P.y))
+		get_tree().quit()

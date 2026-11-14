@@ -194,6 +194,8 @@ func draw_hud_play() -> void:
 		rect(0, 0, W, 6, Color(1.0, 0.55, 0.15, a))
 		rect(0, 6, W, 4, Color(1.0, 0.55, 0.15, a * 0.5))
 		text("烛焰要来了！躲到石头下面", W / 2.0, 30, 10, C_GOLD, C_SH, 0.7 + 0.3 * sin(T * 10))
+	if chapter == 1 and met_st == 1 and S == "play":
+		text("流星雨要来了！看箭头，躲到石头背面", W / 2.0, 30, 10, C_GOLD, C_SH, 0.7 + 0.3 * sin(T * 10))
 	# 首领血条
 	var bs := boss()
 	if bs and (bs.st == "fight" or bs.st == "rise"):
@@ -588,8 +590,8 @@ func draw_pen_hud() -> void:
 		text_l("R 换笔", r.position.x + r.size.x + 3, r.position.y + 1.5, 8, C_DIM, C_SH)
 
 func codex_rect(i: int) -> Rect2:
-	# 图鉴名单：左边两列，每列 7 个
-	return Rect2(12 + (i / 7) * 43, 32 + (i % 7) * 16, 42, 15)
+	# 图鉴名单：左边三列，每列 8 个
+	return Rect2(12 + (i / 8) * 43, 29 + (i % 8) * 16, 42, 15)
 
 func is_boss_t(t: String) -> bool:
 	return t == "serp" or t == "redact" or t == "binder"

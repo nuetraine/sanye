@@ -220,6 +220,9 @@ func draw_creature(cc: Creature, sh: int) -> void:
 		"chill": draw_chill(cc, sh)
 		"icicle": draw_icicle(cc, sh)
 		"mothq": draw_mothq(cc, sh)
+		"snail": draw_snail(cc, sh)
+		"borer": draw_borer(cc, sh)
+		"comet": draw_comet(cc, sh)
 		"stamp": draw_stamp(cc, sh)
 		"binder": draw_binder(cc, sh)
 
@@ -1427,6 +1430,7 @@ func draw_skill_fx() -> void:
 	if S != "play" and S != "ending":
 		return
 	draw_pen_fx()
+	draw_belt()
 	if P.shield_t > 0 and (P.shield_t > 0.8 or sin(T * 20) > 0):
 		for i in 16:
 			var a := T * 3.0 + i * TAU / 16.0
@@ -1819,3 +1823,155 @@ func draw_mothq(c: Creature, sh: int) -> void:
 	var f := int(c.age * 9.0) % 2
 	var a := 1.0 if c.st != "melt" else clampf(c.tm, 0.1, 1.0)
 	sd(bake("mothq|%d" % f, 14, 12, _p_mothq.bind(f)), c.x, c.y, sh, c.flash > 0, a)
+
+# ---------- 矿脉带：流星 ----------
+func draw_belt() -> void:
+	for m in METS:
+		var v := Vector2(m.vx, m.vy).normalized()
+		var o := v.orthogonal()
+		for i in 34:
+			var px: float = m.x - v.x * i * 1.3
+			var py: float = m.y - v.y * i * 1.3
+			var k := float(i) / 34.0
+			if i > 2 and Pal.bay(i, int(T * 30)) < k * 0.9:
+				continue
+			var mm := GOLD if i < 4 else (EMBER if i < 12 else RUIN)
+			var lv := 6 if i < 8 else 5
+			sp(px - 0.25, py - 0.25, mm, lv)
+			if i < 14:
+				var wd := (1.0 - i / 14.0) * 1.8
+				sp(px + o.x * wd - 0.25, py + o.y * wd - 0.25, mm, lv - 1)
+				sp(px - o.x * wd - 0.25, py - o.y * wd - 0.25, mm, lv - 1)
+		ball(m.x, m.y, 2.2, GOLD, 5, 0)
+		sp(m.x - 0.5, m.y - 0.5, PAPER, 6)
+	if chapter == 1 and met_st == 1 and S == "play":
+		# 屏幕边上的箭头：流星从哪边来
+		var dir := Vector2(cos(met_a), sin(met_a))
+		var k := 70.0
+		if true:
+			for q in 3:
+				var off := dir.orthogonal() * (q - 1) * 30.0
+				var tip_p := Vector2(P.x, P.y) - dir * k + off + dir * fmod(T * 30.0, 10.0)
+				for s in 14:
+					for t in [-1.0, 1.0]:
+						var pp: Vector2 = tip_p - dir * s * 0.7 + dir.orthogonal() * t * s * 0.7
+						sr(pp.x - 0.75, pp.y - 0.75, 1.5, 1.5, EMBER, 6)
+				for s in 18:
+					var pp2 := tip_p - dir * s * 0.8
+					sr(pp2.x - 0.75, pp2.y - 0.75, 1.5, 1.5, GOLD, 6)
+
+# ---------- 石蜗 ----------
+func _p_snail(di: int, wf: int, hide: bool, f: int) -> void:
+	var a := di / 16.0 * TAU
+	var nx := cos(a)
+	var ny := sin(a)
+	var tx := -ny * wf
+	var ty := nx * wf
+	for jj in range(-14, 14):
+		for ii in range(-14, 14):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			var u := x * tx + y * ty      # 沿着前进方向
+			var v := x * nx + y * ny      # 离开石头的方向
+			# 壳：螺旋
+			var sx := u + 0.6
+			var sy := v - 1.4
+			var sr2 := sx * sx + sy * sy
+			if sr2 < 7.3:
+				var rr := sqrt(sr2)
+				var ang := atan2(sy, sx)
+				var sp2 := fposmod(ang / TAU + rr / 2.2, 1.0)
+				var lv := 3.0 + (2.0 if sp2 < 0.5 else 0.0) + (1.0 if v - 1.4 > 0.8 else 0.0)
+				if rr > 2.45:
+					lv = 2
+				ipx(ii, jj, CLAY if sp2 < 0.5 else GOLD, lv)
+				continue
+			if hide:
+				continue
+			# 身体：贴着石头的一条软肉
+			var bu := u / 4.6
+			var bv := (v + 0.4) / 1.25
+			if bu * bu + bv * bv < 1.0 and u > -3.6:
+				ipx(ii, jj, LEECH, 4 if v > -0.3 else 3)
+				continue
+			# 触角
+			var tip_u := 3.6 + 0.4 * sin(f * 1.2)
+			if (absf(u - 3.2) < 0.35 and v > 0.4 and v < 2.6) or (absf(u - 4.2) < 0.35 and v > 0.2 and v < 2.2):
+				ipx(ii, jj, LEECH, 5)
+			if Vector2(u - tip_u + 0.4, v - 2.6).length() < 0.45 or Vector2(u - tip_u - 0.6, v - 2.3).length() < 0.45:
+				ipx(ii, jj, PAPER, 6, true)
+
+func draw_snail(c: Creature, sh: int) -> void:
+	var di := posmod(roundi(c.ang / TAU * 16.0), 16)
+	var wf := 1 if c.w >= 0 else -1
+	var hide := c.st == "hide"
+	var f := int(c.age * 3.0) % 4
+	var jx := (randf() - 0.5) * 0.8 if hide and c.tm < 0.35 else 0.0
+	sd(bake("snail|%d|%d|%s|%d" % [di, wf, hide, f], 7, 7, _p_snail.bind(di, wf, hide, f)), c.x + jx, c.y, sh, c.flash > 0)
+
+# ---------- 钻岩虫 ----------
+func _p_drill(di: int, f: int) -> void:
+	var a := di / 16.0 * TAU
+	var ca := cos(a)
+	var sa := sin(a)
+	for jj in range(-10, 10):
+		for ii in range(-10, 10):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			var u := x * ca + y * sa
+			var v := -x * sa + y * ca
+			if u < -1.5 or u > 4.2:
+				continue
+			var w := 2.6 * (1.0 - maxf(0.0, u) / 4.2) if u > 0 else 2.6
+			if absf(v) > w:
+				continue
+			var stripe := int(floorf(u * 1.4 - v * 0.9 + f * 0.7)) % 2 == 0
+			ipx(ii, jj, GOLD if stripe else MIRROR, 5 if v < 0 else 4, u > 3.4)
+
+func draw_borer(c: Creature, sh: int) -> void:
+	if c.st == "lurk":
+		if randf() < 0.02 and c.home and c.home.spr:
+			part(c.x + (randf() - 0.5) * c.home.R, c.y + (randf() - 0.5) * c.home.R, 0, -8, 0.5, RUIN, 3)
+		return
+	if c.st == "warn":
+		return
+	for i in range(c.seg.size() - 1, 0, -1):
+		var p: Vector2 = c.seg[i]
+		ball(p.x, p.y, 2.6 - i * 0.35, RUIN if i % 2 == 0 else CLAY, 4, sh)
+		sp(p.x - 0.5, p.y - 2.0 + i * 0.2, GOLD, 4)
+	var a := atan2(c.vy, c.vx)
+	var di := posmod(roundi(a / TAU * 16.0), 16)
+	var f := int(c.age * (30.0 if c.st == "burst" else 10.0)) % 3
+	ball(c.x - cos(a) * 1.0, c.y - sin(a) * 1.0, 2.8, RUIN, 4, sh)
+	sd(bake("drill|%d|%d" % [di, f], 5, 5, _p_drill.bind(di, f)), c.x, c.y, sh, c.flash > 0)
+
+# ---------- 彗尾鱼 ----------
+func _p_comet(di: int, f: int) -> void:
+	var a := di / 16.0 * TAU
+	var ca := cos(a)
+	var sa := sin(a)
+	for jj in range(-10, 10):
+		for ii in range(-10, 10):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			var u := x * ca + y * sa
+			var v := -x * sa + y * ca
+			var body := (u / 3.4) * (u / 3.4) + (v / 1.7) * (v / 1.7) < 1.0
+			var fin := u < -2.0 and u > -4.4 and absf(v) < (-2.0 - u) * 0.9 + 0.2 + 0.3 * f
+			if not body and not fin:
+				continue
+			var lv := 5.0 if v < -0.3 else (4.0 if v < 0.6 else 3.0)
+			ipx(ii, jj, ORE if body else ICE, lv, body and u > 1.0 and absf(v) < 0.6)
+	ip(ca * 1.8 - sa * -0.6, sa * 1.8 + ca * -0.6, SPACE, 0)
+
+func draw_comet(c: Creature, sh: int) -> void:
+	var n := c.tr.size() / 2
+	for i in n:
+		var k := float(i) / maxf(1.0, n)
+		if Pal.bay(i, int(T * 20)) > k:
+			continue
+		sp(c.tr[i * 2] - 0.25, c.tr[i * 2 + 1] - 0.25, ORE if k > 0.5 else ICE, 6 if k > 0.6 else 5)
+	var a := atan2(c.vy, c.vx)
+	var di := posmod(roundi(a / TAU * 16.0), 16)
+	var f := int(c.age * 8.0) % 2
+	sd(bake("comet|%d|%d" % [di, f], 5, 5, _p_comet.bind(di, f)), c.x, c.y, 0, c.flash > 0)

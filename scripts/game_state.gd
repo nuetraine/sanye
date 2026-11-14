@@ -21,7 +21,7 @@ enum { SPACE, ROCK, ORE, EMBER, CLAY, JELLY, MOTH, LEECH, ICE, GRAV, MIRROR, SER
 const ZNAME := {
 	"shallow": "浅页带", "leech": "蛭环", "nursery": "坍缩苗圃", "echo": "回声深处", "drift": "冷寂漂流区",
 	"hall": "前厅", "stacks": "书架迷宫", "dark": "熄灯区", "ink": "墨海",
-	"tower": "钟楼底层", "wind": "页风回廊", "gear": "齿轮钟室", "flare": "烛焰台",
+	"tower": "钟楼底层", "wind": "页风回廊", "gear": "齿轮钟室", "flare": "烛焰台", "belt": "矿脉带",
 }
 ## m = 打散时迸出的碎屑颜色；as = 在图鉴里算作哪一种
 const DEF := {
@@ -47,6 +47,9 @@ const DEF := {
 	"chill": {"name": "冷息", "hp": 4, "r": 5, "dust": 4, "ember": 1.0, "m": ICE},
 	"icicle": {"name": "霜棱", "hp": 2, "r": 4, "dust": 3, "ember": 0.0, "m": ICE},
 	"mothq": {"name": "扑灯母", "hp": 16, "r": 8, "dust": 22, "ember": 2.0, "m": MOTH},
+	"snail": {"name": "石蜗", "hp": 5, "r": 5, "dust": 7, "ember": 0.2, "m": CLAY},
+	"borer": {"name": "钻岩虫", "hp": 6, "r": 4, "dust": 9, "ember": 0.4, "m": RUIN},
+	"comet": {"name": "彗尾鱼", "hp": 3, "r": 4, "dust": 6, "ember": 1.0, "m": ORE},
 }
 
 const LORE := {
@@ -71,6 +74,9 @@ const LORE := {
 	"chill": ["暗潮 · 吸走体温", "残烛打寒颤时漏出来的一口冷气，有了形状。它不咬人，只是贴着你，把你的温度一点点吸走。怕光：信标旁边它会绕开。打散它能拿回一颗余烬。"],
 	"icicle": ["暗潮 · 瞄准冲刺", "暗潮里冻住的一个惊叹号。它会停下来瞄准，拉出一道细线，然后笔直地撞过来。看到细线就横着躲开；撞上石头它会碎掉。"],
 	"mothq": ["暗潮 · 第三次起出现", "蚀字蛾的母亲，翅膀上的两个圆斑像两盏灯。它最喜欢啃信标，一边飞一边抖下新的蛾子。暗潮一过它就散了，要打就趁它还在。"],
+	"snail": ["爬石头 · 会缩壳", "背着一枚螺旋壳，沿着小行星的表面慢慢爬，一路啃矿脉里的页尘。你一靠近它就缩进壳里，过一会儿探出头吐三颗石子。打死它，它吃下去的页尘会全吐出来。"],
+	"borer": ["伏击 · 藏在石头里", "住在大石头的芯里。你经过时，石头表面会先冒出一阵碎屑，然后它会破石而出，笔直地钻出一条隧道。在外面晃一会儿，它又会找块石头钻回去。"],
+	"comet": ["胆小 · 拖着光尾", "一条拖着青色长尾巴的小鱼，在矿脉带的空地里绕大圈游。胆子很小，一靠近就飞快逃走。追上它能拿到余烬。"],
 }
 
 ## 五种笔：同一句话，换一支笔就是另一种打法
@@ -81,7 +87,7 @@ const PENS := [
 	{"name": "砚雷", "desc": "朝准星扔一团墨，炸开一片，连镜螨的正面也炸得到"},
 	{"name": "墨线", "desc": "按住蓄力，松开射出一道穿透一切的墨线"},
 ]
-const ORDER := ["hush", "folio", "clam", "moth", "leech", "mite", "grav", "comma", "serp", "blot", "worm", "wisp", "redact", "dove", "tick", "cinder", "stamp", "binder", "chill", "icicle", "mothq"]
+const ORDER := ["hush", "folio", "clam", "moth", "leech", "mite", "grav", "comma", "serp", "blot", "worm", "wisp", "redact", "dove", "tick", "cinder", "stamp", "binder", "chill", "icicle", "mothq", "snail", "borer", "comet"]
 const PAGE_TXT := [
 	"「寒冷不是热的缺席，而是一切停止说话的声音。」——体温上限 +30，保温 +15%",
 	"「万物彼此吸引，因为它们都想被读到。」——字弹伤害 +1",
@@ -391,6 +397,8 @@ func zn(x: float, y: float) -> String:
 		return "dark"
 	if d < 480.0:
 		return "shallow"
+	if a > 2.8 or a < -2.45:
+		return "belt"
 	if absf(a) < 0.95:
 		return "leech"
 	if a > 1.45 and a < 3.05:
@@ -435,7 +443,7 @@ func gen_rocks() -> void:
 		_gen_stacks()
 	if chapter == 3:
 		gen_clocks()
-	var cap := 200 if chapter == 1 else rocks.size() + (105 if chapter == 2 else 190)
+	var cap := 225 if chapter == 1 else rocks.size() + (105 if chapter == 2 else 190)
 	var t := 0
 	while t < 5000 and rocks.size() < cap:
 		t += 1
@@ -461,6 +469,7 @@ func gen_rocks() -> void:
 			"wind": R = 6 + R0.randf() * 12
 			"gear": R = 9 + R0.randf() * 20
 			"flare": R = 10 + R0.randf() * 16
+			"belt": R = 7 + R0.randf() * 24
 			_: R = 10 + R0.randf() * 28
 		var ok := d >= 120 + R and d <= WR - 30
 		if chapter == 3 and near_clock(x, y, R + 12):
@@ -531,6 +540,8 @@ func zone_spot(t: String) -> Vector2:
 				continue
 			if t == "comma" and not (z == "drift" or (z == "leech" and d > 600)):
 				continue
+			if t == "comet" and not ((z == "belt" or z == "drift") and d > 520):
+				continue
 		elif chapter == 3:
 			if t == "dove" and z != "wind" and not (z == "tower" and d > 260 and randf() < 0.15):
 				continue
@@ -569,6 +580,9 @@ func zone_spot(t: String) -> Vector2:
 	return Vector2.INF
 
 func spawn(t: String) -> void:
+	if t == "snail" or t == "borer":
+		rock_spawn(t)
+		return
 	if t == "leech":
 		var cand: Array[Rock] = []
 		for r in rocks:
@@ -670,6 +684,11 @@ func new_world() -> void:
 	LAMPS.clear()
 	INK.clear()
 	THR.clear()
+	METS.clear()
+	LINES.clear()
+	BOOMQ.clear()
+	met_st = 0
+	met_t = 18.0
 	SHOCK.clear()
 	if chapter != 3:
 		WINDS.clear()
@@ -1279,6 +1298,8 @@ func can_hit(c: Creature) -> bool:
 		return c.st == "fight"
 	if c.t == "wisp":
 		return c.open > 0.5
+	if c.t == "borer":
+		return c.st != "lurk" and c.st != "warn"
 	return true
 
 ## 镜螨的正面会挡住从 (x, y) 方向来的攻击
@@ -2144,7 +2165,13 @@ func upd_creatures(dt: float) -> void:
 				upd_icicle(c, cdt, d, dx, dy)
 			"mothq":
 				upd_mothq(c, cdt, d, dx, dy)
-		if not (c.t in ["clam", "leech", "serp", "redact", "worm", "wisp", "binder", "dove", "chill", "mothq"]) and not c.dead:
+			"snail":
+				upd_snail(c, cdt, d, dx, dy)
+			"borer":
+				upd_borer(c, cdt, d, dx, dy)
+			"comet":
+				upd_comet(c, cdt, d, dx, dy)
+		if not (c.t in ["clam", "leech", "serp", "redact", "worm", "wisp", "binder", "dove", "chill", "mothq", "snail", "borer"]) and not c.dead:
 			var r := rock_at(c.x, c.y)
 			if r:
 				var ex := c.x - r.x
@@ -2266,6 +2293,12 @@ func hurt_c(c: Creature, dmg: int, bx: float, by: float) -> void:
 		Sfx.play("ping")
 		tip("clam", "冰核贝合着壳时打不动。等它张嘴！")
 		return
+	if c.t == "snail" and c.st == "hide":
+		burst(bx, by, 3, CLAY, 6, 30, 0.25)
+		Sfx.play("ping", 1.1)
+		c.flash = 0.05
+		tip("snail", "石蜗缩进壳里时打不动。等它探头吐石子的那一下再打！")
+		return
 	if c.t == "tick" and c.st != "tired":
 		burst(bx, by, 3, GOLD, 6, 30, 0.25)
 		Sfx.play("ping", 1.4)
@@ -2326,6 +2359,9 @@ func kill(c: Creature, drop: bool) -> void:
 		p.wc = keys[randi() % keys.size()]
 		p.gold = big or randf() < float(WD.gold_chance)
 		PK.append(p)
+	if drop and c.t == "snail":
+		for i in mini(int(c.sp), 20):
+			add_pick(c.x, c.y, "dust", (randf() - 0.5) * 50, (randf() - 0.5) * 50)
 	if drop:
 		P.kills += 1
 		Sfx.play("kill")
@@ -2394,14 +2430,23 @@ func carve(r: Rock, x: float, y: float, rad: float) -> int:
 			var ang := atan2(wy - r.y, wx - r.x)
 			var ca := cos(ang)
 			var sa := sin(ang)
-			if v == 2 and randf() < 0.6:
+			var oti := r.ti[k]
+			if v == 2 and oti == Rock.ORE_GOLD:
+				for q in (3 if randf() < 0.6 else 1):
+					add_pick(wx, wy, "dust", ca * 20 + (randf() - 0.5) * 20, sa * 20 + (randf() - 0.5) * 20)
+			elif v == 2 and oti == Rock.ORE_WORD:
+				if randf() < 0.5:
+					add_pick(wx, wy, "dust", ca * 20, sa * 20)
+				if randf() < 0.035:
+					drop_word(wx, wy, ca * 25, sa * 25)
+			elif v == 2 and randf() < 0.6:
 				add_pick(wx, wy, "dust", ca * 20, sa * 20)
 			elif v == 3 and randf() < 0.11:
 				add_pick(wx, wy, "ember", ca * 16, sa * 16)
-			elif v == 1 and randf() < 0.025:
+			elif v == 1 and randf() < (0.06 if r.kind == "iron" else 0.025):
 				add_pick(wx, wy, "dust", ca * 15, sa * 15)
 			if randf() < 0.5:
-				var m := ORE if v == 2 else (EMBER if v == 3 else r.tint)
+				var m: int = (GOLD if oti == Rock.ORE_GOLD else (GRAV if oti == Rock.ORE_WORD else ORE)) if v == 2 else (EMBER if v == 3 else Rock.TINTS[oti])
 				part(wx, wy, (randf() - 0.5) * 40 + ca * 20, (randf() - 0.5) * 40 + sa * 20, 0.5, m, 5 if v > 1 else 3, v > 1)
 	if got:
 		if r.cnt < 10:
@@ -3251,9 +3296,9 @@ var redact: Creature = null
 const CHNAME := ["", "第一章 · 星海散页", "第二章 · 阅览室残骸", "第三章 · 烛芯钟楼"]
 const TARGETS := [
 	{},
-	{"hush": 15, "folio": 9, "leech": 15, "grav": 7, "mite": 10, "comma": 5},
-	{"blot": 13, "worm": 8, "comma": 11, "wisp": 9, "hush": 6, "mite": 6, "folio": 3},
-	{"dove": 15, "tick": 9, "cinder": 12, "stamp": 7, "comma": 6, "hush": 4, "mite": 4},
+	{"hush": 15, "folio": 9, "leech": 15, "grav": 7, "mite": 10, "comma": 5, "snail": 9, "borer": 6, "comet": 6},
+	{"blot": 13, "worm": 8, "comma": 11, "wisp": 9, "hush": 6, "mite": 6, "folio": 3, "snail": 3},
+	{"dove": 15, "tick": 9, "cinder": 12, "stamp": 7, "comma": 6, "hush": 4, "mite": 4, "snail": 4},
 ]
 
 func chr() -> Dictionary:
@@ -4296,3 +4341,316 @@ func upd_mothq(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
 				m.vy = 40
 			burst(c.x, c.y + 4, 10, MOTH, 5, 30, 0.6)
 			Sfx.play("ping", 0.6)
+
+func drop_word(x: float, y: float, vx: float, vy: float) -> void:
+	var keys: Array = WD.chars.keys()
+	var p := Pick.new()
+	p.x = x
+	p.y = y
+	p.vx = vx
+	p.vy = vy
+	p.k = "word"
+	p.wc = keys[randi() % keys.size()]
+	p.gold = randf() < float(WD.gold_chance)
+	PK.append(p)
+	burst(x, y, 10, GRAV, 6, 40, 0.5)
+	tip("wordore", "字晶里敲出了一个字！紫色发光的矿脉偶尔会掉字。")
+
+# ======================================================================
+# 第一章「矿脉带」：晶洞、陨铁、流星雨；石蜗、钻岩虫、彗尾鱼
+# ======================================================================
+var METS: Array = []
+var met_t := 18.0
+var met_st := 0          # 0 平静 1 预警 2 正在下
+var met_a := 0.0
+var met_sp := 0.0
+
+func upd_belt(dt: float) -> void:
+	for m in METS:
+		m.life -= dt
+		m.x += m.vx * dt
+		m.y += m.vy * dt
+		var r := rock_at(m.x, m.y)
+		if r:
+			carve(r, m.x, m.y, 3.2)
+			burst(m.x, m.y, 10, EMBER, 6, 60, 0.5)
+			if randf() < 0.35:
+				add_pick(m.x, m.y, "ember", -m.vx * 0.1, -m.vy * 0.1)
+			Sfx.play("rock", 1.3)
+			m.life = 0
+			continue
+		if S == "play" and P.dash_t <= 0 and Vector2(m.x - P.x, m.y - P.y).length() < 5:
+			hurt_player(1, m.x - m.vx * 0.05, m.y - m.vy * 0.05)
+			m.life = 0
+			continue
+		for c in cr:
+			if can_hit(c) and Vector2(c.x - m.x, c.y - m.y).length() < c.r + 2:
+				hurt_c(c, 2, m.x, m.y)
+				m.life = 0
+				break
+	METS = METS.filter(func(m): return m.life > 0)
+	if chapter != 1 or S != "play":
+		return
+	var inb := zn(P.x, P.y) == "belt"
+	match met_st:
+		0:
+			if inb:
+				met_t -= dt
+				if met_t <= 0:
+					met_st = 1
+					met_t = 1.8
+					met_a = randf() * TAU
+					Sfx.play("warn", 0.8)
+					tip("meteor", "矿脉带会下流星雨！看屏幕边上的箭头，躲到石头背面去。流星砸碎的石头里有余烬。")
+		1:
+			met_t -= dt
+			if met_t <= 0:
+				met_st = 2
+				met_t = 4.5
+				met_sp = 0
+				shk = maxf(shk, 2)
+		2:
+			met_t -= dt
+			met_sp -= dt
+			if met_sp <= 0:
+				met_sp = 0.09 + randf() * 0.08
+				var dir := Vector2(cos(met_a), sin(met_a))
+				var side := dir.orthogonal() * ((randf() - 0.5) * 380.0)
+				var p0 := Vector2(P.x, P.y) - dir * 230.0 + side
+				var sp := 170.0 + randf() * 60.0
+				var dv := dir.rotated((randf() - 0.5) * 0.12) * sp
+				METS.append({"x": p0.x, "y": p0.y, "vx": dv.x, "vy": dv.y, "life": 3.2})
+			if met_t <= 0:
+				met_st = 0
+				met_t = 24.0 + randf() * 14.0
+
+## 沿角度 a 找石头表面到中心的距离（找不到返回 -1）
+func surf(r: Rock, a: float) -> float:
+	var d := float(maxi(r.c, r.ch))
+	var ca := cos(a)
+	var sa := sin(a)
+	while d > 0.5:
+		if r.at(floori(r.x + ca * d), floori(r.y + sa * d)):
+			return d
+		d -= 0.5
+	return -1.0
+
+func rock_spawn(t: String) -> void:
+	var cand: Array[Rock] = []
+	for r in rocks:
+		if r.R < (11 if t == "borer" else 9) or r.box or Vector2(r.x - P.x, r.y - P.y).length() < 240:
+			continue
+		var z := r.zone
+		var ok := false
+		if chapter == 1:
+			ok = z == "belt" or (t == "snail" and (z == "shallow" or z == "drift") and randf() < 0.3) or (t == "borer" and z == "drift" and randf() < 0.2)
+		else:
+			ok = t == "snail" and randf() < 0.25 and Vector2(r.x, r.y).length() > 300
+		if ok:
+			cand.append(r)
+	if cand.is_empty():
+		return
+	var r: Rock = cand[randi() % cand.size()]
+	var c := mk(t, r.x, r.y)
+	c.home = r
+	if t == "snail":
+		c.ang = randf() * TAU
+		c.w = -1.0 if randf() < 0.5 else 1.0
+		c.st = "crawl"
+	else:
+		c.st = "lurk"
+		c.cd = 1.0
+
+func upd_snail(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 石蜗：沿着石头表面爬，顺路啃矿；你靠近就缩壳，过一会儿探头吐三颗石子
+	var r := c.home
+	if r == null or r.spr == null:
+		# 石头没了：在太空里慢慢漂，碰到别的石头就爬上去
+		c.st = "float"
+		c.vx *= exp(-0.5 * dt)
+		c.vy *= exp(-0.5 * dt)
+		c.x += c.vx * dt
+		c.y += c.vy * dt
+		c.ang += dt * 2.0
+		c.tm -= dt
+		if c.tm <= 0:
+			c.tm = 1.0
+			for o in rocks:
+				if not o.box and Vector2(o.x - c.x, o.y - c.y).length() < o.R + 40:
+					c.home = o
+					c.ang = atan2(c.y - o.y, c.x - o.x)
+					c.st = "crawl"
+					break
+		return
+	if c.st == "float":
+		c.st = "crawl"
+	var sd := surf(r, c.ang)
+	if sd < 0:
+		c.home = null
+		return
+	var tx := r.x + cos(c.ang) * (sd + 2.5)
+	var ty := r.y + sin(c.ang) * (sd + 2.5)
+	c.vx = (tx - c.x) / maxf(dt, 0.001)
+	c.vy = (ty - c.y) / maxf(dt, 0.001)
+	c.vx = clampf(c.vx, -60, 60)
+	c.vy = clampf(c.vy, -60, 60)
+	c.x = tx
+	c.y = ty
+	c.tm -= dt
+	if c.st == "hide":
+		if c.tm <= 0:
+			c.st = "crawl"
+			c.cd = 3.5
+			if d < 130 and S == "play":
+				var a := atan2(dy, dx)
+				for i in 3:
+					var aa := a + (i - 1) * 0.28
+					add_eb(c.x, c.y, cos(aa) * 85, sin(aa) * 85, 1.8, CLAY)
+				Sfx.play("ping", 0.5)
+		return
+	c.ang += c.w * 8.0 / maxf(6.0, sd) * dt
+	# 啃矿
+	var ex := floori(r.x + cos(c.ang) * (sd - 0.5))
+	var ey := floori(r.y + sin(c.ang) * (sd - 0.5))
+	var i := ex - r.x0
+	var j := ey - r.y0
+	if i > 0 and j > 0 and i < r.S - 1 and j < r.SH - 1 and r.m[j * r.S + i] == 2 and randf() < dt * 3.0:
+		r.m[j * r.S + i] = 1
+		dirty[r] = true
+		c.sp += 1.0
+		part(c.x, c.y, 0, -10, 0.4, ORE, 6, true)
+	if d < 58 and c.cd <= 0 and S == "play" and c.calm <= 0:
+		c.st = "hide"
+		c.tm = 1.4
+		Sfx.play("ping", 0.9)
+		tip("snail", "石蜗缩进壳里时打不动。等它探头吐石子的那一下再打！")
+
+func upd_borer(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 钻岩虫：躲在石头里，你一靠近就破石而出，钻出一条隧道
+	c.tm -= dt
+	if c.seg.is_empty():
+		for i in 4:
+			c.seg.append(Vector2(c.x, c.y))
+	var hd := Vector2(c.x, c.y)
+	if hd.distance_to(c.seg[0]) > 2.6:
+		c.seg.insert(0, hd)
+		c.seg.resize(4)
+	match c.st:
+		"lurk":
+			var r := c.home
+			if r == null or r.spr == null:
+				c.st = "roam"
+				c.tm = 4.0
+				return
+			c.x = r.x
+			c.y = r.y
+			for i in 4:
+				c.seg[i] = Vector2(c.x, c.y)
+			if d < 80 + r.R and c.cd <= 0 and S == "play" and c.calm <= 0:
+				c.st = "warn"
+				c.tm = 0.8
+				c.ang = atan2(dy, dx)
+				Sfx.play("warn", 0.6)
+		"warn":
+			var r := c.home
+			if r != null and r.spr != null and randf() < dt * 30:
+				var sd := surf(r, c.ang + (randf() - 0.5) * 0.6)
+				if sd > 0:
+					part(r.x + cos(c.ang) * sd, r.y + sin(c.ang) * sd, cos(c.ang) * 20 + (randf() - 0.5) * 20, sin(c.ang) * 20, 0.4, r.tint, 5)
+			if c.tm <= 0:
+				c.st = "burst"
+				c.tm = 0.9
+				c.ang = atan2(dy, dx)
+				c.vx = cos(c.ang) * 230
+				c.vy = sin(c.ang) * 230
+				Sfx.play("roar", 1.6)
+				shk = maxf(shk, 2)
+				tip("borer", "钻岩虫会从石头里冲出来！看到石头冒碎屑就闪开。")
+		"burst":
+			c.x += c.vx * dt
+			c.y += c.vy * dt
+			var r := rock_at(c.x, c.y)
+			if r:
+				carve(r, c.x, c.y, 2.6)
+			if d < c.r + 4 and c.cd <= 0 and S == "play":
+				hurt_player(1, c.x, c.y)
+				c.cd = 1.0
+			if c.tm <= 0:
+				c.st = "roam"
+				c.tm = 3.5 + randf() * 2.0
+		"roam":
+			var sp := 40.0 if c.calm <= 0 and S == "play" else 0.0
+			var j := sin(c.age * 5.0) * 0.6
+			var ux := (dx * cos(j) - dy * sin(j)) / d
+			var uy := (dx * sin(j) + dy * cos(j)) / d
+			c.vx += (ux * sp - c.vx) * dt * 2.0
+			c.vy += (uy * sp - c.vy) * dt * 2.0
+			c.x += c.vx * dt
+			c.y += c.vy * dt
+			if d < c.r + 4 and c.cd <= 0 and S == "play":
+				hurt_player(1, c.x, c.y)
+				c.cd = 1.0
+			if c.tm <= 0:
+				var best: Rock = null
+				var bd := 150.0
+				for o in rocks:
+					if o.box or o.R < 8:
+						continue
+					var od := Vector2(o.x - c.x, o.y - c.y).length() - o.R
+					if od < bd:
+						bd = od
+						best = o
+				if best:
+					c.home = best
+					c.st = "dig"
+					c.tm = 3.0
+				else:
+					c.tm = 2.0
+		"dig":
+			var r := c.home
+			if r == null or r.spr == null or c.tm <= 0:
+				c.st = "roam"
+				c.tm = 3.0
+				return
+			var to := Vector2(r.x - c.x, r.y - c.y)
+			c.vx = to.normalized().x * 70
+			c.vy = to.normalized().y * 70
+			c.x += c.vx * dt
+			c.y += c.vy * dt
+			if rock_at(c.x, c.y) == r:
+				carve(r, c.x, c.y, 1.8)
+			if to.length() < 3:
+				c.st = "lurk"
+				c.cd = 3.0
+
+func upd_comet(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 彗尾鱼：在空旷处绕大圈游，受惊就拖着长尾巴飞快逃走
+	var tx := c.hx + cos(c.age * 0.35 + c.ph) * 110
+	var ty := c.hy + sin(c.age * 0.5 + c.ph) * 70
+	var sp := 55.0
+	var ex := tx - c.x
+	var ey := ty - c.y
+	if d < 85 and S == "play":
+		c.flee = 1.6
+	if c.flee > 0:
+		c.flee -= dt
+		ex = -dx
+		ey = -dy
+		sp = 160.0
+	var el := maxf(0.001, sqrt(ex * ex + ey * ey))
+	c.vx += (ex / el * sp - c.vx) * dt * 2.2
+	c.vy += (ey / el * sp - c.vy) * dt * 2.2
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	var r := rock_at(c.x, c.y)
+	if r:
+		c.x -= c.vx * dt * 2
+		c.y -= c.vy * dt * 2
+		c.vx *= -0.5
+		c.vy *= -0.5
+	c.tr.append(c.x)
+	c.tr.append(c.y)
+	if c.tr.size() > 28:
+		c.tr = c.tr.slice(2)
+	if randf() < dt * 10:
+		part(c.x, c.y, -c.vx * 0.2, -c.vy * 0.2, 0.6, ORE, 5, true)
