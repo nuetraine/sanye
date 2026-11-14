@@ -283,26 +283,32 @@ func draw_words_panel() -> void:
 	# 效果说明
 	var y := 73.0
 	var shown := 0
-	for l in loadout_lines():
+	var lines := loadout_lines()
+	for l in lines:
 		for ln in wrap_text(l, 8, 280):
-			if shown < 5:
+			if shown < 4:
 				text(ln, 160, y, 8, C_TEAL if l.begins_with("成词") else (C_DIM if l.begins_with("（") else C_TXT), C_SH)
 			y += 10
 			shown += 1
-	# 背包
-	text_l("背包（点一下填进句子的空格）", 20, 124, 8, C_DIM, null)
-	for i in mini(P.bag.size(), 14):
+	if shown > 4:
+		text_r("…", 300, 103, 8, C_DIM, null)
+	# 背包：同一个字叠成一格
+	var groups := bag_groups()
+	text_l("背包 %d 字（点一下填进句子的空格；同样的字叠在一起）" % P.bag.size(), 20, 113, 8, C_DIM, null)
+	for i in mini(groups.size(), 28):
 		var r := bag_rect(i)
-		var w = P.bag[i]
+		var w: Dictionary = groups[i]
 		box(r.position.x, r.position.y, r.size.x, r.size.y, Pal.rc(SPACE, 2), Pal.rc(GOLD if w.gold else RUIN, 5))
 		text(w.c, r.position.x + 9, r.position.y + 1, 11, C_GOLD if w.gold else kind_col(w.c), C_SH)
+		if w.n > 1:
+			text_r("%d" % w.n, r.position.x + 18, r.position.y + 10, 7, C_GOLD, C_SH)
 	if P.bag.is_empty():
-		text_l("（空）", 22, 139, 8, C_DIM, null)
-	elif P.bag.size() > 14:
-		text_r("…还有 %d 个" % (P.bag.size() - 14), 306, 124, 8, C_DIM, null)
+		text_l("（空）", 22, 127, 8, C_DIM, null)
+	elif groups.size() > 28:
+		text_r("…还有 %d 种" % (groups.size() - 28), 306, 113, 8, C_DIM, null)
 	var known_w: Array = save.words
 	var hint := "在炉灯边可以点句子里的字把它取下来" if near_kiln() else "在外面只能往空格里填字，回炉灯才能重排"
-	text("%s · 已发现的词 %d/%d · %s" % [hint, known_w.size(), WD.words.size(), "点外面关闭" if touch_mode else "F 关闭"], 160, 158, 8, C_DIM, C_SH)
+	text("%s · 已发现的词 %d/%d · %s" % [hint, known_w.size(), WD.words.size(), "点外面关闭" if touch_mode else "F 关闭"], 160, 162, 8, C_DIM, C_SH)
 
 func draw_minimap(x: float, y: float, s: float) -> void:
 	box(x, y, s, s, Color(0.04, 0.043, 0.094, 0.85), C_LINE)

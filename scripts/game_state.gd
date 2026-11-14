@@ -1021,7 +1021,30 @@ func slot_rect(i: int) -> Rect2:
 	return Rect2(160 - n * 15 + i * 30 + 2, 34, 26, 26)
 
 func bag_rect(i: int) -> Rect2:
-	return Rect2(22 + i * 20, 136, 18, 18)
+	return Rect2(22 + (i % 14) * 20, 124 + (i / 14) * 19, 18, 18)
+
+## 背包按字叠起来：同一个字（同为金色或普通）只占一格，右下角显示个数
+func bag_groups() -> Array:
+	var g := {}
+	var out := []
+	for i in P.bag.size():
+		var w = P.bag[i]
+		var key: String = w.c + ("*" if w.gold else "")
+		if not g.has(key):
+			g[key] = {"c": w.c, "gold": w.gold, "n": 0, "idx": i}
+			out.append(g[key])
+		g[key].n += 1
+	var order := {"形": 0, "动": 1, "性": 2}
+	var ks: Array = WD.chars.keys()
+	out.sort_custom(func(a, b):
+		var ka: int = order.get(char_kind(a.c), 3)
+		var kb: int = order.get(char_kind(b.c), 3)
+		if ka != kb:
+			return ka < kb
+		if a.c != b.c:
+			return ks.find(a.c) < ks.find(b.c)
+		return a.gold and not b.gold)
+	return out
 
 func upd_words_panel() -> void:
 	if pressed(KEY_F) or pressed(KEY_ESCAPE) or pressed(KEY_TAB):
@@ -1043,8 +1066,10 @@ func upd_words_panel() -> void:
 				Sfx.play("ping")
 				calc_loadout()
 			return
-	for i in P.bag.size():
-		if bag_rect(i).has_point(mp):
+	var groups := bag_groups()
+	for gi in mini(groups.size(), 28):
+		if bag_rect(gi).has_point(mp):
+			var i: int = groups[gi].idx
 			var tgt := word_sel if word_sel >= 0 and word_sel < P.slots.size() and P.slots[word_sel] == null else P.slots.find(null)
 			if tgt < 0:
 				toast("句子满了。回炉灯把不要的字取下来。" if not near_kiln() else "先点句子里的一个字把它取下来。", C_DIM)

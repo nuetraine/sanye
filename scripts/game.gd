@@ -549,6 +549,10 @@ func _autoplay_step(dt: float) -> void:
 				for ch in a.substr(11):
 					P.slots.append({"c": ch, "gold": false})
 		P.bag = [{"c": "穿", "gold": false}, {"c": "针", "gold": false}, {"c": "回", "gold": false}, {"c": "环", "gold": false}]
+		if OS.get_cmdline_user_args().has("--bigbag"):
+			var ks: Array = WD.chars.keys()
+			for i in 40:
+				P.bag.append({"c": ks[randi() % ks.size()], "gold": randf() < 0.15})
 		calc_loadout()
 		for a in OS.get_cmdline_user_args():
 			if a.begins_with("--pen="):
