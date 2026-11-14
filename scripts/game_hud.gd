@@ -97,7 +97,7 @@ func dim(a := 0.62) -> void:
 func _draw_hud(c: CanvasItem) -> void:
 	cv = c
 	OFS = Vector2.ZERO
-	if S == "play" or S == "menu" or S == "codex" or S == "words":
+	if S == "play" or S == "menu" or S == "codex" or S == "words" or S == "chars":
 		draw_hud_play()
 		if touch_mode and S == "play":
 			draw_touch_ui()
@@ -106,6 +106,8 @@ func _draw_hud(c: CanvasItem) -> void:
 			OFS = PO
 			if S == "menu":
 				draw_menu()
+			elif S == "chars":
+				draw_chars()
 			elif S == "codex":
 				draw_codex()
 			else:
@@ -135,9 +137,14 @@ func _draw_hud_sprites(c: CanvasItem) -> void:
 	elif S == "intro" and intro_t > 13:
 		c.draw_set_transform(o + Vector2(160, intro_clawd_y) * U, 0, Vector2(2 * U, 2 * U))
 		draw_clawd(0, 0, int(T * 4) % 2, 0, fmod(T, 3.0) < 0.15)
+	elif S == "chars":
+		for i in CHARS.size():
+			var r := char_rect(i)
+			c.draw_set_transform(o + Vector2(r.position.x + r.size.x / 2.0, r.position.y + 16 + (sin(T * 3) * 1.0 if i == char_sel else 0.0)) * U, 0, Vector2(2 * U, 2 * U))
+			draw_pc(i, 0, 0, int(T * 4) % 2 if i == char_sel else 0, 0, fmod(T + i, 3.0) < 0.15)
 	elif S == "codex":
 		var t: String = ORDER[codex_sel]
-		draw_portrait(t, 214, 58, 1 if t == "serp" else 2, known(t))
+		draw_portrait(t, 224, 58, 1 if t == "serp" or t == "binder" else 2, known(t))
 	c.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 	no_cull = false
 
@@ -180,12 +187,18 @@ func draw_hud_play() -> void:
 	draw_minimap(W - 46, 15, 42)
 	draw_sentence_hud()
 	draw_pen_hud()
-	text_r("%s书页 %d/3" % ["" if unlocked < 2 else ("一·" if chapter == 1 else "二·"), ch_bound()], W - 4, 59, 9, C_TEAL, C_SH)
+	draw_skill_hud()
+	text_r("%s书页 %d/3" % ["" if unlocked < 2 else ["", "一·", "二·", "三·"][chapter], ch_bound()], W - 4, 59, 9, C_TEAL, C_SH)
+	if chapter == 3 and flare_st == 1 and in_flare(P.x, P.y) and S == "play":
+		var a := 0.25 + 0.2 * sin(T * 16)
+		rect(0, 0, W, 6, Color(1.0, 0.55, 0.15, a))
+		rect(0, 6, W, 4, Color(1.0, 0.55, 0.15, a * 0.5))
+		text("烛焰要来了！躲到石头下面", W / 2.0, 30, 10, C_GOLD, C_SH, 0.7 + 0.3 * sin(T * 10))
 	# 首领血条
 	var bs := boss()
 	if bs and (bs.st == "fight" or bs.st == "rise"):
 		var hk := clampf(bs.hp / DEF[bs.t].hp, 0.0, 1.0)
-		var bm := SERP if bs.t == "serp" else WINE
+		var bm := SERP if bs.t == "serp" else (WINE if bs.t == "redact" else GOLD)
 		text(DEF[bs.t].name, W / 2.0, 3, 9, Pal.rc(bm, 5), C_SH)
 		box(W / 2.0 - 60, 15, 120, 4, C_SH, Pal.rc(bm, 3))
 		rect(W / 2.0 - 59.5, 15.5, 119 * hk, 3, Pal.rc(bm, 4))
@@ -223,7 +236,7 @@ func draw_hud_play() -> void:
 					hp(bx + 0.5, by + 0.5, C_SH)
 					hp(bx, by, col)
 	# 提示条：屏幕下方居中，带半透明底，不压到两边的按钮
-	var ty := H - (46.0 if P.pens > 1 else 31.0)
+	var ty := H - (46.0 if P.pens > 1 else 31.0) - 15.0
 	var tw := minf(300.0, W - (110.0 if touch_mode else 40.0))
 	for i in range(toasts.size() - 1, -1, -1):
 		var t: Dictionary = toasts[i]
@@ -236,7 +249,7 @@ func draw_hud_play() -> void:
 			ty -= 12
 		ty -= 1
 	if S == "play" and near_kiln() and not touch_mode:
-		text("按 E 打开工坊" if unlocked < 2 else "E 工坊 · G 翻到第%s章" % ("二" if chapter == 1 else "一"), P.x - ox, P.y - oy - 22, 8, C_GOLD, C_SH, 0.8 + 0.2 * sin(T * 4))
+		text("E 工坊 · C 换角色" if unlocked < 2 else "E 工坊 · C 换角色 · G 翻到第%s章" % ["", "一", "二", "三"][chapter % unlocked + 1], P.x - ox, P.y - oy - 22, 8, C_GOLD, C_SH, 0.8 + 0.2 * sin(T * 4))
 
 ## 左下角的小句子：每格一个字，金色字发光
 func draw_sentence_hud() -> void:
@@ -334,7 +347,9 @@ func touch_btn(i: int) -> Rect2:
 		0: return Rect2(W - 42, H - 42, 36, 36)
 		1: return Rect2(W - 42, H - 76, 36, 30)
 		2: return Rect2(W - 42, H - 110, 36, 30)
-		_: return Rect2(W - 82, H - 36, 36, 30)
+		3: return Rect2(W - 82, H - 36, 36, 30)
+		5: return Rect2(W - 82, H - 76, 36, 30)
+		_: return Rect2(W - 122, H - 36, 36, 30)
 
 func draw_touch_ui() -> void:
 	for t in touches.values():
@@ -345,16 +360,20 @@ func draw_touch_ui() -> void:
 				hp(st.x + cos(a) * 18, st.y + sin(a) * 18, Pal.rc(RUIN, 6))
 			var kp: Vector2 = st + joy * 18
 			box(kp.x - 3, kp.y - 3, 6, 6, Pal.rc(CLAY, 4), Pal.rc(CLAY, 6))
-	var names := ["冲", "烬", "坊" if near_kiln() else "标", "翻章"]
-	var mats := [CLAY, EMBER, GOLD, ORE]
-	for i in 4:
+	var names := ["冲", "烬", "坊" if near_kiln() else "标", "翻章", "角色", "技"]
+	var mats := [CLAY, EMBER, GOLD, ORE, CLAY, GRAV]
+	for i in 6:
+		if i == 4 and not near_kiln():
+			continue
 		if i == 2 and not near_kiln() and P.beacons == 0:
 			continue
 		if i == 3 and not (near_kiln() and unlocked >= 2):
 			continue
 		var r := touch_btn(i)
 		box(r.position.x, r.position.y, r.size.x, r.size.y, Color(0.04, 0.04, 0.1, 0.55), Pal.rc(mats[i], 4))
-		text(names[i], r.get_center().x, r.get_center().y - (8 if i < 3 else 6), 12 if i < 3 else 9, C_TXT if i == 0 else C_GOLD, C_SH)
+		if i == 5 and P.sk_cd > 0:
+			rect(r.position.x + 0.5, r.position.y + r.size.y - 2, (r.size.x - 1) * (1.0 - P.sk_cd / skill_cd_max()), 1.5, Pal.rc(GRAV, 5))
+		text(names[i], r.get_center().x, r.get_center().y - (8 if i < 3 or i == 5 else 6), 12 if i < 3 or i == 5 else 9, C_TXT if i == 0 else C_GOLD, C_SH)
 
 func draw_menu() -> void:
 	box(12, 8, 296, 164, C_PANEL, Pal.rc(CLAY, 4))
@@ -375,7 +394,7 @@ func draw_menu() -> void:
 		var y := r.position.y
 		if not touch_mode:
 			text_l(str(i + 1), x + 4, y + 2, 8, C_GOLD, C_SH)
-		text_l(it.name, x + (12 if not touch_mode else 5), y + 1, 10, C_TXT if can or full else C_DIM, C_SH)
+		text_l(it.name, x + (12 if not touch_mode else 5), y + 0.5, 9, C_TXT if can or full else C_DIM, C_SH)
 		var sub := ""
 		if it.k == "forge":
 			sub = "背包 %d 字" % P.bag.size()
@@ -383,12 +402,12 @@ func draw_menu() -> void:
 			sub = "有 %d 座" % P.beacons
 		else:
 			sub = "●".repeat(lv) + "○".repeat(int(it.max) - lv)
-		text_l(sub, x + 5, y + 16, 8, C_DIM, null)
+		text_l(sub, x + 5, y + 12, 8, C_DIM, null)
 		if full:
-			text_r("已满", x + r.size.x - 4, y + 16, 8, C_DIM, null)
+			text_r("已满", x + r.size.x - 4, y + 12, 8, C_DIM, null)
 		else:
-			text_r(str(cost), x + r.size.x - 10, y + 16, 8, C_TXT if can else C_RED, C_SH)
-			icon(I_DUST, x + r.size.x - 8.5, y + 19, Pal.rc(ORE, 5 if can else 3), null)
+			text_r(str(cost), x + r.size.x - 10, y + 12, 8, C_TXT if can else C_RED, C_SH)
+			icon(I_DUST, x + r.size.x - 8.5, y + 15, Pal.rc(ORE, 5 if can else 3), null)
 	# 右边：选中项的详情
 	var it2 := SHOP[clampi(menu_sel, 0, SHOP.size() - 1)]
 	var lv2 := shop_lvl(it2)
@@ -424,13 +443,13 @@ func draw_codex() -> void:
 		text_l(DEF[t].name if known(t) else "？？？", r.position.x + 3, r.position.y + 1, 9, (C_RED if is_boss_t(t) else C_TXT) if known(t) else C_DIM, C_SH)
 	var t: String = ORDER[codex_sel]
 	if known(t):
-		text(DEF[t].name, 214, 85, 12, C_GOLD, C_SH, 1.0, true)
-		text(LORE[t][0], 214, 101, 9, C_TEAL, C_SH)
-		var ls := wrap_text(LORE[t][1], 9, 180)
-		for i in ls.size():
-			text(ls[i], 214, 113 + i * 11, 9, C_TXT, C_SH)
+		text(DEF[t].name, 226, 85, 12, C_GOLD, C_SH, 1.0, true)
+		text(LORE[t][0], 226, 101, 9, C_TEAL, C_SH)
+		var ls := wrap_text(LORE[t][1], 9, 158)
+		for i in mini(ls.size(), 4):
+			text(ls[i], 226, 113 + i * 11, 9, C_TXT, C_SH)
 	else:
-		text("还没遇到过。去更远的地方找找。", 214, 100, 9, C_DIM, C_SH)
+		text("还没遇到过。去更远的地方找找。", 226, 100, 9, C_DIM, C_SH)
 	text("点名字查看 · 点外面关闭" if touch_mode else "WASD 或鼠标选择 · Tab 关闭", 160, 158, 8, C_DIM, C_SH)
 
 ## 图鉴肖像：用同一套绘制函数，画在放大的坐标系里
@@ -459,9 +478,14 @@ func draw_portrait(t: String, cx: float, cy: float, sc: int, k: bool) -> void:
 		dm.x = 8
 		for i in 7:
 			dm.seg.append(Vector2(8 - (i + 1) * 3.4, sin(T * 3 + i * 0.8) * 1.6))
-	if t == "redact":
+	if t == "redact" or t == "binder":
 		dm.st = "fight"
 		dm.ha = T * 0.6
+	if t == "tick":
+		dm.st = "tired" if fmod(T, 4.0) > 2.0 else "walk"
+	if t == "dove":
+		dm.vx = cos(T * 0.5)
+		dm.vy = sin(T * 0.5)
 	if t == "blot":
 		dm.sp = 0.5 + 0.5 * sin(T * 3)
 	if t == "clam":
@@ -477,7 +501,7 @@ func draw_ending() -> void:
 	dim()
 	OFS = PO
 	box(50, 28, 220, 128, C_PANEL, Pal.rc(GOLD, 4))
-	text("%s · 已装订" % ("第一章" if chapter == 1 else "第二章"), 160, 36, 14, C_GOLD, C_SH, 1.0, true)
+	text("%s · 已装订" % ["", "第一章", "第二章", "第三章"][chapter], 160, 36, 14, C_GOLD, C_SH, 1.0, true)
 	var lines := [
 		"用时  %d 分 %d 秒" % [int(gt / 60), int(fmod(gt, 60))],
 		"碎掉过  %d 次" % P.deaths,
@@ -490,8 +514,11 @@ func draw_ending() -> void:
 	if chapter == 1:
 		text("图书馆的第一层亮了。再往里，是阅览室的残骸。", 160, 127, 9, C_TEAL, C_SH)
 		text("%s 前往第二章" % ("点一下" if touch_mode else "Enter / 点击"), 160, 140, 8, C_GOLD, C_SH, 0.6 + 0.4 * sin(T * 3))
+	elif chapter == 2:
+		text("图书馆的第二层亮了。再往上，是离残烛最近的钟楼。", 160, 127, 9, C_TEAL, C_SH)
+		text("%s 前往第三章" % ("点一下" if touch_mode else "Enter / 点击"), 160, 140, 8, C_GOLD, C_SH, 0.6 + 0.4 * sin(T * 3))
 	else:
-		text("图书馆的第二层亮了。还有九千九百九十八层。", 160, 127, 9, C_TEAL, C_SH)
+		text("钟楼又走起来了。还有九千九百九十七层。", 160, 127, 9, C_TEAL, C_SH)
 		text("%s 继续自由探索" % ("点一下" if touch_mode else "Enter / 点击"), 160, 140, 8, C_DIM, C_SH, 0.6 + 0.4 * sin(T * 3))
 
 func draw_title() -> void:
@@ -511,7 +538,7 @@ func draw_title() -> void:
 	if DisplayServer.is_touchscreen_available():
 		text("左边拖动移动 · 右边按住射击 · 右下角冲刺", 160, 164, 8, C_DIM, C_SH)
 	else:
-		text("WASD 移动 · 鼠标射击 · 空格冲刺 · E 工坊 · F 句子 · Q 余烬 · B 信标 · Tab 图鉴", 160, 164, 8, C_DIM, C_SH)
+		text("WASD 移动 · 鼠标射击 · 空格冲刺 · X 技能 · E 工坊 · F 句子 · Q 余烬 · B 信标 · Tab 图鉴", 160, 164, 8, C_DIM, C_SH)
 	if int(save.clears):
 		text("已通关 %d 次" % int(save.clears), 160, 6, 8, C_GOLD, C_SH)
 
@@ -556,8 +583,45 @@ func draw_pen_hud() -> void:
 
 func codex_rect(i: int) -> Rect2:
 	# 图鉴名单：左边两列，每列 7 个
-	return Rect2(12 + (i / 7) * 50, 32 + (i % 7) * 16, 49, 15)
+	return Rect2(12 + (i / 7) * 43, 32 + (i % 7) * 16, 42, 15)
 
 func is_boss_t(t: String) -> bool:
-	return t == "serp" or t == "redact"
+	return t == "serp" or t == "redact" or t == "binder"
 
+func draw_chars() -> void:
+	box(12, 8, 296, 164, C_PANEL, Pal.rc(CLAY, 4))
+	text("换一副陶身", 160, 11, 12, C_GOLD, C_SH, 1.0, true)
+	for i in CHARS.size():
+		var c: Dictionary = CHARS[i]
+		var r := char_rect(i)
+		var sel := i == char_sel
+		box(r.position.x, r.position.y, r.size.x, r.size.y, Pal.rc(RUIN, 3) if sel else Pal.rc(SPACE, 2), Pal.rc(GOLD, 5) if sel else Pal.rc(RUIN, 4))
+		var cx := r.position.x + r.size.x / 2.0
+		text(c.name, cx, r.position.y + 30, 11, C_GOLD, C_SH, 1.0, true)
+		text(c.tag, cx, r.position.y + 45, 8, C_TEAL, C_SH)
+		var ls := wrap_text(c.desc, 8, r.size.x - 8)
+		for j in ls.size():
+			text(ls[j], cx, r.position.y + 58 + j * 10, 8, C_TXT, null)
+		if i == P.ch:
+			text("现在的样子", cx, r.position.y + r.size.y - 12, 8, C_DIM, null)
+		elif sel:
+			text("点一下换上", cx, r.position.y + r.size.y - 12, 8, C_GOLD, null, 0.7 + 0.3 * sin(T * 4))
+	text("升级、字和书页都会带着走，随时能换回来 · %s" % ("点外面关闭" if touch_mode else "A/D 选 · Enter 换上 · C 关闭"), 160, 159, 8, C_DIM, null)
+
+func skill_rect() -> Rect2:
+	# 左下角：笔的上面一格是技能
+	return Rect2(4, H - (48 if P.pens > 1 else 33), 44, 13)
+
+func draw_skill_hud() -> void:
+	var r := skill_rect()
+	var k := 1.0 - P.sk_cd / maxf(0.01, skill_cd_max())
+	box(r.position.x, r.position.y, r.size.x, r.size.y, Color(0.03, 0.03, 0.08, 0.75), Pal.rc(GRAV if P.sk_cd <= 0 else RUIN, 5 if P.sk_cd <= 0 else 4))
+	rect(r.position.x + 0.5, r.position.y + r.size.y - 2, (r.size.x - 1) * k, 1.5, Pal.rc(GRAV if P.sk_cd > 0 else GOLD, 5))
+	text_l(skill().name, r.position.x + 3, r.position.y + 0.5, 9, C_GOLD if P.sk_cd <= 0 else C_DIM, C_SH)
+	if P.sk_cd > 0:
+		text_r(str(ceili(P.sk_cd)), r.position.x + r.size.x - 3, r.position.y + 1.5, 8, C_DIM, null)
+	elif skills_n() > 1:
+		for i in skills_n():
+			rect(r.position.x + 25 + i * 3.5, r.position.y + 5.5, 2.5, 2.5, Pal.rc(GRAV, 6) if i == P.sk else Pal.rc(RUIN, 6))
+	if not touch_mode:
+		text_l("X 技能" + (" · Z 换" if skills_n() > 1 else ""), r.position.x + r.size.x + 3, r.position.y + 1.5, 8, C_DIM, C_SH)

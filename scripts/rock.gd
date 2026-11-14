@@ -5,7 +5,7 @@ extends RefCounted
 
 ## 色调表（和 rock.gdshader 里的 TINT 一一对应）：下标 → 调色板材质
 const TINTS := [1, 10, 15, 12, 14, 9, 13, 5]
-const ZONE_TI := {"echo": 1, "stacks": 2, "hall": 3, "dark": 4, "ink": 5}
+const ZONE_TI := {"echo": 1, "stacks": 2, "hall": 3, "dark": 4, "ink": 5, "gear": 1, "tower": 3, "flare": 6, "wind": 3}
 
 var x := 0
 var y := 0

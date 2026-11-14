@@ -91,7 +91,15 @@
 		"blotlet": 0.0,
 		"worm": 0.3,
 		"wisp": 0.35,
-		"redact": 1.0
+		"redact": 1.0,
+		"dove": 0.1,
+		"tick": 0.3,
+		"cinder": 0.15,
+		"stamp": 0.35,
+		"binder": 1.0,
+		"chill": 0.15,
+		"icicle": 0.1,
+		"mothq": 1.0
 	},
 	"gold_chance": 0.05,
 	"forge_cost": 30,
