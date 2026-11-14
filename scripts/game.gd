@@ -590,6 +590,12 @@ func _autoplay_step(dt: float) -> void:
 	if chapter == 3 and _ap_t > 9.9:
 		_ap3_step()
 		return
+	if OS.get_cmdline_user_args().has("--penfx") and _ap_t > 9.9:
+		_penfx_step()
+		return
+	if OS.get_cmdline_user_args().has("--tide") and _ap_t > 9.9:
+		_tide_step()
+		return
 	if _once(10.0):
 		jp[KEY_TAB] = true
 		P.x = 200
@@ -857,3 +863,86 @@ func _ap3_step() -> void:
 	joy = Vector2.ZERO
 	if _ap_t > 35.5:
 		get_tree().quit()
+
+## 测试用：暗潮第三次（冷息、霜棱、扑灯母都会来）
+func _tide_step() -> void:
+	P.hp = 99
+	if _once(10.0):
+		S = "play"
+		P.x = 200
+		P.y = 100
+		jp[KEY_B] = true
+		tides = 2
+		tide_t = 113
+		TIDE = 1.0
+		for k in [12.5, 14.0, 15.5, 17.0]:
+			_shots[k] = "tide_%d" % int(k * 10)
+	var t := near_c(P.x, P.y, 140.0)
+	_ap_aim = Vector2(t.x - P.x, t.y - P.y) if t else Vector2(1, 0) * 60
+	_ap_fire = fmod(_ap_t, 2.0) < 1.2
+	joy = Vector2(sin(_ap_t * 0.7), cos(_ap_t * 0.5)) * 0.4
+	if _ap_t > 17.5:
+		print("tide test: chill=", count_type("chill"), " icicle=", count_type("icicle"), " mothq=", count_type("mothq"), " moth=", count_type("moth"))
+		get_tree().quit()
+
+## 测试用：刻刀 / 砚雷 / 墨线 配不同的句子
+const _PENFX := [[2, "穿环连"], [2, "雨弹裂"], [3, "雨回环"], [3, "针弹寻"], [4, "雨弹连"], [4, "环寻裂"]]
+var _pf_spot := Vector2.ZERO
+func _penfx_step() -> void:
+	P.hp = 99
+	var stage := int((_ap_t - 10.0) / 2.5)
+	if stage >= _PENFX.size():
+		get_tree().quit()
+		return
+	var t0 := 10.0 + stage * 2.5
+	if _once(t0):
+		S = "play"
+		if stage == 0:
+			var best := 1e9
+			for k in 200:
+				var a := randf() * TAU
+				var q := Vector2(cos(a), sin(a)) * (240 + randf() * 200)
+				var n := 0.0
+				for r in rocks:
+					var dd := Vector2(r.x, r.y).distance_to(q)
+					if dd < 110:
+						n += 110 - dd
+				if n < best:
+					best = n
+					_pf_spot = q
+		for c in cr:
+			if Vector2(c.x, c.y).distance_to(_pf_spot) < 200:
+				c.dead = true
+		P.x = _pf_spot.x
+		P.y = _pf_spot.y
+		P.vx = 0
+		P.vy = 0
+		cam_pos = _pf_spot
+		var cfg: Array = _PENFX[stage]
+		P.slots = []
+		for ch in String(cfg[1]):
+			P.slots.append({"c": ch, "gold": false})
+		calc_loadout()
+		UP.pen = 4
+		P.pens = 5
+		P.pen = cfg[0]
+		for i in 6:
+			var a := -0.9 + i * 0.36
+			var c := mk("hush", P.x + cos(a) * (45 + (i % 2) * 30), P.y + sin(a) * (45 + (i % 2) * 30))
+			c.hp = 40
+			c.hx = c.x
+			c.hy = c.y
+		if stage % 2 == 1:
+			for i in 4:
+				add_eb(P.x + 70, P.y - 20 + i * 12, -60, 0, 3.0, EMBER)
+		_shots[t0 + (1.36 if cfg[0] == 4 else 1.0)] = "pen_%d" % stage
+		print("penfx ", stage, " pen=", cfg[0], " ", cfg[1], " syn=", syn_lines())
+	P.vx = 0
+	P.vy = 0
+	P.x = _pf_spot.x
+	P.y = _pf_spot.y
+	_ap_aim = Vector2(1, 0) * 60
+	if P.pen == 4:
+		_ap_fire = _ap_t - t0 < 1.3
+	else:
+		_ap_fire = true

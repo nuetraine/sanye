@@ -44,6 +44,9 @@ const DEF := {
 	"cinder": {"name": "烛芯虫", "hp": 3, "r": 4, "dust": 4, "ember": 0.6, "m": EMBER},
 	"stamp": {"name": "印章兽", "hp": 10, "r": 7, "dust": 12, "ember": 0.3, "m": WINE},
 	"binder": {"name": "装订师", "hp": 110, "r": 11, "dust": 70, "ember": 6.0, "m": MIRROR},
+	"chill": {"name": "冷息", "hp": 4, "r": 5, "dust": 4, "ember": 1.0, "m": ICE},
+	"icicle": {"name": "霜棱", "hp": 2, "r": 4, "dust": 3, "ember": 0.0, "m": ICE},
+	"mothq": {"name": "扑灯母", "hp": 16, "r": 8, "dust": 22, "ember": 2.0, "m": MOTH},
 }
 
 const LORE := {
@@ -65,6 +68,9 @@ const LORE := {
 	"cinder": ["自爆 · 喜欢烛焰", "残烛滴下来的一小截烛芯，还在烧。贴近了会鼓起来炸成一圈火星。在烛焰里会越烧越旺；先打掉它，能捡到余烬。"],
 	"stamp": ["跳跃 · 落地震波", "图书馆的旧印章，盖了一万次“已阅”之后有了脾气。一跳一跳地追你，落地会震出一圈波——冲刺能穿过去。"],
 	"binder": ["装订师 · 第三章首领", "一卷线轴穿着一根大针，曾经把图书馆的每一页缝在一起。现在它只想把你也缝进书里：针会飞，线会绷紧成一颗五角星，还会把你往它那边拉。"],
+	"chill": ["暗潮 · 吸走体温", "残烛打寒颤时漏出来的一口冷气，有了形状。它不咬人，只是贴着你，把你的温度一点点吸走。怕光：信标旁边它会绕开。打散它能拿回一颗余烬。"],
+	"icicle": ["暗潮 · 瞄准冲刺", "暗潮里冻住的一个惊叹号。它会停下来瞄准，拉出一道细线，然后笔直地撞过来。看到细线就横着躲开；撞上石头它会碎掉。"],
+	"mothq": ["暗潮 · 第三次起出现", "蚀字蛾的母亲，翅膀上的两个圆斑像两盏灯。它最喜欢啃信标，一边飞一边抖下新的蛾子。暗潮一过它就散了，要打就趁它还在。"],
 }
 
 ## 五种笔：同一句话，换一支笔就是另一种打法
@@ -75,7 +81,7 @@ const PENS := [
 	{"name": "砚雷", "desc": "朝准星扔一团墨，炸开一片，连镜螨的正面也炸得到"},
 	{"name": "墨线", "desc": "按住蓄力，松开射出一道穿透一切的墨线"},
 ]
-const ORDER := ["hush", "folio", "clam", "moth", "leech", "mite", "grav", "comma", "serp", "blot", "worm", "wisp", "redact", "dove", "tick", "cinder", "stamp", "binder"]
+const ORDER := ["hush", "folio", "clam", "moth", "leech", "mite", "grav", "comma", "serp", "blot", "worm", "wisp", "redact", "dove", "tick", "cinder", "stamp", "binder", "chill", "icicle", "mothq"]
 const PAGE_TXT := [
 	"「寒冷不是热的缺席，而是一切停止说话的声音。」——体温上限 +30，保温 +15%",
 	"「万物彼此吸引，因为它们都想被读到。」——字弹伤害 +1",
@@ -188,6 +194,12 @@ class Bomb:
 	var vy := 0.0
 	var dist := 0.0
 	var age := 0.0
+	var sp := 175.0
+	var home := 0
+	var bounce := 0
+	var thru := false
+	var ret := false
+	var k := 1.0
 
 class Pick:
 	var x := 0.0
@@ -1120,6 +1132,7 @@ func loadout_lines() -> Array:
 			shapes += 1
 	if shapes > 1:
 		out.append("（一句话只有第一个「形」字算数，后面的形字只用来成词）")
+	out.append_array(syn_lines())
 	if out.is_empty():
 		out.append("句子是空的：普通字弹。")
 	return out
@@ -1227,7 +1240,11 @@ func set_pen(i: int) -> void:
 	P.pen = i
 	P.charge = 0.0
 	Sfx.play("ping", 0.7 + i * 0.12)
-	toast("换笔：%s" % PENS[i].name, C_TEAL, 1.6)
+	var sl := syn_lines()
+	if sl.is_empty():
+		toast("换笔：%s" % PENS[i].name, C_TEAL, 1.6)
+	else:
+		toast("换笔：%s（和句子联动 %d 处，按 F 看）" % [PENS[i].name, sl.size()], C_TEAL, 2.4)
 
 ## 这个生物现在能不能被打到
 func can_hit(c: Creature) -> bool:
@@ -1282,63 +1299,70 @@ func pen_mat() -> int:
 ## 刻刀：身前一个扇形
 func slash() -> float:
 	var a0 := atan2(P.ay, P.ax)
-	var reach := 30.0 + (8.0 if LO.shape == "针" else 0.0)
-	var dmg: int = 2 + P.dmg + (LO.shape_lv if LO.shape == "石" else 0)
-	for c in cr:
-		if not can_hit(c):
-			continue
-		var v := Vector2(c.x - P.x, c.y - P.y)
-		if v.length() > reach + c.r or absf(angle_difference(a0, v.angle())) > 1.0:
-			continue
-		if mite_blocks(c, P.x, P.y):
-			Sfx.play("ping")
-			burst(c.x, c.y, 4, MIRROR, 6, 30, 0.3)
-			tip("mite", "镜螨的正面挡住了！绕到它背后打粉色的软肉。")
-			continue
-		fx_hit(c, dmg, c.x, c.y)
-	for b in EB:
-		var v := Vector2(b.x - P.x, b.y - P.y)
-		if v.length() < reach and absf(angle_difference(a0, v.angle())) < 1.0:
-			b.life = 0
-			burst(b.x, b.y, 4, b.m, 6, 30, 0.3)
-	for k in 5:
-		var a := a0 + (k - 2) * 0.4
-		var px := P.x + cos(a) * reach * 0.7
-		var py := P.y + sin(a) * reach * 0.7
-		var r := rock_at(px, py)
-		if r:
-			carve(r, px, py, 4.5)
-	FX.append({"k": "slash", "x": P.x, "y": P.y, "a": a0, "r": reach, "t": 0.16, "max": 0.16, "m": pen_mat()})
-	P.vx += P.ax * 45
-	P.vy += P.ay * 45
+	if syn("寻") > 0:
+		var t := near_c(P.x, P.y, 75.0)
+		if t:
+			a0 = atan2(t.y - P.y, t.x - P.x)
+			P.vx += cos(a0) * 110
+			P.vy += sin(a0) * 110
+	do_slash(a0, false)
+	if syn("穿") > 0:
+		var b := syn_bullet(P.x + cos(a0) * 8, P.y + sin(a0) * 8, a0, 230.0, 0.45, 1 + P.dmg + (LO.shape_lv if LO.shape == "石" else 0))
+		b.big = true
+		b.pierce = 999
+		b.carve_r = 3.5
+	if syn("回") > 0:
+		slash_q = 0.17
+		slash_qa = a0
+	P.vx += cos(a0) * 45
+	P.vy += sin(a0) * 45
 	Sfx.play("dash", 1.7)
 	return 0.36
 
 ## 砚雷：朝准星扔出去，到地方 / 撞到东西就炸
 func throw_bomb() -> float:
-	var b := Bomb.new()
-	b.x = P.x + P.ax * 5
-	b.y = P.y + P.ay * 5
-	b.vx = P.ax * 175
-	b.vy = P.ay * 175
-	b.dist = clampf(P.aim_d, 30.0, 150.0)
-	BM.append(b)
+	var n := 3 if syn("雨") > 0 else 1
+	var fast := syn("针") > 0
+	var spd := 175.0 * (1.4 if fast else 1.0)
+	for i in n:
+		var a := atan2(P.ay, P.ax) + (i - (n - 1) / 2.0) * 0.3
+		var b := Bomb.new()
+		b.x = P.x + cos(a) * 5
+		b.y = P.y + sin(a) * 5
+		b.vx = cos(a) * spd
+		b.vy = sin(a) * spd
+		b.sp = spd
+		b.dist = clampf(P.aim_d, 30.0, bomb_range())
+		b.home = syn("寻")
+		b.bounce = 2 * syn("弹")
+		b.thru = syn("穿") > 0
+		b.ret = syn("回") > 0
+		b.k = 0.75 if n > 1 else 1.0
+		BM.append(b)
 	P.vx -= P.ax * 12
 	P.vy -= P.ay * 12
 	Sfx.play("dash", 0.6)
-	return 0.8
+	return 0.8 * (1.25 if n > 1 else 1.0)
 
-func explode(x: float, y: float) -> void:
-	var rad: float = 24.0 + (7.0 * LO.shape_lv if LO.shape == "石" else 0.0)
+func bomb_range() -> float:
+	return 150.0 * (1.5 if syn("针") > 0 else 1.0)
+
+func explode(x: float, y: float, k := 1.0) -> void:
+	var rad: float = (24.0 + (7.0 * LO.shape_lv if LO.shape == "石" else 0.0)) * k
+	var hits := []
 	for c in cr:
 		if can_hit(c) and Vector2(c.x - x, c.y - y).length() < rad + c.r:
-			fx_hit(c, 2 + P.dmg, x, y)
+			fx_hit(c, maxi(1, roundi((2 + P.dmg) * k)), x, y)
+			hits.append(c)
+	if syn("连") > 0:
+		for c in hits:
+			zap(c, 1 + P.dmg)
 	for b in EB:
 		if Vector2(b.x - x, b.y - y).length() < rad:
 			b.life = 0
-	for k in 9:
-		var a := k / 8.0 * TAU
-		var d := 0.0 if k == 8 else rad * 0.45
+	for q in 9:
+		var a := q / 8.0 * TAU
+		var d := 0.0 if q == 8 else rad * 0.45
 		var px := x + cos(a) * d
 		var py := y + sin(a) * d
 		var r := rock_at(px, py)
@@ -1349,29 +1373,64 @@ func explode(x: float, y: float) -> void:
 		src.mat = pen_mat()
 		src.burn = mod("火") * 1.5
 		src.frost = mod("霜") * 1.5
-		for i in 6 * mod("裂"):
-			spawn_small(x, y, i / (6.0 * mod("裂")) * TAU, src)
+		for i in roundi(6 * mod("裂") * k):
+			spawn_small(x, y, i / (6.0 * mod("裂") * k) * TAU, src)
 	FX.append({"k": "boom", "x": x, "y": y, "r": rad, "t": 0.3, "max": 0.3, "m": pen_mat()})
 	burst(x, y, 26, pen_mat(), 6, 90, 0.6)
 	burst(x, y, 14, SPACE, 3, 50, 0.9, false)
-	shk = maxf(shk, 3.5)
-	Sfx.play("rock", 0.5)
+	shk = maxf(shk, 3.5 * k)
+	Sfx.play("rock", 0.5 / k)
 	Sfx.play("kill", 0.6)
 
 func upd_bombs(dt: float) -> void:
+	pen_step(dt)
 	for b in BM:
 		b.age += dt
+		if b.home > 0:
+			var t := near_c(b.x, b.y, 70.0 + 30.0 * b.home)
+			if t:
+				var v := Vector2(b.vx, b.vy).lerp(Vector2(t.x - b.x, t.y - b.y).normalized() * b.sp, minf(1.0, dt * 5.0 * b.home))
+				b.vx = v.x
+				b.vy = v.y
 		b.x += b.vx * dt
 		b.y += b.vy * dt
-		b.dist -= 175.0 * dt
-		var hit := b.dist <= 0 or rock_at(b.x, b.y) != null
-		if not hit:
+		b.dist -= b.sp * dt
+		var r := rock_at(b.x, b.y)
+		if r and b.bounce > 0:
+			var nv := Vector2(b.x - r.x, b.y - r.y).normalized()
+			var dv := Vector2(b.vx, b.vy)
+			dv = dv - 2.0 * dv.dot(nv) * nv
+			b.vx = dv.x
+			b.vy = dv.y
+			b.x += nv.x * 3
+			b.y += nv.y * 3
+			b.bounce -= 1
+			b.dist = maxf(b.dist, 40.0)
+			Sfx.play("ping", 1.3)
+			r = null
+		var hit := b.dist <= 0 or r != null
+		if not hit and not b.thru:
 			for c in cr:
 				if can_hit(c) and Vector2(c.x - b.x, c.y - b.y).length() < c.r + 2:
 					hit = true
 					break
 		if hit:
-			explode(b.x, b.y)
+			explode(b.x, b.y, b.k)
+			if syn("环") > 0:
+				BOOMQ.append({"x": b.x, "y": b.y, "t": 0.45})
+			if b.ret:
+				var nb := Bomb.new()
+				nb.x = b.x
+				nb.y = b.y
+				var to := Vector2(P.x - b.x, P.y - b.y)
+				nb.sp = 160.0
+				nb.vx = to.normalized().x * nb.sp
+				nb.vy = to.normalized().y * nb.sp
+				nb.dist = to.length() * 0.6
+				nb.k = 0.7 * b.k
+				nb.thru = true
+				nb.age = 0.01
+				BM.append(nb)
 			b.age = -1
 		elif randf() < 0.6:
 			part(b.x, b.y, (randf() - 0.5) * 10, (randf() - 0.5) * 10, 0.4, pen_mat(), 4)
@@ -1382,41 +1441,29 @@ func upd_bombs(dt: float) -> void:
 
 ## 墨线：蓄力越久越粗越疼，穿过所有敌人，石头只能钻一小段
 func fire_beam(ch: float) -> void:
-	var dmg := roundi(1 + ch * 4) + P.dmg
-	var x := P.x + P.ax * 6
-	var y := P.y + P.ay * 6
-	var rock_budget := 10 + int(ch * 26)
-	var done := {}
-	var n := 0
-	while n < 115:
-		n += 1
-		x += P.ax * 2
-		y += P.ay * 2
-		var r := rock_at(x, y)
-		if r:
-			carve(r, x, y, 2.0 + ch * 1.5)
-			rock_budget -= 1
-			if rock_budget <= 0:
-				break
-		var stop := false
+	var a := atan2(P.ay, P.ax)
+	if syn("寻") > 0:
+		var best: Creature = null
+		var bd := 1e9
 		for c in cr:
-			if done.has(c) or not can_hit(c):
+			if not can_hit(c):
 				continue
-			if Vector2(c.x - x, c.y - y).length() < c.r + 2 + ch * 2:
-				if mite_blocks(c, P.x, P.y):
-					Sfx.play("ping")
-					burst(x, y, 8, MIRROR, 6, 40, 0.4)
-					stop = true
-					break
-				done[c] = true
-				fx_hit(c, dmg, x, y)
-		if stop:
-			break
-		if n % 3 == 0:
-			part(x, y, (randf() - 0.5) * 30, (randf() - 0.5) * 30, 0.35, pen_mat(), 5, true)
-	FX.append({"k": "beam", "x": P.x + P.ax * 6, "y": P.y + P.ay * 6, "x1": x, "y1": y, "w": 0.5 + ch * 1.5, "t": 0.2, "max": 0.2, "m": pen_mat()})
-	P.vx -= P.ax * (30 + ch * 60)
-	P.vy -= P.ay * (30 + ch * 60)
+			var v := Vector2(c.x - P.x, c.y - P.y)
+			var da := absf(angle_difference(a, v.angle()))
+			if v.length() < 230 and da < 0.55 and v.length() * (1 + da * 2) < bd:
+				bd = v.length() * (1 + da * 2)
+				best = c
+		if best:
+			a = atan2(best.y - P.y, best.x - P.x)
+	var n := 3 if syn("雨") > 0 else 1
+	for i in n:
+		beam_ray(a + (i - (n - 1) / 2.0) * 0.16, ch * (1.0 if n == 1 else 0.8), P.x, P.y)
+	if syn("回") > 0:
+		beam_q = 0.25
+		beam_qa = a
+		beam_qch = ch * 0.6
+	P.vx -= cos(a) * (30 + ch * 60)
+	P.vy -= sin(a) * (30 + ch * 60)
 	shk = maxf(shk, 1.5 + ch * 3)
 	Sfx.play("roar", 2.2)
 	Sfx.play("shoot", 0.5)
@@ -1454,6 +1501,7 @@ func upd_tide(dt: float) -> void:
 		tide_d = true
 		tides += 1
 		toast("暗潮 · 第 %d 次" % tides, C_RED, 3)
+		tide_wave()
 	if not dark and tide_d:
 		tide_d = false
 		tide_w = false
@@ -1463,7 +1511,9 @@ func upd_tide(dt: float) -> void:
 			if c.t == "moth":
 				c.st = "burn"
 				c.tm = randf() * 2.5
+		tide_end_melt()
 	if dark:
+		tide_spawn_ice(dt)
 		tide_sp -= dt
 		if tide_sp <= 0:
 			tide_sp = maxf(1.3, 2.6 - tides * 0.25)
@@ -1569,7 +1619,7 @@ func upd_player(dt: float) -> void:
 		if firing:
 			if P.charge == 0.0:
 				Sfx.play("warn", 2.4)
-			P.charge = minf(1.0, P.charge + dt / 0.9)
+			P.charge = minf(1.0, P.charge + dt / (0.6 if syn("针") > 0 else 0.9))
 		elif P.charge > 0.0:
 			if P.charge > 0.2 and P.fire_cd <= 0:
 				fire_beam(P.charge)
@@ -1836,7 +1886,7 @@ func upd_creatures(dt: float) -> void:
 		var dx := P.x - c.x
 		var dy := P.y - c.y
 		var d := maxf(0.0001, sqrt(dx * dx + dy * dy))
-		if d > 700 and c.t != "moth" and not is_boss(c):
+		if d > 700 and not (c.t in ["moth", "chill", "icicle", "mothq"]) and not is_boss(c):
 			continue
 		# 字句效果：灼烧、减速、安静
 		c.slow -= dt
@@ -2063,7 +2113,13 @@ func upd_creatures(dt: float) -> void:
 				upd_stamp(c, cdt, d, dx, dy)
 			"binder":
 				upd_binder(c, cdt, d)
-		if not (c.t in ["clam", "leech", "serp", "redact", "worm", "wisp", "binder", "dove"]) and not c.dead:
+			"chill":
+				upd_chill(c, cdt, d, dx, dy)
+			"icicle":
+				upd_icicle(c, cdt, d, dx, dy)
+			"mothq":
+				upd_mothq(c, cdt, d, dx, dy)
+		if not (c.t in ["clam", "leech", "serp", "redact", "worm", "wisp", "binder", "dove", "chill", "mothq"]) and not c.dead:
 			var r := rock_at(c.x, c.y)
 			if r:
 				var ex := c.x - r.x
@@ -3788,3 +3844,430 @@ func upd_binder(c: Creature, dt: float, d: float) -> void:
 	if Vector2(P.x - PAGES[2].x, P.y - PAGES[2].y).length() > 620:
 		reset_serp()
 		toast("装订师把针收了回去。", C_DIM)
+
+# ======================================================================
+# 笔 × 字 联动：刻刀 / 砚雷 / 墨线 也吃“形”字和“动”字
+# ======================================================================
+const PEN_SYN := {
+	2: {"雨": "刀扇更宽", "环": "回旋斩，身边一圈都砍到", "穿": "斩出一道会飞的剑气", "回": "反手再补一刀",
+		"寻": "挥刀时朝最近的敌人扑过去", "裂": "砍中会裂出小字弹", "弹": "把敌人的子弹弹回去", "连": "砍中后电到旁边的敌人"},
+	3: {"针": "扔得更远更快", "雨": "一次扔三颗", "环": "炸完原地再炸一圈", "穿": "穿过敌人，到落点才炸",
+		"回": "炸完弹回身边再炸一次", "寻": "飞的时候拐向敌人", "弹": "撞到石头会弹开", "连": "炸到的敌人会电到旁边的"},
+	4: {"针": "蓄力更快", "雨": "一次射三道", "石": "更粗、伤害更高", "环": "墨线留在原地一会儿，持续伤害",
+		"穿": "钻石头钻得更深", "回": "自动再补一道", "寻": "自动瞄准准星附近的敌人", "裂": "命中处裂出小字弹",
+		"弹": "撞到石头会折射", "连": "命中的敌人电到旁边的"},
+}
+var slash_q := 0.0
+var slash_qa := 0.0
+var beam_q := 0.0
+var beam_qa := 0.0
+var beam_qch := 0.0
+var BOOMQ: Array = []
+var LINES: Array = []
+var ice_sp := 0.0
+
+## 当前这支笔有没有被这个字联动（返回层数，0 = 没有）
+func syn(c: String) -> int:
+	if not PEN_SYN.has(P.pen) or not (PEN_SYN[P.pen] as Dictionary).has(c):
+		return 0
+	if char_kind(c) == "形":
+		return int(LO.shape_lv) if LO.shape == c else 0
+	return mod(c)
+
+func syn_lines() -> Array:
+	var out := []
+	if PEN_SYN.has(P.pen):
+		for c in PEN_SYN[P.pen]:
+			if syn(c) > 0:
+				out.append("%s ×「%s」%s" % [PENS[P.pen].name, c, PEN_SYN[P.pen][c]])
+	return out
+
+func near_c(x: float, y: float, r: float, excl: Creature = null) -> Creature:
+	var best: Creature = null
+	var bd := r
+	for o in cr:
+		if o == excl or not can_hit(o):
+			continue
+		var od := Vector2(o.x - x, o.y - y).length() - o.r
+		if od < bd:
+			bd = od
+			best = o
+	return best
+
+## 连：从 c 电到旁边最近的一个敌人
+func zap(c: Creature, dmg: int) -> void:
+	var o := near_c(c.x, c.y, 60.0, c)
+	if o == null:
+		return
+	FX.append({"k": "zap", "x": c.x, "y": c.y, "x1": o.x, "y1": o.y, "t": 0.18, "max": 0.18, "m": ORE})
+	hurt_c(o, dmg, c.x, c.y)
+	burst(o.x, o.y, 5, ORE, 6, 40, 0.3)
+	Sfx.play("ping", 1.6)
+
+func syn_bullet(x: float, y: float, a: float, sp: float, life: float, dmg: int) -> Bullet:
+	var b := Bullet.new()
+	b.x = x
+	b.y = y
+	b.vx = cos(a) * sp
+	b.vy = sin(a) * sp
+	b.sp = sp
+	b.life = life
+	b.max_life = life
+	b.dmg = dmg
+	b.mat = pen_mat()
+	b.burn = mod("火") * 1.5
+	b.frost = mod("霜") * 1.5
+	b.calm = mod("静") * 3.0
+	b.mark = mod("蚀") * 4.0
+	b.crit = 0.2 * mod("暴")
+	PB.append(b)
+	return b
+
+func do_slash(a0: float, back: bool) -> void:
+	var reach := 30.0 + (8.0 if LO.shape == "针" else 0.0)
+	var dmg: int = 2 + P.dmg + (LO.shape_lv if LO.shape == "石" else 0)
+	var wide := 1.0
+	if syn("雨") > 0:
+		wide = 1.5
+	if syn("环") > 0:
+		wide = PI
+		reach -= 4.0
+	for c in cr:
+		if not can_hit(c):
+			continue
+		var v := Vector2(c.x - P.x, c.y - P.y)
+		if v.length() > reach + c.r or absf(angle_difference(a0, v.angle())) > wide:
+			continue
+		if wide < 3.0 and mite_blocks(c, P.x, P.y):
+			Sfx.play("ping")
+			burst(c.x, c.y, 4, MIRROR, 6, 30, 0.3)
+			tip("mite", "镜螨的正面挡住了！绕到它背后打粉色的软肉。")
+			continue
+		fx_hit(c, dmg, c.x, c.y)
+		if syn("裂") > 0:
+			for i in 3 * syn("裂"):
+				var src := Bullet.new()
+				src.mat = pen_mat()
+				src.burn = mod("火") * 1.5
+				src.frost = mod("霜") * 1.5
+				src.hit = [c]
+				spawn_small(c.x, c.y, v.angle() + (i - 1) * 0.6, src)
+		if syn("连") > 0:
+			for i in syn("连"):
+				zap(c, 1 + P.dmg)
+	for b in EB:
+		var v := Vector2(b.x - P.x, b.y - P.y)
+		if v.length() < reach and absf(angle_difference(a0, v.angle())) < wide:
+			b.life = 0
+			burst(b.x, b.y, 4, b.m, 6, 30, 0.3)
+			if syn("弹") > 0:
+				var nb := syn_bullet(b.x, b.y, v.angle() + (randf() - 0.5) * 0.3, 240.0, 0.6, 1 + P.dmg)
+				nb.small = true
+	var nk := 10 if wide > 3.0 else 5
+	for k in nk:
+		var a := a0 + (k - (nk - 1) / 2.0) * (wide * 2.0 / nk)
+		var px := P.x + cos(a) * reach * 0.7
+		var py := P.y + sin(a) * reach * 0.7
+		var r := rock_at(px, py)
+		if r:
+			carve(r, px, py, 4.5)
+	FX.append({"k": "slash", "x": P.x, "y": P.y, "a": a0, "r": reach, "w": wide, "back": back, "t": 0.16, "max": 0.16, "m": pen_mat()})
+
+func pen_step(dt: float) -> void:
+	if slash_q > 0:
+		slash_q -= dt
+		if slash_q <= 0:
+			do_slash(slash_qa, true)
+			Sfx.play("dash", 1.9)
+	if beam_q > 0:
+		beam_q -= dt
+		if beam_q <= 0:
+			beam_ray(beam_qa, beam_qch, P.x, P.y)
+			Sfx.play("shoot", 0.6)
+	for q in BOOMQ:
+		q.t -= dt
+		if q.t <= 0:
+			explode(q.x, q.y, 0.7)
+	BOOMQ = BOOMQ.filter(func(q): return q.t > 0)
+	for l in LINES:
+		l.t -= dt
+		l.tick -= dt
+		if l.tick <= 0:
+			l.tick = 0.2
+			var a := Vector2(l.x, l.y)
+			var b := Vector2(l.x1, l.y1)
+			for c in cr:
+				if not can_hit(c):
+					continue
+				var p := Geometry2D.get_closest_point_to_segment(Vector2(c.x, c.y), a, b)
+				if p.distance_to(Vector2(c.x, c.y)) < c.r + l.w + 1:
+					fx_hit(c, 1, c.x, c.y)
+	LINES = LINES.filter(func(l): return l.t > 0)
+
+## 墨线的一道光线：返回终点
+func beam_ray(a: float, ch: float, x0: float, y0: float) -> void:
+	var dmg := roundi(1 + ch * 4) + P.dmg + (int(LO.shape_lv) if syn("石") > 0 else 0)
+	var fat := ch * 2 + (2.0 if syn("石") > 0 else 0.0)
+	var ax := cos(a)
+	var ay := sin(a)
+	var x := x0 + ax * 6
+	var y := y0 + ay * 6
+	var sx := x
+	var sy := y
+	var budget0 := int((10 + int(ch * 26)) * (3 if syn("穿") > 0 else 1))
+	var rock_budget := budget0
+	var bounces := 2 * syn("弹")
+	var done := {}
+	var n := 0
+	var mat := pen_mat()
+	while n < 115 + bounces * 60:
+		n += 1
+		x += ax * 2
+		y += ay * 2
+		var r := rock_at(x, y)
+		if r:
+			if bounces > 0 and rock_budget < budget0 - 2:
+				# 折射：按石头中心算法线
+				var nv := Vector2(x - r.x, y - r.y).normalized()
+				var dv := Vector2(ax, ay)
+				dv = dv - 2.0 * dv.dot(nv) * nv
+				FX.append({"k": "beam", "x": sx, "y": sy, "x1": x, "y1": y, "w": 0.5 + ch * 1.5 + fat * 0.3, "t": 0.2, "max": 0.2, "m": mat})
+				bounces -= 1
+				ax = dv.x
+				ay = dv.y
+				x += ax * 3
+				y += ay * 3
+				sx = x
+				sy = y
+				rock_budget = budget0
+				burst(x, y, 6, mat, 6, 40, 0.3)
+				continue
+			carve(r, x, y, 2.0 + ch * 1.5)
+			rock_budget -= 1
+			if rock_budget <= 0:
+				break
+		var stop := false
+		for c in cr:
+			if done.has(c) or not can_hit(c):
+				continue
+			if Vector2(c.x - x, c.y - y).length() < c.r + 2 + fat:
+				if mite_blocks(c, x0, y0):
+					Sfx.play("ping")
+					burst(x, y, 8, MIRROR, 6, 40, 0.4)
+					stop = true
+					break
+				done[c] = true
+				fx_hit(c, dmg, x, y)
+				if syn("裂") > 0:
+					var src := Bullet.new()
+					src.mat = mat
+					src.hit = [c]
+					for i in 3 * syn("裂"):
+						spawn_small(c.x, c.y, a + (i - 1) * 0.7, src)
+				if syn("连") > 0:
+					zap(c, 1 + P.dmg)
+		if stop:
+			break
+		if n % 3 == 0:
+			part(x, y, (randf() - 0.5) * 30, (randf() - 0.5) * 30, 0.35, mat, 5, true)
+	FX.append({"k": "beam", "x": sx, "y": sy, "x1": x, "y1": y, "w": 0.5 + ch * 1.5 + fat * 0.3, "t": 0.2, "max": 0.2, "m": mat})
+	if syn("环") > 0:
+		LINES.append({"x": sx, "y": sy, "x1": x, "y1": y, "w": 1.5 + fat * 0.5, "t": 0.9 * syn("环"), "tick": 0.2, "m": mat})
+
+# ======================================================================
+# 暗潮生物：冷息（吸体温）、霜棱（瞄准冲刺）、扑灯母（啃信标、生蛾子）
+# ======================================================================
+func tide_spot(d0: float) -> Vector2:
+	for k in 16:
+		var a := randf() * TAU
+		var d := d0 + randf() * 40
+		var p := Vector2(P.x + cos(a) * d, P.y + sin(a) * d)
+		if p.length() > kiln_r() + 40 and rock_at(p.x, p.y) == null and p.length() < WR:
+			return p
+	return Vector2.INF
+
+func tide_wave() -> void:
+	for i in mini(1 + tides, 6):
+		var p := tide_spot(180)
+		if p != Vector2.INF:
+			mk("chill", p.x, p.y)
+	if tides >= 3 and count_type("mothq") == 0:
+		var p := tide_spot(200)
+		if p != Vector2.INF:
+			var c := mk("mothq", p.x, p.y)
+			c.tm = 2.0
+			toast("扑灯母来了！它会啃信标、抖下蛾子", C_RED, 4)
+	ice_sp = 3.0
+
+func tide_spawn_ice(dt: float) -> void:
+	if tides < 2:
+		return
+	ice_sp -= dt
+	if ice_sp > 0:
+		return
+	ice_sp = maxf(2.2, 5.5 - tides * 0.5)
+	if count_type("icicle") >= 3 + tides:
+		return
+	var p := tide_spot(170)
+	if p != Vector2.INF:
+		for i in (2 if randf() < 0.4 else 1):
+			var c := mk("icicle", p.x + i * 14, p.y - i * 10)
+			c.tm = 0.6 + i * 0.5
+
+func tide_end_melt() -> void:
+	for c in cr:
+		if c.t in ["chill", "icicle", "mothq"] and c.st != "melt":
+			c.st = "melt"
+			c.tm = 0.4 + randf() * 1.6
+
+func melt_step(c: Creature, dt: float) -> bool:
+	if c.st != "melt":
+		return false
+	c.tm -= dt
+	c.vx *= exp(-2 * dt)
+	c.vy *= exp(-2 * dt)
+	c.x += c.vx * dt
+	c.y += c.vy * dt - 6 * dt
+	if randf() < 0.4:
+		part(c.x + (randf() - 0.5) * c.r * 2, c.y, 0, -12, 0.5, ICE if c.t != "mothq" else MOTH, 4)
+	if c.tm <= 0:
+		kill(c, false)
+	return true
+
+func upd_chill(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 冷息：慢慢飘过来，贴近了吸走体温；怕信标的光
+	if melt_step(c, dt):
+		return
+	var tx := dx / d * 28.0
+	var ty := dy / d * 28.0
+	if c.calm > 0 or S != "play":
+		tx = cos(c.age * 0.6 + c.ph) * 14
+		ty = sin(c.age * 0.5 + c.ph) * 14
+	for b in BEA:
+		var bv := Vector2(c.x - b.x, c.y - b.y)
+		if bv.length() < 48:
+			tx += bv.normalized().x * 70
+			ty += bv.normalized().y * 70
+	c.vx += (tx + sin(c.age * 2.3 + c.ph) * 10 - c.vx) * dt * 1.4
+	c.vy += (ty + cos(c.age * 1.9 + c.ph) * 10 - c.vy) * dt * 1.4
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	if Vector2(c.x, c.y).length() < kiln_r() - 2:
+		burst(c.x, c.y, 10, ICE, 5, 30, 0.5)
+		kill(c, false)
+		return
+	if d < 34 and S == "play" and c.calm <= 0:
+		P.warm = maxf(0.0, P.warm - 11 * dt)
+		c.sp = minf(1.0, c.sp + dt * 3)
+		if randf() < dt * 14:
+			var k := randf()
+			part(P.x + (c.x - P.x) * k, P.y + (c.y - P.y) * k, (c.x - P.x) * 1.5, (c.y - P.y) * 1.5, 0.4, ICE, 5, true)
+		tip("chill", "冷息在吸你的体温！打散它能拿回一颗余烬。")
+		duck = minf(duck, 0.5)
+	else:
+		c.sp = maxf(0.0, c.sp - dt * 1.5)
+
+func upd_icicle(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 霜棱：绕到不远处停下，拉出一道瞄准线，然后笔直撞过来
+	if melt_step(c, dt):
+		return
+	c.tm -= dt
+	match c.st:
+		"aim":
+			c.vx *= exp(-6 * dt)
+			c.vy *= exp(-6 * dt)
+			c.x += c.vx * dt
+			c.y += c.vy * dt
+			c.ang = lerp_angle(c.ang, atan2(dy, dx), minf(1.0, dt * (6.0 if c.tm > 0.35 else 0.0)))
+			if c.tm <= 0:
+				c.st = "dash"
+				c.tm = 0.75
+				c.vx = cos(c.ang) * 290
+				c.vy = sin(c.ang) * 290
+				Sfx.play("dash", 2.2)
+		"dash":
+			c.x += c.vx * dt
+			c.y += c.vy * dt
+			if randf() < 0.7:
+				part(c.x, c.y, -c.vx * 0.1, -c.vy * 0.1, 0.3, ICE, 5, true)
+			if d < c.r + 4 and S == "play":
+				hurt_player(1, c.x, c.y)
+				P.warm = maxf(0.0, P.warm - 8)
+				burst(c.x, c.y, 16, ICE, 6, 60, 0.5)
+				kill(c, false)
+				return
+			var r := rock_at(c.x, c.y)
+			if r or Vector2(c.x, c.y).length() < kiln_r():
+				if r:
+					carve(r, c.x, c.y, 3.0)
+				burst(c.x, c.y, 16, ICE, 6, 60, 0.5)
+				Sfx.play("rock", 1.6)
+				kill(c, false)
+				return
+			if c.tm <= 0:
+				c.st = "idle"
+				c.tm = 1.4 + randf()
+		_:
+			var want := Vector2(-dx, -dy).normalized().rotated(sin(c.age * 0.7 + c.ph) * 1.2) * 115.0
+			var tx := P.x + want.x - c.x
+			var ty := P.y + want.y - c.y
+			var tl := maxf(1.0, sqrt(tx * tx + ty * ty))
+			c.vx += (tx / tl * minf(90.0, tl * 2) - c.vx) * dt * 2.0
+			c.vy += (ty / tl * minf(90.0, tl * 2) - c.vy) * dt * 2.0
+			c.x += c.vx * dt
+			c.y += c.vy * dt
+			c.ang = atan2(dy, dx)
+			if c.tm <= 0 and d < 170 and S == "play" and c.calm <= 0 and warm_zone(P.x, P.y) != 2:
+				c.st = "aim"
+				c.tm = 0.85
+				Sfx.play("warn", 2.6)
+				tip("icicle", "霜棱拉出细线就要撞过来了，横着躲开！")
+
+func upd_mothq(c: Creature, dt: float, d: float, dx: float, dy: float) -> void:
+	# 扑灯母：找信标啃，没有信标就绕着你飞，一边抖下蛾子
+	if melt_step(c, dt):
+		return
+	var tb: Beacon = null
+	var bd := 320.0
+	for b in BEA:
+		var dd := Vector2(b.x - c.x, b.y - c.y).length()
+		if dd < bd:
+			bd = dd
+			tb = b
+	var tx: float
+	var ty: float
+	if tb:
+		tx = tb.x - c.x
+		ty = tb.y - c.y + sin(c.age * 3) * 6
+	else:
+		var a := atan2(-dy, -dx) + 0.8 * dt
+		tx = P.x + cos(a) * 70 - c.x
+		ty = P.y + sin(a) * 70 - c.y
+	var tl := maxf(1.0, sqrt(tx * tx + ty * ty))
+	var sp := minf(46.0, tl * 1.5)
+	c.vx += (tx / tl * sp + sin(c.age * 5 + c.ph) * 18 - c.vx) * dt * 1.6
+	c.vy += (ty / tl * sp + cos(c.age * 4) * 14 - c.vy) * dt * 1.6
+	c.x += c.vx * dt
+	c.y += c.vy * dt
+	if tb and bd < 10:
+		tb.hp -= dt * 1.6
+		if randf() < dt * 8:
+			part(tb.x, tb.y, (randf() - 0.5) * 30, -20, 0.5, GOLD, 6, true)
+		tip("mothq", "扑灯母在啃你的信标！快把它打下来。")
+	if Vector2(c.x, c.y).length() < kiln_r() + c.r:
+		c.vx += c.x / maxf(1.0, Vector2(c.x, c.y).length()) * 120 * dt
+		c.vy += c.y / maxf(1.0, Vector2(c.x, c.y).length()) * 120 * dt
+	if d < c.r + 4 and c.cd <= 0 and S == "play":
+		hurt_player(1, c.x, c.y)
+		c.cd = 1.2
+	c.tm -= dt
+	if c.tm <= 0:
+		c.tm = 3.4
+		if count_type("moth") < 40:
+			for i in 3:
+				var m := mk("moth", c.x + (randf() - 0.5) * 12, c.y + 6 + randf() * 4)
+				m.sp = 60 + randf() * 20
+				m.vx = (randf() - 0.5) * 80
+				m.vy = 40
+			burst(c.x, c.y + 4, 10, MOTH, 5, 30, 0.6)
+			Sfx.play("ping", 0.6)

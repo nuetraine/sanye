@@ -217,6 +217,9 @@ func draw_creature(cc: Creature, sh: int) -> void:
 		"dove": draw_dove(cc, sh)
 		"tick": draw_tick(cc, sh)
 		"cinder": draw_cinder(cc, sh)
+		"chill": draw_chill(cc, sh)
+		"icicle": draw_icicle(cc, sh)
+		"mothq": draw_mothq(cc, sh)
 		"stamp": draw_stamp(cc, sh)
 		"binder": draw_binder(cc, sh)
 
@@ -899,12 +902,15 @@ func draw_fx() -> void:
 		match f.k:
 			"slash":
 				# 一弯刀光，从一头扫到另一头
-				var n := 34
+				var n := 34 if f.get("w", 1.0) < 1.2 else (48 if f.get("w", 1.0) < 3.0 else 90)
 				for i in n:
 					var u := float(i) / (n - 1)
-					if absf(u - (1.0 - k)) > 0.4:
+					if absf(u - (1.0 - k)) > (0.4 if f.get("w", 1.0) < 3.0 else 0.6):
 						continue
-					var a: float = f.a - 1.0 + 2.0 * u
+					var fw: float = f.get("w", 1.0)
+					var a: float = f.a - fw + 2.0 * fw * u
+					if f.get("back", false):
+						a = f.a + fw - 2.0 * fw * u
 					var thick := 1.0 - absf(u - (1.0 - k)) / 0.4
 					for q in 4:
 						var rr: float = f.r * (0.66 + q * 0.11)
@@ -942,7 +948,7 @@ func draw_aim() -> void:
 	if S != "play":
 		return
 	if P.pen == 3 and not touch_mode:
-		var d := clampf(P.aim_d, 30.0, 150.0)
+		var d := clampf(P.aim_d, 30.0, bomb_range())
 		var x := P.x + P.ax * d
 		var y := P.y + P.ay * d
 		for i in 4:
@@ -1420,6 +1426,7 @@ func draw_flare() -> void:
 func draw_skill_fx() -> void:
 	if S != "play" and S != "ending":
 		return
+	draw_pen_fx()
 	if P.shield_t > 0 and (P.shield_t > 0.8 or sin(T * 20) > 0):
 		for i in 16:
 			var a := T * 3.0 + i * TAU / 16.0
@@ -1656,3 +1663,159 @@ func draw_binder(c: Creature, sh: int) -> void:
 			if int(s + T * 40) % 3:
 				sp(x + d.x / L * s, y + d.y / L * s, WINE, 6)
 			s += 1.0
+
+# ---------- 笔字联动的特效 ----------
+func draw_pen_fx() -> void:
+	for l in LINES:
+		var dv := Vector2(l.x1 - l.x, l.y1 - l.y)
+		var L := maxf(0.001, dv.length())
+		var u := dv / L
+		var s := 0.0
+		var fade: float = clampf(l.t / 0.3, 0.0, 1.0)
+		while s < L:
+			var px: float = l.x + u.x * s
+			var py: float = l.y + u.y * s
+			if on_screen(px, py, 6) and Pal.bay(int(s), int(T * 20)) < fade:
+				var j := sin(s * 0.7 + T * 18) * 0.8
+				sp(px - u.y * j - 0.5, py + u.x * j - 0.5, l.m, 5 if int(s + T * 30) % 3 else 6, 0, 1.0)
+			s += 1.0
+	for f in FX:
+		if f.k != "zap":
+			continue
+		var a := Vector2(f.x, f.y)
+		var b := Vector2(f.x1, f.y1)
+		var n := int(a.distance_to(b) / 2.5) + 1
+		var nv := (b - a).normalized().orthogonal()
+		var prev := a
+		for i in range(1, n + 1):
+			var p := a.lerp(b, float(i) / n)
+			if i < n:
+				p += nv * (randf() - 0.5) * 5.0
+			var m := maxi(1, int(prev.distance_to(p) * 2))
+			for q in m:
+				var pp := prev.lerp(p, float(q) / m)
+				sp(pp.x - 0.25, pp.y - 0.25, PAPER if q % 2 else ORE, 6)
+			prev = p
+
+# ---------- 冷息 ----------
+func _p_chill(f: int, hot: bool) -> void:
+	for jj in range(-14, 14):
+		for ii in range(-12, 12):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			# 头是一团圆雾，下面拖着三缕飘带
+			var head := x * x + (y + 1.5) * (y + 1.5) < 18.0
+			var tail := false
+			if y > 0 and y < 6.5:
+				for k in 3:
+					var cx := (k - 1) * 2.0 + sin(y * 0.9 + f * 1.6 + k * 2.0) * 0.9
+					if absf(x - cx) < 0.9 * (1.0 - y / 7.0) + 0.2:
+						tail = true
+			if not head and not tail:
+				continue
+			var lv := 4.0
+			if head:
+				var d := sqrt(x * x + (y + 1.5) * (y + 1.5)) / 4.25
+				lv = 5.0 - d * 1.6 - (0.6 if Pal.bay(ii, jj) > 0.6 else 0.0)
+				if x < -1 and y < -3:
+					lv = 6
+			else:
+				lv = 3.5 - y * 0.2 + (0.8 if Pal.bay(ii, jj) > 0.5 else 0.0)
+			ipx(ii, jj, ICE, clampf(lv, 2, 6), hot and head)
+	# 眼睛：两道空心的月牙
+	for s in [-1.0, 1.0]:
+		ip(s * 1.5, -2.0, SPACE, 0)
+		ip(s * 1.5, -1.5, SPACE, 0)
+		ip(s * 1.5 + s * 0.5, -1.5, PAPER if hot else SPACE, 6 if hot else 0, hot)
+	# 嘴：小小的“o”，在吸气
+	ip(0, 0.5, SPACE, 0)
+
+func draw_chill(c: Creature, sh: int) -> void:
+	var f := int(c.age * 6.0) % 4
+	var hot := c.sp > 0.3
+	var a := 0.55 + 0.35 * clampf(c.sp + (0.3 if c.flash > 0 else 0.0), 0.0, 1.0) if c.st != "melt" else clampf(c.tm, 0.1, 0.8)
+	sd(bake("chill|%d|%s" % [f, hot], 6, 7, _p_chill.bind(f, hot)), c.x, c.y + sin(c.age * 2.0) * 1.2, 0, c.flash > 0, a)
+
+# ---------- 霜棱 ----------
+func _p_icicle(di: int) -> void:
+	var a := di / 16.0 * TAU
+	var ca := cos(a)
+	var sa := sin(a)
+	for jj in range(-16, 16):
+		for ii in range(-16, 16):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			var u := x * ca + y * sa
+			var v := -x * sa + y * ca
+			if u < -5.0 or u > 7.0:
+				continue
+			# 前面尖、后面短的菱形
+			var w := (u + 5.0) / 3.0 * 1.9 if u < -2.0 else (7.0 - u) / 9.0 * 1.9
+			if absf(v) > w:
+				continue
+			var lv := 4.0 + (1.0 if v < 0 else 0.0) + (1.0 if absf(v) < 0.4 else 0.0)
+			if u > 5.0:
+				lv = 6
+			ipx(ii, jj, ICE if absf(v) > 0.4 else MIRROR, lv, u > 4.5)
+	ip(ca * 1.5 - sa * 0.5, sa * 1.5 + ca * 0.5, SERP, 6, true)
+
+func draw_icicle(c: Creature, sh: int) -> void:
+	if c.st == "aim":
+		var L := 210.0
+		var s := 4.0
+		while s < L:
+			if int(s / 3.0 + T * 20) % 3 != 0:
+				sp(c.x + cos(c.ang) * s - 0.25, c.y + sin(c.ang) * s - 0.25, SERP if c.tm < 0.35 else ICE, 6 if c.tm < 0.35 else 5)
+			s += 1.0
+	var di := posmod(roundi(c.ang / TAU * 16.0), 16)
+	var jit := (randf() - 0.5) * 1.5 if c.st == "aim" and c.tm < 0.35 else 0.0
+	var a := 1.0 if c.st != "melt" else clampf(c.tm, 0.1, 1.0)
+	sd(bake("icicle|%d" % di, 8, 8, _p_icicle.bind(di)), c.x + jit, c.y, 0 if c.st == "dash" else sh, c.flash > 0, a)
+
+# ---------- 扑灯母 ----------
+func _p_mothq(f: int) -> void:
+	var lift: float = 1.0 if f == 0 else 0.55
+	for jj in range(-22, 22):
+		for ii in range(-26, 26):
+			var x := ii * 0.5 + 0.25
+			var y := jj * 0.5 + 0.25
+			var ax := absf(x)
+			# 身体
+			if ax < 1.4 and y > -4.5 and y < 6.5 and (ax * ax) / 1.96 + pow((y - 1.0) / 5.5, 2) < 1.0:
+				var seg := int(floorf(y + 5.0)) % 2 == 0
+				ipx(ii, jj, MOTH, 3 if seg else 2)
+				continue
+			# 上翅：大，向外上方张开
+			var wx := (ax - 1.0) / 11.5
+			var wy := (y + 1.0) / (8.0 * lift)
+			var up := wx > 0 and wx < 1.0 and wy < 0.2 and wx * wx + wy * wy < 1.0 and wy > -1.0 + wx * 0.3
+			# 下翅：小，圆
+			var lx := (ax - 1.0) / 7.0
+			var ly := (y - 3.0) / (4.5 * lift)
+			var lo := lx > 0 and lx * lx + ly * ly < 1.0 and y > 0.5
+			if not up and not lo:
+				continue
+			var lv := 4.0 - (0.0 if Pal.bay(ii, jj) > 0.4 else 0.6)
+			if up and wx * wx + wy * wy > 0.75:
+				lv = 3
+			# 翅膀上的两个“灯斑”
+			var ex := 6.0
+			var ey := -2.5 * lift
+			var ed := (ax - ex) * (ax - ex) + (y - ey) * (y - ey)
+			if up and ed < 5.0:
+				ipx(ii, jj, EMBER if ed > 1.6 else GOLD, 6 if ed < 1.6 else 5, true)
+				continue
+			if lo and (ax - 4.0) * (ax - 4.0) + (y - 4.5) * (y - 4.5) < 1.2:
+				lv = 2
+			ipx(ii, jj, MOTH, lv)
+	# 触角
+	for k in 6:
+		for s in [-1.0, 1.0]:
+			ip(s * (0.6 + k * 0.45), -5.0 - k * 0.55, MOTH, 4)
+	for s in [-1.0, 1.0]:
+		ip(s * 0.7, -4.0, SERP, 6, true)
+
+func draw_mothq(c: Creature, sh: int) -> void:
+	var f := int(c.age * 9.0) % 2
+	var a := 1.0 if c.st != "melt" else clampf(c.tm, 0.1, 1.0)
+	sd(bake("mothq|%d" % f, 14, 12, _p_mothq.bind(f)), c.x, c.y, sh, c.flash > 0, a)
