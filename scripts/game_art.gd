@@ -1173,7 +1173,7 @@ func draw_pc(ci: int, x: float, y: float, fr: int, ex: int, blink: bool, frost :
 		draw_clawd(x, y, fr, ex, blink, frost, flash)
 		return
 	if ci == 4:
-		sd(bake("whale|%d|%d|%s|%s" % [fr, ex, blink, frost], 7, 7, _p_whale.bind(fr, ex, blink, frost)), x, y - 1, 0, flash)
+		sd(bake("whale2|%d|%d|%s|%s" % [fr, ex, blink, frost], 9, 7.5, _p_whale.bind(fr, ex, blink, frost)), x, y - 3, 0, flash)
 		return
 	sd(bake("ch|%d|%d|%d|%s|%s" % [ci, fr, ex, blink, frost], 7, 6, _p_char.bind(ci, fr, ex, blink, frost)), x, y, 0, flash)
 
@@ -1289,15 +1289,15 @@ func _p_whale(fr: int, ex: int, blink: bool, frost: bool) -> void:
 				var ch := row[i]
 				if ch == ".":
 					continue
-				var eye := ch == "E" or ch == "e"
+				var eye := ch == "E" or ch == "e" or ch == "b"
 				if pass_ == 1 and not eye:
 					continue
 				if pass_ == 0 and eye:
-					ipx(i - 12, j - 12, CLAY, 6)
+					ipx(i - 14, j - 14, CLAY, 6)
 					continue
 				# 走路：两只脚轮流抬起
-				if (ch == "L" or ch == "J") and j == 23:
-					var left := i < 12
+				if (ch == "L" or ch == "J") and j >= 26:
+					var left := i < 14
 					if (fr == 0 and left) or (fr == 1 and not left):
 						continue
 				var q: Array = WHALE_MAP[ch]
@@ -1307,44 +1307,49 @@ func _p_whale(fr: int, ex: int, blink: bool, frost: bool) -> void:
 					if blink and j != 11:
 						continue
 					if blink:
-						m = SPACE
-						l = 0
-					ipx(i - 12 + ex, j - 12, m, l, ch == "e" and not blink)
+						m = JELLY
+						l = 1
+					ipx(i - 14 + ex, j - 14, m, l, ch == "e" and not blink)
 					continue
-				if frost and (ch == "I" or ch == "T") and (i + j) % 2 == 0:
+				if frost and (ch == "I" or ch == "W") and (i + j) % 2 == 0:
 					m = ICE
 					l = 6
-				ipx(i - 12, j - 12, m, l)
+				ipx(i - 14, j - 14, m, l)
 
-## 蓝色大肥鱼：Q 版蓝鲸少女（原创形象）。一格 = 一个精细像素
+## 蓝色大肥鱼：Q 版蓝鲸女仆（照大家公认的样子：深蓝长发、鲸鳍耳、女仆装、肥嘟嘟的尾巴）。一格 = 一个精细像素
 const WHALE_A := [
-	"........T......T........",
-	".......TTT....TTT.......",
-	"........TTTttTTT........",
-	".......hhhhTThhhh.......",
-	".....hhIIIIIIIIIIhh.....",
-	"....hIIHHHHHHHHHHHIh....",
-	"...hHHHHHHHHHHHHHHHHh...",
-	"...hHHHSSSSSSSSSSHHHh...",
-	"..hHHSSSSSSSSSSSSSHHHh..",
-	"..hHHSSEESSSSSSEESSHHh..",
-	"..hHHSSEeSSSSSSEeSSHHh..",
-	"..hHHSSEESSSSSSEESSHHh..",
-	"..hHHRRSSSSssSSSSRRHHh..",
-	"..hHHHSSSSSSSSSSSSHHHh..",
-	"...hHHHsBBBBBBBBsHHHh...",
-	"...hHH.DDDDBBDDDD.HHh...",
-	"...hHh.DDDDDDDDDD.hHh.t.",
-	"....h.sDDDDDDDDDDs.h.tT.",
-	"......sDDDDDDDDDDs..tTT.",
-	".......dDDDDDDDDd..tTT..",
-	".......BBBBBBBBBBttTT...",
-	"........LL....LL..TTT...",
-	"........LL....LL...TTt..",
-	".......JJJ....JJJ...tTT.",
+	"....................................",
+	"........WWWWWWWWWWWW................",
+	".......hWhWhWhhWhWhWh...............",
+	".....hhHHHHHHHHHHHHHHhh.............",
+	"....hHHHIIHHHHHHHHIIHHHh............",
+	"...hHHHHHHHHHHHHHHHHHHHHh...........",
+	".fF.hHHHHHHHHHHHHHHHHHHh.Ff.........",
+	"fFFFhHHSSSSSSSSSSSSSSHHhFFFf........",
+	".fFFhHSSSSSSSSSSSSSSSSHhFFf.........",
+	"..ffhHSSEEESSSSSSEEESSHhff..........",
+	"....hHSSEebSSSSSSbeESSHh............",
+	"....hHSSbbbSSSSSSbbbSSHh............",
+	"....hHSRRSSSSSSSSSSRRSHh............",
+	"....hHHSSSSSSssSSSSSSHHh....t.t.....",
+	"....hHHHsSSSSSSSSSSsHHHh...tTtTt....",
+	"...hHHHHKBBBBBBBBBBKHHHHh...tTTt....",
+	"...hHHHKKAAAAAAAAAAKKHHHh....tTt....",
+	"...hHHkKKAaAAAAAAaAKKkHHh...tTTt....",
+	"..hHHH.KKAAAAAAAAAAKK.HHHh.tTTUt....",
+	"..hHH.SKKAAAAAAAAAAKKS.HHhtTTTUt....",
+	"..hH..kKKAAAAAAAAAAKKk..HhTTTUUt....",
+	".hH..kKKKAaAAAAAAaAKKKk.tHhTTUUt....",
+	".h..kKKKKKAAAAAAAAKKKKKkTThTUUUt....",
+	"....kKKKKKKKKKKKKKKKKKKkTTTTUUt.....",
+	"....WWWWWWWWWWWWWWWWWWWWTTTUUUt.....",
+	".......LL..........LLTTTTTUUUt......",
+	".......LL..........LLTTTTUUUt.......",
+	"......JJJ..........JJJtttttt........",
 ]
 const WHALE_MAP := {
-	"T": [5, 4], "t": [5, 2], "H": [5, 4], "h": [5, 2], "I": [5, 5],
-	"S": [4, 6], "s": [4, 5], "E": [0, 0], "e": [8, 6], "R": [11, 5],
-	"D": [12, 6], "d": [12, 4], "B": [5, 4], "L": [4, 5], "J": [5, 3],
+	"W": [12, 6], "h": [5, 1], "H": [5, 3], "I": [5, 5], "F": [5, 4], "f": [5, 2],
+	"S": [4, 6], "s": [4, 5], "E": [5, 1], "e": [8, 6], "b": [5, 5], "R": [11, 5],
+	"K": [14, 3], "k": [14, 1], "B": [5, 4], "A": [12, 6], "a": [12, 4],
+	"L": [4, 5], "J": [14, 2], "T": [5, 4], "t": [5, 2], "U": [8, 5],
 }
