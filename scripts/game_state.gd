@@ -8,8 +8,10 @@ extends Node2D
 ## 八种生物（含首领回声蛇）、图鉴、结局与存档。
 
 const PAINTER := preload("res://scripts/painter.gd")
-const W := 320
-const H := 180
+const U := 2                 # 一个“单位”= 2 个精细像素（画面精细度是原来的两倍）
+var W := 320                 # 屏幕宽高（单位）。窗口变大时会跟着变，至少 320×180
+var H := 180
+var PO := Vector2.ZERO       # 面板（工坊/图鉴/句子…）居中时的偏移
 const WR := 1350.0
 const GC := 64
 const SUNV := Vector3(-0.5496, -0.4997, 0.6695)
@@ -50,7 +52,6 @@ const PAGE_TXT := [
 
 ]
 
-const ICO_BEA := [".#.", "###", ".#.", ".#.", "###"]
 const INTRO := [
 	"很久以前，「万语星图书馆」环绕着一颗叫「残烛」的恒星旋转，收藏着宇宙里说过的每一句话。",
 	"后来残烛打了个寒颤。图书馆碎了——那一天叫做「大散页」。",
@@ -60,12 +61,6 @@ const INTRO := [
 
 ]
 
-const CL := ["..HHHHHHHHH..", "..BBBBBBBBB..", "AABBBBBBBBBAA", "AABBBBBBBBBAA", "..BBBBBBBBB..", "..SSSSSSSSS..", "..L.L...L.L..", "..L.L...L.L.."]
-const HEART := [".#.#.", "#####", "#####", ".###.", "..#.."]
-const ICO_PAGE := [".#.", "###", ".#."]
-const ICO_EMB := [".#.", "###", "###"]
-const ICO_TH := [".#.", ".#.", ".#.", "###", "###"]
-const DIG := {"0": "111101101101111", "1": "010110010010111", "2": "111001111100111", "3": "111001111001111", "4": "101101111001001", "5": "111100111001111", "6": "111100111101111", "7": "111001001001001", "8": "111101111101111", "9": "111101111001111", ":": "000010000010000", "/": "001001010100100"}
 
 class Creature:
 	var t := ""
@@ -289,8 +284,8 @@ var rock_mat: ShaderMaterial
 var bg_mat: ShaderMaterial
 var vig_mat: ShaderMaterial
 var cv: CanvasItem
-var ox := 0
-var oy := 0
+var ox := 0.0
+var oy := 0.0
 var font: Font
 var font_b: Font
 var wrap_cache := {}
@@ -615,12 +610,13 @@ func warm_zone(x: float, y: float) -> int:
 	return 0
 
 func key(k: int) -> bool:
-	return Input.is_key_pressed(k)
+	return Input.is_physical_key_pressed(k)
 
 func pressed(k) -> bool:
 	return jp.has(k)
 
 # 主循环
+var _bot := false
 var _autoplay := false
 var _ap_t := 0.0
 
@@ -628,7 +624,102 @@ var _ap_t := 0.0
 func pointer() -> Vector2:
 	if touch_mode:
 		return tap_pos
-	return hud_painter.get_local_mouse_position()
+	return hud_painter.get_local_mouse_position() / U
+
+## 面板里用的指针位置（面板按 320×180 设计，居中摆放）
+func ppointer() -> Vector2:
+	return pointer() - PO
+
+func fire_locked() -> bool:
+	return false
+
+func title_btn(i: int) -> Rect2:
+	return Rect2(84 + i * 80, 138, 72, 17)
+
+# ---------- 进度存档：升级、字、书页都记下来，关掉再打开可以接着玩 ----------
+func has_run() -> bool:
+	return save.get("run") is Dictionary
+
+func clear_run() -> void:
+	save.erase("run")
+	persist()
+
+func save_run() -> void:
+	if S == "title" or S == "intro" or P.hp <= 0:
+		return
+	var pgs := []
+	for pg in PAGES:
+		var carried: bool = pg.state == "carried"
+		pgs.append({"state": "free" if carried else pg.state, "x": P.x if carried else pg.x, "y": P.y if carried else pg.y})
+	var bea := []
+	for b in BEA:
+		bea.append([b.x, b.y, b.hp])
+	save["run"] = {
+		"dust": P.dust, "ember": P.ember, "beacons": P.beacons, "hp": P.hp, "maxhp": P.maxhp,
+		"warm": P.warm, "maxwarm": P.maxwarm, "glaze": P.glaze, "dmg": P.dmg, "deaths": P.deaths,
+		"dust_total": P.dust_total, "kills": P.kills, "slots": P.slots, "bag": P.bag, "up": UP,
+		"pages": pgs, "bea": bea, "gt": gt, "tides": tides, "seen": seen.keys(), "tips": tips.keys(),
+		"serp_dead": serp != null and serp.st == "dead", "free": free_mode,
+	}
+	persist()
+
+func _word_ok(w) -> bool:
+	return w is Dictionary and w.has("c") and WD.chars.has(w.c)
+
+func load_run() -> void:
+	var r: Dictionary = save.run
+	P.dust = int(r.get("dust", 0))
+	P.ember = int(r.get("ember", 1))
+	P.beacons = int(r.get("beacons", 0))
+	P.maxhp = clampi(int(r.get("maxhp", 5)), 5, 7)
+	P.hp = clampi(int(r.get("hp", 5)), 1, P.maxhp)
+	P.maxwarm = float(r.get("maxwarm", 100.0))
+	P.warm = clampf(float(r.get("warm", 100.0)), 40.0, P.maxwarm)
+	P.glaze = float(r.get("glaze", 0.0))
+	P.dmg = int(r.get("dmg", 1))
+	P.deaths = int(r.get("deaths", 0))
+	P.dust_total = int(r.get("dust_total", 0))
+	P.kills = int(r.get("kills", 0))
+	var up: Dictionary = r.get("up", {})
+	for k in UP:
+		UP[k] = int(up.get(k, 0))
+	P.slots.clear()
+	for w in r.get("slots", []):
+		P.slots.append({"c": w.c, "gold": bool(w.get("gold", false))} if _word_ok(w) else null)
+	while P.slots.size() < int(WD.start_slots) + UP.bolt:
+		P.slots.append(null)
+	P.bag.clear()
+	for w in r.get("bag", []):
+		if _word_ok(w):
+			P.bag.append({"c": w.c, "gold": bool(w.get("gold", false))})
+	var pgs: Array = r.get("pages", [])
+	P.bound = 0
+	for i in mini(pgs.size(), PAGES.size()):
+		PAGES[i].state = str(pgs[i].get("state", PAGES[i].state))
+		PAGES[i].x = float(pgs[i].get("x", PAGES[i].x))
+		PAGES[i].y = float(pgs[i].get("y", PAGES[i].y))
+		if PAGES[i].state == "bound":
+			P.bound += 1
+	if bool(r.get("serp_dead", false)) and serp:
+		serp.st = "dead"
+		serp.hp = 0
+	BEA.clear()
+	for q in r.get("bea", []):
+		var b := Beacon.new()
+		b.x = float(q[0])
+		b.y = float(q[1])
+		b.hp = float(q[2])
+		BEA.append(b)
+	gt = float(r.get("gt", 0.0))
+	tides = int(r.get("tides", 0))
+	free_mode = bool(r.get("free", false))
+	for t in r.get("seen", []):
+		seen[str(t)] = true
+	for t in r.get("tips", []):
+		tips[str(t)] = true
+	P.x = 0
+	P.y = 34
+	calc_loadout()
 
 func near_kiln() -> bool:
 	return Vector2(P.x, P.y).length() < kiln_r()
@@ -661,6 +752,7 @@ func try_buy(i: int) -> void:
 			P.hp = P.maxhp
 		_: UP[it.k] += 1
 	Sfx.play("buy")
+	save_run()
 	burst(0, -6, 24, GOLD, 6, 50, 0.9)
 	if it.k != "forge":
 		toast("打造：" + it.name + ("（按 B 放置）" if it.k == "beacon" else " Lv%d" % shop_lvl(it)), C_GOLD)
@@ -696,7 +788,7 @@ func buy_rect() -> Rect2:
 ## 句子面板的布局（state 和 hud 共用）
 func slot_rect(i: int) -> Rect2:
 	var n := P.slots.size()
-	return Rect2(W / 2.0 - n * 15 + i * 30 + 2, 34, 26, 26)
+	return Rect2(160 - n * 15 + i * 30 + 2, 34, 26, 26)
 
 func bag_rect(i: int) -> Rect2:
 	return Rect2(22 + i * 20, 136, 18, 18)
@@ -707,7 +799,7 @@ func upd_words_panel() -> void:
 		return
 	if not click_q:
 		return
-	var mp := pointer()
+	var mp := ppointer()
 	for i in P.slots.size():
 		if slot_rect(i).has_point(mp):
 			if P.slots[i] == null:
@@ -1023,7 +1115,7 @@ func upd_player(dt: float) -> void:
 	P.anim += dt * (10.0 if P.moving else 3.0)
 	# 射击
 	P.fire_cd -= dt
-	var firing := mouse_down or touch_fire or (_autoplay and _ap_fire)
+	var firing := (mouse_down and not fire_locked()) or touch_fire or (_autoplay and _ap_fire)
 	if firing and P.fire_cd <= 0 and S == "play":
 		P.fire_cd = fire_sentence()
 		P.vx -= P.ax * 5
@@ -1132,6 +1224,7 @@ func bind_page(id: int) -> void:
 		persist()
 	elif P.bound < 3:
 		toast("还剩 %d 页。" % (3 - P.bound), C_DIM, 4)
+	save_run()
 
 func collide_p() -> void:
 	var r := 4.5
@@ -1227,6 +1320,8 @@ func upd_creatures(dt: float) -> void:
 		# 字句效果：灼烧、减速、安静
 		c.slow -= dt
 		c.calm -= dt
+		if c.t == "serp" and c.st != "fight":
+			c.burn = 0
 		if c.burn > 0:
 			c.burn -= dt
 			c.burn_t -= dt
@@ -1365,6 +1460,12 @@ func upd_creatures(dt: float) -> void:
 				if d < c.r + 4:
 					hurt_player(1, c.x, c.y)
 			"clam":
+				if not rock_at(c.x - cos(c.na) * 3.5, c.y - sin(c.na) * 3.5) and not rock_at(c.x - cos(c.na) * 6.0, c.y - sin(c.na) * 6.0):
+					burst(c.x, c.y, 10, ICE, 5, 40, 0.6)
+					if c.st != "empty":
+						add_pick(c.x, c.y, "ember")
+					c.dead = true
+					continue
 				c.tm -= cdt
 				if c.st == "grow":
 					c.open = maxf(0.0, c.open - cdt * 3)
@@ -1523,6 +1624,8 @@ func hurt_c(c: Creature, dmg: int, bx: float, by: float) -> void:
 		kill(c, true)
 
 func kill(c: Creature, drop: bool) -> void:
+	if c.dead or (c.t == "serp" and c.st == "dead") or (c.t == "clam" and c.st == "empty"):
+		return
 	var D: Dictionary = DEF[c.t]
 	if c.t == "clam":
 		c.st = "empty"
@@ -1586,6 +1689,8 @@ func kill(c: Creature, drop: bool) -> void:
 
 # ---------- 子弹 / 挖矿 ----------
 func carve(r: Rock, x: float, y: float, rad: float) -> int:
+	if r.spr == null:
+		return 0   # 这块石头刚刚已经被打碎了
 	var ci := floori(x) - r.x0
 	var cj := floori(y) - r.y0
 	var R := ceili(rad)
@@ -1786,7 +1891,7 @@ func upd_bullets(dt: float) -> void:
 
 ## 字弹命中生物：伤害 + 句子里的效果
 func bullet_hit(b: Bullet, c: Creature) -> void:
-	if c.t == "clam" and c.st != "open" and b.burn > 0:
+	if c.t == "clam" and c.st == "grow" and b.burn > 0:
 		c.st = "open"
 		c.tm = 1.5
 		c.open = 1.0
@@ -1801,11 +1906,11 @@ func bullet_hit(b: Bullet, c: Creature) -> void:
 		c.calm = maxf(c.calm, b.calm)
 		if c.t == "leech" and c.st != "orbit":
 			c.st = "back"
+	b.hit.append(c)
 	if b.split > 0 and not b.small:
 		var a := atan2(b.vy, b.vx)
 		for i in 3 * b.split:
 			spawn_small(b.x, b.y, a + (i - (3 * b.split - 1) / 2.0) * 0.5, b)
-	b.hit.append(c)
 	if b.pierce > 0:
 		b.pierce -= 1
 	else:
