@@ -593,8 +593,8 @@ func draw_pen_hud() -> void:
 		text_l("R 换笔", r.position.x + r.size.x + 3, r.position.y + 1.5, 8, C_DIM, C_SH)
 
 func codex_rect(i: int) -> Rect2:
-	# 图鉴名单：左边四列，每列 9 个
-	return Rect2(9 + (i / 9) * 35, 28 + (i % 9) * 14, 34, 13)
+	# 图鉴名单：左边四列，每列 10 个
+	return Rect2(9 + (i / 10) * 35, 27 + (i % 10) * 13, 34, 12)
 
 func is_boss_t(t: String) -> bool:
 	return BOSS_T.has(t)

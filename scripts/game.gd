@@ -340,9 +340,9 @@ func step(dt: float) -> void:
 			if pressed(KEY_S) or pressed(KEY_DOWN):
 				codex_sel = (codex_sel + 1) % cn
 			if pressed(KEY_A) or pressed(KEY_LEFT):
-				codex_sel = maxi(0, codex_sel - 9)
+				codex_sel = maxi(0, codex_sel - 10)
 			if pressed(KEY_D) or pressed(KEY_RIGHT):
-				codex_sel = mini(cn - 1, codex_sel + 9)
+				codex_sel = mini(cn - 1, codex_sel + 10)
 			var mp := ppointer()
 			var mi := -1
 			for i in cn:
@@ -588,6 +588,12 @@ func _autoplay_step(dt: float) -> void:
 	if _once(8.3):
 		jp[KEY_TAB] = true
 		codex_sel = 5
+		if chapter >= 4:
+			for t in ORDER:
+				seen[t] = true
+			codex_sel = ORDER.size() - 1
+	if chapter >= 4 and _ap_t > 8.6 and _ap_t < 9.2:
+		S = "codex"
 	if chapter == 2 and _ap_t > 9.9:
 		_ap2_step()
 		return
