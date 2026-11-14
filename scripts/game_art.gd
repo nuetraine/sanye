@@ -1173,7 +1173,7 @@ func draw_pc(ci: int, x: float, y: float, fr: int, ex: int, blink: bool, frost :
 		draw_clawd(x, y, fr, ex, blink, frost, flash)
 		return
 	if ci == 4:
-		sd(bake("whale2|%d|%d|%s|%s" % [fr, ex, blink, frost], 9, 7.5, _p_whale.bind(fr, ex, blink, frost)), x, y - 3, 0, flash)
+		sd(bake("whale3|%d|%d|%s|%s" % [fr, ex, blink, frost], 13, 10.5, _p_whale.bind(fr, ex, blink, frost)), x, y - 6, 0, flash)
 		return
 	sd(bake("ch|%d|%d|%d|%s|%s" % [ci, fr, ex, blink, frost], 7, 6, _p_char.bind(ci, fr, ex, blink, frost)), x, y, 0, flash)
 
@@ -1280,6 +1280,55 @@ func _p_char(ci: int, fr: int, ex: int, blink: bool, frost: bool) -> void:
 			_eyes(ex, blink, -2, SPACE, 0)
 			_feet(fr, [-6, 4], 7, GRAV)
 
+## 蓝色大肥鱼：Q 版蓝鲸女仆，约三头身。照 Eric 给的设定画：深海蓝渐变长发、呆毛、斜刘海、蕾丝发箍和两枚蓝蝴蝶结、
+## 鲸鳍耳（内缘白色波浪褶边）、大眼睛、深蓝白女仆裙（高领衬衫、蓝宝石领结、蓬袖、小蓝鲸围裙、金色十字星）、
+## 白花边袜和深蓝玛丽珍鞋、身后一条双叉尾鳍的肥鲸尾。一格 = 一个精细像素
+const WHALE_A := [
+	"................oIIo..........................",
+	"...............oIooIooooo.....................",
+	"..............ooWmWmWmWmWoo...................",
+	"...........o.oWmWWWWWWWWWmWo.o................",
+	"..........oCoCWWLLHHHHHLLWWCoCo...............",
+	"..o.......oHbWLLHHHHHHHHHLLWbHo.......o.......",
+	".oFo......oCHCHHHHHHHHHHHHHCHCo......oFo......",
+	".oFFo....oHHHHHHHHHHHHHHHHHHHHHo....oFFo......",
+	".oFFFoo..oHHHHIHHIHHIHHIHHHIHHHo..ooFFFo......",
+	"..oFFFFooHHIIIHHIHHIHIHHIHIHIIHHooFFFFo.......",
+	"..oFFFFFFHHIIHHIHHIHHHIHHIHHIIHHFFFFFFo.......",
+	"..owFFFFFFHIEEEEEESSSSSEEEEEEIHFFFFFFwo.......",
+	"...owwFFFFHIIExeeESSSSSExeeEIIHFFFFwwo......oo",
+	"....oowwFHHIIEeeeESSSSSEeeeEIIHHFwwTTTo....oTT",
+	"......ooHHHIIEeppESSSSSEeppEIIHHHoTTTTTo..oTTT",
+	".......oHHHIHEpqpESSSSSEpqpEHIHHHoTTTTTTooTTVT",
+	".......oHHHIrrEEESSSSSSSEEErrIHHHooUVTTTTTTTTU",
+	".......oHHHIHISSSSSSMSSSSSSIHIHHHo.oUUTTTTTTUo",
+	".......oHHHIHILDSSSSSSSSSDLIHIHHHo..oooTTTToo.",
+	"......oHHHHDddDDDDSSSSSDDDDddDHHHHo...oTTTo...",
+	"......oIIIhDDDDDDDWmgmWDDDDDDDhIIIo..oTTTTo...",
+	"......oIIIIDDDDDDDWmkmWDDDDDDDIIIIo..oTTTUo...",
+	"......oIIIhDDDDDWmWWWWWmWDDDDDhIIIo.oTTTTUo...",
+	"......oIIIIwwwwDWWWWWWWWWDwwwwIIIIo.oTTTTUo...",
+	"......oIIIhISSIDmWWWWWWWmDISSIhIIIooTTTTTUo...",
+	".....oIIIIIIIDDWWWWCWCWWWWDDIIIIIIITTTTTVo....",
+	".....oLLLLILDDdmWWWWCWWWWmDDDLILLLLTTTTTUo....",
+	".....oLLLLLDDdWWWWBBBWWWWWWDgDLLLLLTTTTUo.....",
+	".....oLLLLDDdDmWWBBBBBbWWWmdDDDLLLLTTTTVo.....",
+	".....oLLLDDdDWWWWWBBBBWWWWWWDDDdLLLTTTUo......",
+	".....oQQDDdDDmWWWWWWWWWWWWWmDDdDDQQTTVUo......",
+	"....oQoDDdDDWWWWWWWWWWWWWWWWWdDDDDQQUoo.......",
+	"....oQDDdDDDWmWmWmWmWmWmWmWmWDDDDdDQo.........",
+	"....oQwwwwwwwwwwwwwwwwwwwwwwwwwwwwwQo.........",
+	".....owmwmwmwmwmwmwmwmwmwmwmwmwmwmwo..........",
+	"......oooooooooooSSoooSSooooooooooo...........",
+	"................owwo.owwo.....................",
+	"...............oJwwJoJwwJo....................",
+	"...............oJgJJoJJgJo....................",
+	"...............ojJJjojJJjo....................",
+	"................oooo.oooo.....................",
+]
+const WHALE_MAP := {"B": [5, 3], "C": [5, 4], "D": [5, 2], "E": [5, 1], "F": [5, 3], "H": [5, 2], "I": [5, 3], "J": [5, 1], "L": [5, 4], "M": [11, 4], "Q": [8, 5], "S": [4, 6], "T": [5, 3], "U": [5, 4], "V": [9, 5], "W": [12, 6], "b": [5, 5], "d": [5, 1], "e": [5, 4], "g": [13, 5], "h": [5, 1], "j": [5, 0], "k": [5, 0], "m": [10, 5], "o": [5, 0], "p": [8, 4], "q": [8, 6], "r": [11, 6], "w": [12, 6], "x": [12, 6]}
+const WHALE_EYE := "Exepq"
+
 func _p_whale(fr: int, ex: int, blink: bool, frost: bool) -> void:
 	# 先画全身（眼睛的位置先当成脸），再按朝向把眼睛画上去
 	for pass_ in 2:
@@ -1289,67 +1338,28 @@ func _p_whale(fr: int, ex: int, blink: bool, frost: bool) -> void:
 				var ch := row[i]
 				if ch == ".":
 					continue
-				var eye := ch == "E" or ch == "e" or ch == "b"
+				var eye := j >= 11 and j <= 16 and i >= 13 and i <= 27 and WHALE_EYE.contains(ch)
 				if pass_ == 1 and not eye:
 					continue
 				if pass_ == 0 and eye:
-					ipx(i - 14, j - 14, CLAY, 6)
+					ipx(i - 20, j - 20, CLAY, 6)
 					continue
-				# 走路：两只脚轮流抬起
-				if (ch == "L" or ch == "J") and j >= 26:
-					var left := i < 14
-					if (fr == 0 and left) or (fr == 1 and not left):
-						continue
 				var q: Array = WHALE_MAP[ch]
 				var m: int = q[0]
 				var l: float = q[1]
 				if eye:
-					if blink and j != 11:
-						continue
 					if blink:
+						if j != 14:
+							continue
 						m = JELLY
 						l = 1
-					ipx(i - 14 + ex, j - 14, m, l, ch == "e" and not blink)
+					ipx(i - 20 + ex, j - 20, m, l, (ch == "x" or ch == "q") and not blink)
 					continue
-				if frost and (ch == "I" or ch == "W") and (i + j) % 2 == 0:
+				# 走路：两只脚轮流抬起一格
+				var dy := 0
+				if j >= 35 and ((fr == 0 and i < 20) or (fr == 1 and i > 20)):
+					dy = -1
+				if frost and (ch == "H" or ch == "I" or ch == "W") and (i + j) % 2 == 0:
 					m = ICE
 					l = 6
-				ipx(i - 14, j - 14, m, l)
-
-## 蓝色大肥鱼：Q 版蓝鲸女仆（照大家公认的样子：深蓝长发、鲸鳍耳、女仆装、肥嘟嘟的尾巴）。一格 = 一个精细像素
-const WHALE_A := [
-	"....................................",
-	"........WWWWWWWWWWWW................",
-	".......hWhWhWhhWhWhWh...............",
-	".....hhHHHHHHHHHHHHHHhh.............",
-	"....hHHHIIHHHHHHHHIIHHHh............",
-	"...hHHHHHHHHHHHHHHHHHHHHh...........",
-	".fF.hHHHHHHHHHHHHHHHHHHh.Ff.........",
-	"fFFFhHHSSSSSSSSSSSSSSHHhFFFf........",
-	".fFFhHSSSSSSSSSSSSSSSSHhFFf.........",
-	"..ffhHSSEEESSSSSSEEESSHhff..........",
-	"....hHSSEebSSSSSSbeESSHh............",
-	"....hHSSbbbSSSSSSbbbSSHh............",
-	"....hHSRRSSSSSSSSSSRRSHh............",
-	"....hHHSSSSSSssSSSSSSHHh....t.t.....",
-	"....hHHHsSSSSSSSSSSsHHHh...tTtTt....",
-	"...hHHHHKBBBBBBBBBBKHHHHh...tTTt....",
-	"...hHHHKKAAAAAAAAAAKKHHHh....tTt....",
-	"...hHHkKKAaAAAAAAaAKKkHHh...tTTt....",
-	"..hHHH.KKAAAAAAAAAAKK.HHHh.tTTUt....",
-	"..hHH.SKKAAAAAAAAAAKKS.HHhtTTTUt....",
-	"..hH..kKKAAAAAAAAAAKKk..HhTTTUUt....",
-	".hH..kKKKAaAAAAAAaAKKKk.tHhTTUUt....",
-	".h..kKKKKKAAAAAAAAKKKKKkTThTUUUt....",
-	"....kKKKKKKKKKKKKKKKKKKkTTTTUUt.....",
-	"....WWWWWWWWWWWWWWWWWWWWTTTUUUt.....",
-	".......LL..........LLTTTTTUUUt......",
-	".......LL..........LLTTTTUUUt.......",
-	"......JJJ..........JJJtttttt........",
-]
-const WHALE_MAP := {
-	"W": [12, 6], "h": [5, 1], "H": [5, 3], "I": [5, 5], "F": [5, 4], "f": [5, 2],
-	"S": [4, 6], "s": [4, 5], "E": [5, 1], "e": [8, 6], "b": [5, 5], "R": [11, 5],
-	"K": [14, 3], "k": [14, 1], "B": [5, 4], "A": [12, 6], "a": [12, 4],
-	"L": [4, 5], "J": [14, 2], "T": [5, 4], "t": [5, 2], "U": [8, 5],
-}
+				ipx(i - 20, j - 20 + dy, m, l)
