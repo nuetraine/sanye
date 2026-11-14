@@ -1,6 +1,20 @@
 extends "res://scripts/game_hud.gd"
 ## 《散页 Unbound》入口：搭场景、输入、主循环、自动试玩。
 
+var bg: ColorRect
+var vig: ColorRect
+var hud_spr_painter: Node2D
+var spr_mat: ShaderMaterial
+var fire_lock := false       # 点界面的那一下不算开火，松开鼠标后才恢复
+var restart_arm := false
+var save_t := 0.0
+
+func fire_locked() -> bool:
+	return fire_lock
+
+func restart_arm_v() -> bool:
+	return restart_arm
+
 func _ready() -> void:
 	R0.seed = 20261108
 	font = _load_font()
@@ -8,12 +22,15 @@ func _ready() -> void:
 	fb.base_font = font
 	fb.variation_embolden = 0.7
 	font_b = fb
+	make_atlas()
+	spr_mat = ShaderMaterial.new()
+	spr_mat.shader = load("res://shaders/sprite.gdshader")
+	spr_mat.set_shader_parameter("pal", Pal.pal_tex)
 
 	var bg_layer := CanvasLayer.new()
 	bg_layer.layer = -1
 	add_child(bg_layer)
-	var bg := ColorRect.new()
-	bg.size = Vector2(W, H)
+	bg = ColorRect.new()
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg_mat = ShaderMaterial.new()
 	bg_mat.shader = load("res://shaders/bg.gdshader")
@@ -23,25 +40,27 @@ func _ready() -> void:
 
 	zone_painter = PAINTER.new()
 	zone_painter.fn = _draw_zones
+	zone_painter.material = spr_mat
 	add_child(zone_painter)
 	rock_layer = Node2D.new()
 	add_child(rock_layer)
 	ent_painter = PAINTER.new()
 	ent_painter.fn = _draw_world
+	ent_painter.material = spr_mat
 	add_child(ent_painter)
 	rock_mat = ShaderMaterial.new()
 	rock_mat.shader = load("res://shaders/rock.gdshader")
 	rock_mat.set_shader_parameter("pal", Pal.pal_tex)
 
 	camera = Camera2D.new()
+	camera.zoom = Vector2(U, U)
 	add_child(camera)
 	camera.make_current()
 
 	var vig_layer := CanvasLayer.new()
 	vig_layer.layer = 1
 	add_child(vig_layer)
-	var vig := ColorRect.new()
-	vig.size = Vector2(W, H)
+	vig = ColorRect.new()
 	vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vig_mat = ShaderMaterial.new()
 	vig_mat.shader = load("res://shaders/vignette.gdshader")
@@ -55,18 +74,56 @@ func _ready() -> void:
 	hud_painter = PAINTER.new()
 	hud_painter.fn = _draw_hud
 	hud_layer.add_child(hud_painter)
+	hud_spr_painter = PAINTER.new()
+	hud_spr_painter.fn = _draw_hud_sprites
+	hud_spr_painter.material = spr_mat
+	hud_layer.add_child(hud_spr_painter)
+
+	get_viewport().size_changed.connect(_on_resize)
+	_on_resize()
 
 	TRX.resize(400)
 	TRY.resize(400)
 	load_save()
 	load_words()
+	var args0 := OS.get_cmdline_user_args()
+	if args0.has("--ch=2"):
+		chapter = 2
+		unlocked = 2
+	_bot_god = args0.has("--god")
 	var t0 := Time.get_ticks_msec()
 	new_world()
 	print("world generated in %d ms, rocks=%d" % [Time.get_ticks_msec() - t0, rocks.size()])
-	if OS.get_cmdline_user_args().has("--autoplay"):
+	var args := OS.get_cmdline_user_args()
+	if args.has("--autoplay"):
 		_autoplay = true
+	if args.has("--bot"):
+		_bot = true
+		_autoplay = true
+	if args.has("--load") and has_run():
+		load_run()
+		S = "play"
+		print("loaded: ch=%d unlocked=%d bound=%d pens=%d" % [chapter, unlocked, P.bound, P.pens])
+	if _autoplay:
+		save.erase("run")
 
-## 找一款系统里的中文字体直接加载（网页版以后需要打包一款开源中文字体）
+## 窗口大小变了：自己算一个整数放大倍数（像素不会糊），画面铺满整个窗口，
+## 窗口比 640×360 的整数倍多出来的部分用来多看一点世界，不留黑边。
+func _on_resize() -> void:
+	var win := get_window()
+	var ws := Vector2(win.size)
+	var k := maxf(1.0, floorf(minf(ws.x / 640.0, ws.y / 360.0)))
+	if not is_equal_approx(win.content_scale_factor, k):
+		win.content_scale_factor = k
+	var vs := ws / k
+	W = maxi(1, ceili(vs.x / U))
+	H = maxi(1, ceili(vs.y / U))
+	PO = Vector2(floorf((W - 320) / 2.0), floorf((H - 180) / 2.0))
+	bg.size = vs
+	vig.size = vs
+	bg_mat.set_shader_parameter("res", vs)
+	vig_mat.set_shader_parameter("res", vs)
+
 ## 内置的开源中文字体（思源黑体 / Noto Sans SC，OFL 许可），网页和手机上也能显示中文
 func _load_font() -> Font:
 	var f = load("res://fonts/NotoSansSC-Regular.otf")
@@ -74,11 +131,12 @@ func _load_font() -> Font:
 		return f
 	return ThemeDB.fallback_font
 
-# 输入（键盘 / 鼠标 / 触屏）
+# 输入（键盘 / 鼠标 / 触屏）。位置都换算成“单位”
 func _input(e: InputEvent) -> void:
 	if e is InputEventKey and e.pressed and not e.echo:
-		jp[e.keycode] = true
-		if e.keycode == KEY_M:
+		var kc: int = e.physical_keycode if e.physical_keycode != 0 else e.keycode
+		jp[kc] = true
+		if kc == KEY_M:
 			toast("静音" if Sfx.toggle_mute() else "声音开启", C_DIM, 1.5)
 	elif e is InputEventMouseButton:
 		touch_mode = false
@@ -86,36 +144,47 @@ func _input(e: InputEvent) -> void:
 			mouse_down = e.pressed
 			if e.pressed:
 				click_q = true
+				if S != "play":
+					fire_lock = true
+			else:
+				fire_lock = false
 		elif e.button_index == MOUSE_BUTTON_RIGHT and e.pressed:
 			jp["dash"] = true
+		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN and e.pressed:
+			jp["wheel_dn"] = true
+		elif e.button_index == MOUSE_BUTTON_WHEEL_UP and e.pressed:
+			jp["wheel_up"] = true
 	elif e is InputEventMouseMotion:
 		touch_mode = false
 		mouse_moved = true
 	elif e is InputEventScreenTouch:
 		touch_mode = true
-		var pos: Vector2 = e.position
+		var pos: Vector2 = e.position / U
 		if e.pressed:
 			click_q = true
 			tap_pos = pos
 			var kind := "aim"
 			if S != "play":
 				kind = "btn"
-			elif pos.x > W - 44 and pos.y > H - 44:
+			elif touch_btn(0).has_point(pos):
 				kind = "dash"
 				jp["dash"] = true
-			elif pos.x > W - 44 and pos.y > H - 80:
+			elif touch_btn(1).has_point(pos):
 				kind = "btn"
 				jp[KEY_Q] = true
-			elif pos.x > W - 44 and pos.y > H - 112:
+			elif touch_btn(2).has_point(pos) and (near_kiln() or P.beacons > 0):
 				kind = "btn"
-				jp[KEY_B] = true
+				jp[KEY_E if near_kiln() else KEY_B] = true
+			elif touch_btn(3).has_point(pos) and near_kiln() and unlocked >= 2:
+				kind = "btn"
+				jp[KEY_G] = true
 			elif pos.x > W - 48 and pos.y > 12 and pos.y < 60:
 				kind = "btn"
 				jp[KEY_TAB] = true
-			elif near_kiln() and absf(pos.x - W / 2.0) < 24 and absf(pos.y - (H / 2.0 + 24)) < 10:
+			elif pen_rect().has_point(pos) and P.pens > 1:
 				kind = "btn"
-				jp[KEY_E] = true
-			elif pos.x < 4 + P.slots.size() * 13 and pos.y > H - 18:
+				jp[KEY_R] = true
+			elif pos.x < 6 + P.slots.size() * 15 and pos.y > H - 20:
 				kind = "btn"
 				jp[KEY_F] = true
 			elif pos.x < W / 2.0:
@@ -126,7 +195,7 @@ func _input(e: InputEvent) -> void:
 		_touch_sync()
 	elif e is InputEventScreenDrag:
 		if touches.has(e.index):
-			touches[e.index].pos = e.position
+			touches[e.index].pos = e.position / U
 		_touch_sync()
 
 func _touch_sync() -> void:
@@ -142,25 +211,46 @@ func _touch_sync() -> void:
 			touch_aim = t.pos
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
 		mouse_down = false
+		fire_lock = false
 		touches.clear()
 		_touch_sync()
+		if S == "play":
+			save_run()
 
 func _physics_process(dt: float) -> void:
 	if _autoplay:
-		_autoplay_step(dt)
+		if _bot:
+			_bot_step(dt)
+		else:
+			_autoplay_step(dt)
 	step(dt)
+
+func _process(_dt: float) -> void:
 	present()
 
 func step(dt: float) -> void:
 	T += dt
 	duck = 1.0
-	var go := click_q or pressed(KEY_ENTER) or pressed(KEY_SPACE)
+	var go := click_q or pressed(KEY_ENTER) or pressed(KEY_KP_ENTER) or pressed(KEY_SPACE)
 	match S:
 		"title":
 			cam_pos = Vector2(cos(T * 0.05) * 60, sin(T * 0.05) * 40)
-			if go:
+			if has_run():
+				var mp := ppointer()
+				if pressed(KEY_N) or (click_q and title_btn(1).has_point(mp)):
+					if restart_arm:
+						clear_run()
+						S = "intro"
+						intro_t = 0.0
+					restart_arm = true
+				elif go and (not click_q or title_btn(0).has_point(mp)):
+					load_run()
+					S = "play"
+					cam_pos = Vector2(P.x, P.y)
+					toast("欢迎回来。炉灯一直给你留着火。", C_GOLD, 4)
+			elif go:
 				S = "intro"
 				intro_t = 0.0
 		"intro":
@@ -181,10 +271,16 @@ func step(dt: float) -> void:
 			upd_player(dt)
 			upd_creatures(dt)
 			upd_bullets(dt)
+			upd_bombs(dt)
+			upd_world2(dt)
 			upd_pickups(dt)
 			upd_beacons(dt)
 			upd_spawns(dt)
 			check_discover()
+			save_t += dt
+			if save_t > 15.0 and S == "play":
+				save_t = 0.0
+				save_run()
 			if S == "play" and pressed(KEY_TAB):
 				S = "codex"
 			elif S == "play" and pressed(KEY_F):
@@ -194,7 +290,8 @@ func step(dt: float) -> void:
 			upd_words_panel()
 		"menu":
 			for i in range(1, SHOP.size() + 1):
-				if pressed(KEY_0 + i):
+				if pressed(KEY_0 + i) or pressed(KEY_KP_0 + i):
+					menu_sel = i - 1
 					try_buy(i - 1)
 			if pressed(KEY_W) or pressed(KEY_UP):
 				menu_sel = (menu_sel + SHOP.size() - 2) % SHOP.size()
@@ -204,9 +301,9 @@ func step(dt: float) -> void:
 				menu_sel = (menu_sel + SHOP.size() - 1) % SHOP.size()
 			if pressed(KEY_D) or pressed(KEY_RIGHT):
 				menu_sel = (menu_sel + 1) % SHOP.size()
-			if pressed(KEY_ENTER) or pressed(KEY_SPACE):
+			if pressed(KEY_ENTER) or pressed(KEY_KP_ENTER) or pressed(KEY_SPACE):
 				try_buy(menu_sel)
-			var mp := pointer()
+			var mp := ppointer()
 			var closed := pressed(KEY_E) or pressed(KEY_ESCAPE) or pressed(KEY_TAB)
 			var on_card := false
 			for i in SHOP.size():
@@ -216,20 +313,29 @@ func step(dt: float) -> void:
 						menu_sel = i
 			if click_q and buy_rect().has_point(mp):
 				try_buy(menu_sel)
-			elif click_q and not on_card and (mp.y > 170 or mp.x < 12 or mp.x > 308 or mp.y < 8):
+			elif click_q and not on_card and not Rect2(12, 8, 296, 164).has_point(mp):
 				closed = true
 			if closed:
 				S = "play"
+				save_run()
 		"codex":
+			var cn := ORDER.size()
 			if pressed(KEY_W) or pressed(KEY_UP):
-				codex_sel = (codex_sel + 7) % 8
+				codex_sel = (codex_sel + cn - 1) % cn
 			if pressed(KEY_S) or pressed(KEY_DOWN):
-				codex_sel = (codex_sel + 1) % 8
-			var mp := pointer()
-			var mi := floori((mp.y - 34) / 16.0)
-			if mp.x > 14 and mp.x < 110 and mi >= 0 and mi < 8 and (mouse_moved or click_q):
+				codex_sel = (codex_sel + 1) % cn
+			if pressed(KEY_A) or pressed(KEY_LEFT):
+				codex_sel = maxi(0, codex_sel - 7)
+			if pressed(KEY_D) or pressed(KEY_RIGHT):
+				codex_sel = mini(cn - 1, codex_sel + 7)
+			var mp := ppointer()
+			var mi := -1
+			for i in cn:
+				if codex_rect(i).has_point(mp):
+					mi = i
+			if mi >= 0 and (mouse_moved or click_q):
 				codex_sel = mi
-			elif click_q and (mp.y > 152 or mp.x < 8 or mp.x > 312):
+			elif click_q and not Rect2(8, 8, 304, 164).has_point(mp):
 				S = "play"
 			if pressed(KEY_TAB) or pressed(KEY_ESCAPE) or pressed(KEY_E):
 				S = "play"
@@ -237,13 +343,19 @@ func step(dt: float) -> void:
 			dead_t += dt
 			if dead_t > 2.6:
 				respawn()
+				save_run()
 		"ending":
 			end_t += dt
 			upd_creatures(dt)
-			if end_t > 7 and (pressed(KEY_ENTER) or click_q):
+			if end_t > 7 and (pressed(KEY_ENTER) or pressed(KEY_KP_ENTER) or click_q):
 				S = "play"
-				free_mode = true
-				toast("自由探索：残烛还在打寒颤，宇宙还有很多散页。", C_DIM, 5)
+				if chapter == 1:
+					goto_chapter(2)
+					toast("想回第一章，在炉灯边按 G（或点「翻章」）。", C_DIM, 6)
+				else:
+					free_mode = true
+					toast("自由探索：残烛还在打寒颤，宇宙还有很多散页。", C_DIM, 5)
+					save_run()
 	if randf() < 0.3:
 		part(3 + (randf() - 0.5) * 3, -20, (randf() - 0.5) * 6, -10 - randf() * 8, 2.2, MOTH, 3)
 	upd_particles(dt)
@@ -268,9 +380,10 @@ func step(dt: float) -> void:
 func present() -> void:
 	var sx := (randf() - 0.5) * shk
 	var sy := (randf() - 0.5) * shk
-	camera.position = Vector2(roundf(cam_pos.x + sx), roundf(cam_pos.y + sy))
-	ox = int(camera.position.x) - W / 2
-	oy = int(camera.position.y) - H / 2
+	var vs := Vector2(get_window().size) / get_window().content_scale_factor
+	camera.position = Vector2(snap(cam_pos.x + sx), snap(cam_pos.y + sy))
+	ox = camera.position.x - vs.x / (2.0 * U)
+	oy = camera.position.y - vs.y / (2.0 * U)
 	build_lights()
 	var arr := PackedVector4Array()
 	arr.resize(24)
@@ -278,29 +391,134 @@ func present() -> void:
 		arr[i] = lights[i]
 	rock_mat.set_shader_parameter("lights", arr)
 	rock_mat.set_shader_parameter("nlights", lights.size())
-	rock_mat.set_shader_parameter("sun", SUN)
+	rock_mat.set_shader_parameter("sun", SUNE)
 	rock_mat.set_shader_parameter("amb", AMB)
 	rock_mat.set_shader_parameter("time", T)
 	bg_mat.set_shader_parameter("cam", cam_pos)
 	bg_mat.set_shader_parameter("tide", TIDE)
 	bg_mat.set_shader_parameter("time", T)
 	var cold := (25.0 - P.warm) / 25.0 if S == "play" and P.warm < 25 else 0.0
-	vig_mat.set_shader_parameter("tide", TIDE)
+	vig_mat.set_shader_parameter("tide", maxf(TIDE, zone_dark * 0.7))
 	vig_mat.set_shader_parameter("cold", cold)
 	zone_painter.queue_redraw()
 	ent_painter.queue_redraw()
 	hud_painter.queue_redraw()
+	hud_spr_painter.queue_redraw()
 
 var _shots := {1.0: "title", 3.9: "fire", 4.6: "words", 5.2: "play", 7.0: "menu", 9.0: "codex", 13.0: "tide", 17.0: "serp", 23.0: "ending"}
 
+## 测试用：把八种生物摆在炉灯旁边拍一张“全家福”（godot -- --autoplay --gallery）
+func _gallery_step() -> void:
+	if S == "title":
+		click_q = true
+	elif S == "intro":
+		intro_t = 99
+	if _once(1.5):
+		cr.clear()
+		toasts.clear()
+		tide_t = 0.0
+		var n := 0
+		for t in ORDER:
+			if t == "serp" or t == "redact":
+				continue
+			var c := mk(t, -125 + (n % 6) * 50, -28 if n < 6 else 58)
+			n += 1
+			c.hx = c.x
+			c.hy = c.y
+			init_c(c)
+			match t:
+				"leech":
+					c.st = "orbit"
+					c.orR = 8
+				"clam":
+					c.st = "open"
+					c.tm = 99
+					c.na = -PI / 2
+				"mite":
+					c.ang = 2.2
+				"folio":
+					c.vx = 20
+					c.vy = -8
+				"worm":
+					c.ang = 0.3
+					for i in c.seg.size():
+						c.seg[i] = Vector2(c.x - (i + 1) * 3.4, c.y - sin(i * 0.8) * 2)
+				"wisp":
+					c.open = 1
+		var bl := mk("blotlet", 138, 58)
+		bl.hx = bl.x
+		bl.hy = bl.y
+		var b := boss()
+		cr.append(b)
+		b.st = "fight"
+		b.burst_t = 99
+		for i in b.seg.size():
+			b.seg[i] = Vector2(64 + i * 5, 22 + sin(i * 0.7) * 6)
+		P.hp = 99
+		P.inv = 99
+		P.carry = [0]
+		P.bound = 1
+		P.dust = 37
+		UP.pen = 4
+		P.pens = 5
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--pen="):
+				P.pen = int(a.substr(6))
+		for i in 30:
+			add_pick(-60 + randf() * 120, 30 + randf() * 30, "dust" if i % 3 else "ember")
+		var w := Pick.new()
+		w.x = -30
+		w.y = 30
+		w.k = "word"
+		w.age = -99
+		PK.append(w)
+		var be := Beacon.new()
+		be.x = -70
+		be.y = 20
+		BEA.append(be)
+		LAMPS.append({"x": -100.0, "y": 20.0, "lit": 60.0})
+		LAMPS.append({"x": 105.0, "y": 15.0, "lit": 0.0})
+		INK.append(Vector3(30, 78, 24))
+		HZ.append({"x": 0.0, "y": -20.0, "a": 0.4, "t": 9.0, "w": 5.0, "len": 80.0, "dmg": true})
+	for c in cr:
+		c.cd = 9
+		c.tm = maxf(c.tm, 1.0)
+		if not is_boss(c):
+			c.x = c.hx
+			c.y = c.hy
+	for p in PK:
+		p.age = minf(p.age, 0.0)
+	var bb := boss()
+	if bb:
+		bb.x = 75
+		bb.y = 14
+		bb.vx = 0
+		bb.vy = 0
+		bb.burst_t = 99
+	if _ap_t > 1.5:
+		P.x = 0
+		P.y = 30
+		P.vx = 0
+		P.vy = 0
+	_ap_aim = Vector2(1, -0.3) * 60
+	_ap_fire = _ap_t > 2.5 and (P.pen != 4 or _ap_t < 3.05)
+	if _once(3.2):
+		get_viewport().get_texture().get_image().save_png("user://shot_gallery.png")
+	if _ap_t > 3.5:
+		get_tree().quit()
+
 func _autoplay_step(dt: float) -> void:
 	_ap_t += dt
-	for k in _shots.keys():
+	if OS.get_cmdline_user_args().has("--gallery"):
+		_gallery_step()
+		return
+	var shots := _shots if chapter == 1 else _shots2
+	for k in shots.keys():
 		if _ap_t >= k:
 			var img := get_viewport().get_texture().get_image()
-			img.save_png("user://shot_%s.png" % _shots[k])
-			print("shot ", _shots[k], " S=", S)
-			_shots.erase(k)
+			img.save_png("user://shot_%s.png" % shots[k])
+			print("shot ", shots[k], " S=", S)
+			shots.erase(k)
 	if S == "title" and _ap_t > 0.5:
 		click_q = true
 	elif S == "intro" and _ap_t > 1.5:
@@ -314,6 +532,11 @@ func _autoplay_step(dt: float) -> void:
 					P.slots.append({"c": ch, "gold": false})
 		P.bag = [{"c": "穿", "gold": false}, {"c": "针", "gold": false}, {"c": "回", "gold": false}, {"c": "环", "gold": false}]
 		calc_loadout()
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--pen="):
+				UP.pen = 4
+				P.pens = 5
+				P.pen = int(a.substr(6))
 	if _once(4.2):
 		jp[KEY_F] = true
 	if _once(4.9):
@@ -334,6 +557,9 @@ func _autoplay_step(dt: float) -> void:
 	if _once(8.3):
 		jp[KEY_TAB] = true
 		codex_sel = 5
+	if chapter == 2 and _ap_t > 9.9:
+		_ap2_step()
+		return
 	if _once(10.0):
 		jp[KEY_TAB] = true
 		P.x = 200
@@ -363,9 +589,11 @@ func _autoplay_step(dt: float) -> void:
 				best = r
 		if best:
 			_ap_aim = Vector2(best.x - P.x, best.y - P.y)
-			_ap_fire = bd < 120
+			_ap_fire = bd < 120 and (P.pen != 4 or fmod(_ap_t, 1.3) < 1.0)
 			joy = _ap_aim.normalized() * (0.8 if bd > 60 else 0.0)
 	elif S == "play" and _ap_t > 14.0 and serp:
+		if _once(15.5) and OS.get_cmdline_user_args().has("--p3"):
+			serp.hp = 10
 		_ap_aim = Vector2(serp.x - P.x, serp.y - P.y)
 		_ap_fire = true
 		joy = Vector2.ZERO
@@ -377,8 +605,143 @@ func _autoplay_step(dt: float) -> void:
 
 var _done := {}
 
+## 长时间自动乱玩（测试用：godot -- --bot [--bot-secs=600]）。每帧多跑几步逻辑，
+## 到处飞、乱射、买东西、开关面板，用来揪出运行时报错。
+var _bot_t := 0.0
+var _bot_dir := Vector2.RIGHT
+var _bot_next := 0.0
+var _bot_secs := 300.0
+func _bot_step(dt: float) -> void:
+	if _bot_t == 0.0:
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--bot-secs="):
+				_bot_secs = float(a.substr(11))
+		clear_run()
+	var n := 1 if OS.get_cmdline_user_args().has("--perf") else 5
+	for i in n:
+		_bot_tick(dt)
+		if i < n - 1:
+			step(dt)
+
+func _bot_tick(dt: float) -> void:
+	_bot_t += dt
+	unlocked = 2
+	if S == "title" or S == "intro" or S == "ending":
+		click_q = true
+		if S == "intro":
+			intro_t = 99
+		return
+	if S == "menu":
+		jp[KEY_1 + randi() % 8] = true
+		if randf() < 0.05:
+			jp[KEY_E] = true
+		return
+	if S == "words":
+		if randf() < 0.1:
+			jp[KEY_F] = true
+		return
+	if S == "codex":
+		jp[[KEY_W, KEY_S, KEY_A, KEY_D][randi() % 4]] = true
+		if randf() < 0.1:
+			jp[KEY_TAB] = true
+		return
+	if S != "play":
+		return
+	if _bot_t > _bot_next:
+		_bot_next = _bot_t + 1.0 + randf() * 4.0
+		var goal := Vector2.ZERO
+		var r := randf()
+		if P.warm < 35 or P.hp <= 2 or not P.carry.is_empty() or TIDE > 0.5:
+			goal = Vector2.ZERO
+		elif r < 0.5:
+			for pg in PAGES:
+				if pg.state == "free" or (pg.state == "sealed" and ch_bound() >= 2):
+					goal = Vector2(pg.x, pg.y)
+					break
+		else:
+			goal = Vector2(P.x, P.y) + Vector2.from_angle(randf() * TAU) * 300
+		_bot_dir = (goal - Vector2(P.x, P.y)).normalized().rotated((randf() - 0.5) * 0.8)
+		if randf() < 0.2:
+			jp[[KEY_Q, KEY_B, KEY_F, KEY_TAB, KEY_E, KEY_SPACE, KEY_R, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5][randi() % 12]] = true
+		if near_kiln() and randf() < 0.5:
+			jp[KEY_E] = true
+		if near_kiln() and randf() < 0.04:
+			jp[KEY_G] = true
+		if randf() < 0.1:
+			P.dust += 40
+		if randf() < 0.05:
+			var ks: Array = WD.chars.keys()
+			give_word(ks[randi() % ks.size()], randf() < 0.3)
+		if randf() < 0.03:
+			for i in P.slots.size():
+				P.slots[i] = null
+		if _bot_god and P.hp < 3:
+			P.hp = P.maxhp
+			P.warm = P.maxwarm
+	joy = _bot_dir
+	var tgt: Creature = null
+	var bd := 140.0
+	for c in cr:
+		var d := Vector2(c.x - P.x, c.y - P.y).length()
+		if d < bd and can_hit(c):
+			bd = d
+			tgt = c
+	_ap_aim = Vector2(tgt.x - P.x, tgt.y - P.y) if tgt else _bot_dir * 60
+	_ap_fire = P.pen != 4 or fmod(_bot_t, 1.4) < 1.0
+	if OS.get_cmdline_user_args().has("--perf") and Engine.get_physics_frames() % 120 == 0:
+		print("perf: physics %.2f ms, process %.2f ms, fps %d, draws %d, cr %d, pt %d" % [Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000, Performance.get_monitor(Performance.TIME_PROCESS) * 1000, Engine.get_frames_per_second(), Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), cr.size(), PT.size()])
+	if _bot_t > _bot_secs:
+		print("bot done: t=%.0f gt=%.0f ch=%d deaths=%d bound=%d dust=%d kills=%d tides=%d sprs=%d rocks=%d seen=%s" % [_bot_t, gt, chapter, P.deaths, P.bound, P.dust_total, P.kills, tides, sprs.size(), rocks.size(), seen.keys()])
+		get_tree().quit()
+
 func _once(t: float) -> bool:
 	if _ap_t > t and not _done.has(t):
 		_done[t] = true
 		return true
 	return false
+
+func _ap2_step() -> void:
+	# 第二章的自动截图：书架迷宫、熄灯区、墨海、首领
+	if _once(10.0):
+		jp[KEY_TAB] = true
+		var best: Rock = null
+		for r in rocks:
+			if r.box and r.hw > r.hh and (best == null or Vector2(r.x - 650, r.y - 60).length() < Vector2(best.x - 650, best.y - 60).length()):
+				best = r
+		P.x = best.x - 20
+		P.y = best.y + 22
+		cam_pos = Vector2(P.x, P.y)
+		_ap_aim = Vector2(20, -22)
+		init_c(mk("worm", P.x + 60, P.y - 30))
+		init_c(mk("comma", P.x - 60, P.y - 20))
+		P.hp = 99
+	if _once(12.4):
+		var l: Dictionary = LAMPS[0]
+		P.x = l.x + 26
+		P.y = l.y + 6
+		cam_pos = Vector2(P.x, P.y)
+		_ap_aim = Vector2(-26, -16)
+		mk("wisp", l.x - 20, l.y - 12)
+		mk("wisp", l.x + 90, l.y - 40)
+	if _once(14.8):
+		var q: Vector3 = INK[0]
+		P.x = q.x + q.z + 16
+		P.y = q.y
+		cam_pos = Vector2(P.x, P.y)
+		_ap_aim = Vector2(-1, 0.2) * 60
+		init_c(mk("blot", q.x - 10, q.y - 20))
+		init_c(mk("blot", q.x + 10, q.y + 30))
+	if _once(17.0):
+		P.x = PAGES[2].x + 110
+		P.y = PAGES[2].y + 70
+		cam_pos = Vector2(P.x, P.y)
+	if _ap_t > 17.0 and redact:
+		_ap_aim = Vector2(redact.x - P.x, redact.y - P.y)
+		P.hp = 99
+	_ap_fire = _ap_t > 10.3
+	joy = Vector2.ZERO
+	if _ap_t > 23.5:
+		get_tree().quit()
+
+var _bot_god := false
+var _shots2 := {1.0: "title", 5.2: "hall", 9.0: "codex", 12.2: "stacks", 14.6: "dark", 16.8: "ink", 20.6: "boss", 22.6: "boss2"}
