@@ -43,7 +43,10 @@ void fragment() {
 	// 第四章：冰蓝；第五章：银粉；第六章：深红金
 	if (chap > 3.5 && chap < 4.5) { if (m == 9.0) m = 8.0; else if (m == 11.0) m = 5.0; }
 	if (chap > 4.5 && chap < 5.5) { if (m == 9.0) m = 10.0; else if (m == 11.0) m = 11.0; }
-	if (chap > 5.5) { if (m == 9.0) m = 15.0; else if (m == 11.0) m = 3.0; }
+	if (chap > 5.5 && chap < 6.5) { if (m == 9.0) m = 15.0; else if (m == 11.0) m = 3.0; }
+	// 第七章：墨紫配青；第八章：很暗，只剩一点金
+	if (chap > 6.5 && chap < 7.5) { if (m == 11.0) m = 2.0; }
+	if (chap > 7.5) { if (m == 9.0) m = 14.0; else if (m == 11.0) m = 13.0; }
 	float li = floor(l + b - 0.5);
 	vec4 col;
 	if (tide > 0.02 && b < tide) {
@@ -56,7 +59,7 @@ void fragment() {
 	vec2 dd = p - sc;
 	if (abs(dd.x) <= 60.0 && abs(dd.y) <= 60.0) {
 		float d = length(dd);
-		float sr = (chap > 5.5 ? 28.0 : (chap > 2.5 ? 17.0 : 11.0)) - 3.0 * tide;
+		float sr = (chap > 6.5 ? 8.0 : chap > 5.5 ? 28.0 : (chap > 2.5 ? 17.0 : 11.0)) - 3.0 * tide;
 		if (d < sr) {
 			col = rc(tide > 0.5 ? 15.0 : 13.0, floor(6.0 - d / sr * 2.5 - tide * 2.5 + b * 0.9));
 		} else {

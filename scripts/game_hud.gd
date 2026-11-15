@@ -188,7 +188,7 @@ func draw_hud_play() -> void:
 	draw_sentence_hud()
 	draw_pen_hud()
 	draw_skill_hud()
-	text_r("%s书页 %d/3" % ["" if unlocked < 2 else ["", "一·", "二·", "三·", "四·", "五·", "六·"][chapter], ch_bound()], W - 4, 59, 9, C_TEAL, C_SH)
+	text_r("%s书页 %d/3" % ["" if unlocked < 2 else ["", "一·", "二·", "三·", "四·", "五·", "六·", "七·", "八·"][chapter], ch_bound()], W - 4, 59, 9, C_TEAL, C_SH)
 	if chapter == 3 and flare_st == 1 and in_flare(P.x, P.y) and S == "play":
 		var a := 0.25 + 0.2 * sin(T * 16)
 		rect(0, 0, W, 6, Color(1.0, 0.55, 0.15, a))
@@ -251,7 +251,7 @@ func draw_hud_play() -> void:
 			ty -= 12
 		ty -= 1
 	if S == "play" and near_kiln() and not touch_mode:
-		text("E 工坊 · C 换角色" if unlocked < 2 else "E 工坊 · C 换角色 · G 翻到第%s章" % ["", "一", "二", "三"][chapter % unlocked + 1], P.x - ox, P.y - oy - 22, 8, C_GOLD, C_SH, 0.8 + 0.2 * sin(T * 4))
+		text("E 工坊 · C 换角色" if unlocked < 2 else "E 工坊 · C 换角色 · G 翻到第%s章" % ["", "一", "二", "三", "四", "五", "六", "七", "八"][chapter % unlocked + 1], P.x - ox, P.y - oy - 22, 8, C_GOLD, C_SH, 0.8 + 0.2 * sin(T * 4))
 
 ## 左下角的小句子：每格一个字，金色字发光
 func draw_sentence_hud() -> void:
@@ -448,7 +448,7 @@ func draw_codex() -> void:
 		var r := codex_rect(i)
 		if i == codex_sel:
 			rect(r.position.x, r.position.y, r.size.x, r.size.y, Pal.rc(RUIN, 3))
-		text_l(DEF[t].name if known(t) else "？？？", r.position.x + 1, r.position.y + 1, 8, (C_RED if is_boss_t(t) else C_TXT) if known(t) else C_DIM, C_SH)
+		text_l(DEF[t].name if known(t) else "？？？", r.position.x + 1, r.position.y + 0.5, 8, (C_RED if is_boss_t(t) else C_TXT) if known(t) else C_DIM, C_SH)
 	var t: String = ORDER[codex_sel]
 	if known(t):
 		text(DEF[t].name, 226, 85, 12, C_GOLD, C_SH, 1.0, true)
@@ -458,7 +458,7 @@ func draw_codex() -> void:
 			text(ls[i], 226, 113 + i * 11, 9, C_TXT, C_SH)
 	else:
 		text("还没遇到过。去更远的地方找找。", 226, 100, 9, C_DIM, C_SH)
-	text("点名字查看 · 点外面关闭" if touch_mode else "WASD 或鼠标选择 · Tab 关闭", 160, 158, 8, C_DIM, C_SH)
+	text("点名字查看 · 点外面关闭" if touch_mode else "WASD 或鼠标选择 · Tab 关闭", 160, 160, 8, C_DIM, C_SH)
 
 ## 图鉴肖像：用同一套绘制函数，画在放大的坐标系里
 func draw_portrait(t: String, cx: float, cy: float, sc: int, k: bool) -> void:
@@ -509,7 +509,7 @@ func draw_ending() -> void:
 	dim()
 	OFS = PO
 	box(50, 28, 220, 128, C_PANEL, Pal.rc(GOLD, 4))
-	text("%s · 已装订" % ["", "第一章", "第二章", "第三章", "第四章", "第五章", "第六章"][chapter], 160, 36, 14, C_GOLD, C_SH, 1.0, true)
+	text("%s · 已装订" % ["", "第一章", "第二章", "第三章", "第四章", "第五章", "第六章", "第七章", "第八章"][chapter], 160, 36, 14, C_GOLD, C_SH, 1.0, true)
 	var lines := [
 		"用时  %d 分 %d 秒" % [int(gt / 60), int(fmod(gt, 60))],
 		"碎掉过  %d 次" % P.deaths,
@@ -526,10 +526,10 @@ func draw_ending() -> void:
 		text("图书馆的第二层亮了。再往上，是离残烛最近的钟楼。", 160, 127, 9, C_TEAL, C_SH)
 		text("%s 前往第三章" % ("点一下" if touch_mode else "Enter / 点击"), 160, 140, 8, C_GOLD, C_SH, 0.6 + 0.4 * sin(T * 3))
 	elif chapter < NCH:
-		text(["", "", "", "钟楼又走起来了。再往上，书库被冻住了。", "冰化开了。前面的回廊里全是镜子。", "镜子都碎了。最后，是残烛的心。"][chapter], 160, 127, 9, C_TEAL, C_SH)
-		text("%s 前往第%s章" % ["点一下" if touch_mode else "Enter / 点击", ["", "", "", "", "四", "五", "六"][chapter + 1]], 160, 140, 8, C_GOLD, C_SH, 0.6 + 0.4 * sin(T * 3))
+		text(["", "", "", "钟楼又走起来了。再往上，书库被冻住了。", "冰化开了。前面的回廊里全是镜子。", "镜子都碎了。再往里，是残烛的心。", "残烛不再打寒颤了。可有些字早就流进了井里。", "井水清了。最重的那些字，沉在更深的黑洞里。"][chapter], 160, 127, 9, C_TEAL, C_SH)
+		text("%s 前往第%s章" % ["点一下" if touch_mode else "Enter / 点击", ["", "", "", "", "四", "五", "六", "七", "八"][chapter + 1]], 160, 140, 8, C_GOLD, C_SH, 0.6 + 0.4 * sin(T * 3))
 	else:
-		text("残烛不再打寒颤了。万语星图书馆重新亮了起来。", 160, 127, 9, C_TEAL, C_SH)
+		text("沉下去的字都回来了。万语星图书馆重新亮了起来。", 160, 127, 9, C_TEAL, C_SH)
 		text("%s 继续自由探索" % ("点一下" if touch_mode else "Enter / 点击"), 160, 140, 8, C_DIM, C_SH, 0.6 + 0.4 * sin(T * 3))
 
 func draw_title() -> void:
@@ -593,8 +593,8 @@ func draw_pen_hud() -> void:
 		text_l("R 换笔", r.position.x + r.size.x + 3, r.position.y + 1.5, 8, C_DIM, C_SH)
 
 func codex_rect(i: int) -> Rect2:
-	# 图鉴名单：左边四列，每列 10 个
-	return Rect2(9 + (i / 10) * 35, 27 + (i % 10) * 13, 34, 12)
+	# 图鉴名单：左边四列，每列 12 个
+	return Rect2(9 + (i / 12) * 35, 25 + (i % 12) * 11, 34, 11)
 
 func is_boss_t(t: String) -> bool:
 	return BOSS_T.has(t)

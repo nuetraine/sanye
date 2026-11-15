@@ -340,9 +340,9 @@ func step(dt: float) -> void:
 			if pressed(KEY_S) or pressed(KEY_DOWN):
 				codex_sel = (codex_sel + 1) % cn
 			if pressed(KEY_A) or pressed(KEY_LEFT):
-				codex_sel = maxi(0, codex_sel - 10)
+				codex_sel = maxi(0, codex_sel - 12)
 			if pressed(KEY_D) or pressed(KEY_RIGHT):
-				codex_sel = mini(cn - 1, codex_sel + 10)
+				codex_sel = mini(cn - 1, codex_sel + 12)
 			var mp := ppointer()
 			var mi := -1
 			for i in cn:
@@ -1042,8 +1042,8 @@ var _shotshi := {1.0: "title", 9.0: "codex_hi"}
 func _aphi_step() -> void:
 	P.hp = 99
 	var ch := chapter
-	var zs: Array = [["lake", "pillar", "aurora"], ["prism", "echoval", "shadow"], ["sea", "ash", "core"]][ch - 4]
-	var mobs: Array = [["spider", "roller", "bat"], ["mimic", "prismbug", "shard"], ["salamander", "ashghost", "drip"]][ch - 4]
+	var zs: Array = [["lake", "pillar", "aurora"], ["prism", "echoval", "shadow"], ["sea", "ash", "core"], ["kelp", "vortex", "abyss"], ["disk", "lens", "horizon"]][ch - 4]
+	var mobs: Array = [["spider", "roller", "bat"], ["mimic", "prismbug", "shard"], ["salamander", "ashghost", "drip"], ["eel", "urchin", "angler"], ["twin", "nova", "sat"]][ch - 4]
 	for zi in 3:
 		var t0 := 10.0 + zi * 3.0
 		if _once(t0):
@@ -1052,6 +1052,18 @@ func _aphi_step() -> void:
 			var p := Vector2(cos(a), sin(a)) * 700.0
 			if zi == 2 and ch == 4 and not AUR.is_empty():
 				p = Vector2(-300, AUR[0].y0 + sin(T * AUR[0].sp + AUR[0].ph - 300 * 0.004) * AUR[0].amp)
+			if zi == 0 and ch == 7 and not KELP.is_empty():
+				p = Vector2(KELP[3].x + 30, KELP[3].y + 10)
+			if zi == 1 and ch == 7 and not VORT.is_empty():
+				p = Vector2(VORT[0].x + 70, VORT[0].y + 30)
+			if zi == 1 and ch == 8 and not PULS.is_empty():
+				p = Vector2(PULS[0].x + 60, PULS[0].y + 30)
+			if zi == 0 and ch == 8 and not CONS.is_empty():
+				for k in CONS:
+					if zn_hi(k.ax, k.ay) == "disk":
+						p = Vector2(k.ax + 40, k.ay + 30)
+						k.t = 2.0
+						break
 			if zi == 1 and ch == 4 and not PILLARS.is_empty():
 				p = Vector2(PILLARS[0].x + 30, PILLARS[0].y + 20)
 				for q in PILLARS:
@@ -1063,7 +1075,11 @@ func _aphi_step() -> void:
 			P.y = p.y
 			cam_pos = p
 			var t: String = mobs[zi]
-			for i in (2 if t == "bat" else 3):
+			if t == "twin":
+				mk_twins(P.x + 60, P.y - 20)
+			if ch == 7 and zi == 0:
+				init_c(mk("squid", P.x - 60, P.y - 40))
+			for i in (0 if t == "twin" else (2 if t == "bat" else 3)):
 				var c := mk(t, P.x + 50 + i * 16, P.y - 30 + i * 18)
 				c.hx = c.x
 				c.hy = c.y
@@ -1111,6 +1127,8 @@ func _mobs_step() -> void:
 				r.spr.queue_free()
 				r.spr = null
 		var ts := ["spider", "roller", "bat", "index", "mimic", "mimic", "prismbug", "shard", "shade", "mirror", "salamander", "ashghost", "drip", "wick"]
+		if chapter >= 7:
+			ts = ["angler", "urchin", "eel", "squid", "kraken", "angler", "sat", "nova", "twin", "silence", "twin", "nova"]
 		for i in ts.size():
 			var c := mk(ts[i], base.x - 20 + (i % 5) * 52, base.y - 50 + (i / 5) * 50)
 			c.hx = c.x
@@ -1126,6 +1144,18 @@ func _mobs_step() -> void:
 				c.r = 7.0
 			if ts[i] == "shade":
 				c.st = "follow"
+			if ts[i] == "angler" and i == 5:
+				c.st = "rest"
+				c.tm = 99
+				c.open = 1.0
+			if ts[i] == "nova" and i == 11:
+				c.st = "swell"
+				c.tm = 0.5
+				c.sp = 0.7
+			if ts[i] == "eel":
+				for k in 12:
+					c.tr.append(c.x - 24 + k * 2.0)
+					c.tr.append(c.y + sin(k * 0.7) * 3.0)
 			if ts[i] == "ashghost":
 				c.open = 1.0
 			if ts[i] == "salamander":

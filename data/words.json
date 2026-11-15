@@ -115,7 +115,16 @@
 		"salamander": 0.25,
 		"ashghost": 0.2,
 		"drip": 0.3,
-		"wick": 1.0
+		"wick": 1.0,
+		"angler": 0.3,
+		"urchin": 0.2,
+		"eel": 0.3,
+		"squid": 0.25,
+		"kraken": 1.0,
+		"sat": 0.12,
+		"nova": 0.3,
+		"twin": 0.2,
+		"silence": 1.0
 	},
 	"gold_chance": 0.05,
 	"forge_cost": 30,
