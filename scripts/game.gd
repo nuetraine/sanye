@@ -101,6 +101,8 @@ func _ready() -> void:
 	if args.has("--bot"):
 		_bot = true
 		_autoplay = true
+	if args.has("--surv") and name == "Game":
+		get_tree().change_scene_to_file.call_deferred("res://surv.tscn")
 	if args.has("--load") and has_run():
 		load_run()
 		S = "play"
@@ -247,6 +249,9 @@ func step(dt: float) -> void:
 	match S:
 		"title":
 			cam_pos = Vector2(cos(T * 0.05) * 60, sin(T * 0.05) * 40)
+			if pressed(KEY_V) or (click_q and surv_btn().has_point(ppointer())):
+				get_tree().change_scene_to_file("res://surv.tscn")
+				return
 			if has_run():
 				var mp := ppointer()
 				if pressed(KEY_N) or (click_q and title_btn(1).has_point(mp)):
