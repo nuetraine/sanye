@@ -36,7 +36,20 @@ func _ready() -> void:
 	bg_mat.shader = load("res://shaders/bg.gdshader")
 	bg_mat.set_shader_parameter("pal", Pal.pal_tex)
 	bg.material = bg_mat
-	bg_layer.add_child(bg)
+	# 远景按“精细像素”的分辨率画在一张小图上再放大：高分屏上着色器少算十几倍的像素，画面一模一样
+	bg_vp = SubViewport.new()
+	bg_vp.disable_3d = true
+	bg_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	bg_vp.size = Vector2i(640, 360)
+	add_child(bg_vp)
+	bg_vp.add_child(bg)
+	bg_view = TextureRect.new()
+	bg_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg_view.texture = bg_vp.get_texture()
+	bg_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	bg_view.stretch_mode = TextureRect.STRETCH_SCALE
+	bg_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg_layer.add_child(bg_view)
 
 	zone_painter = PAINTER.new()
 	zone_painter.fn = _draw_zones
@@ -123,6 +136,8 @@ func _on_resize() -> void:
 	H = maxi(1, ceili(vs.y / U))
 	PO = Vector2(floorf((W - 320) / 2.0), floorf((H - 180) / 2.0))
 	bg.size = vs
+	bg_vp.size = Vector2i(maxi(1, ceili(vs.x)), maxi(1, ceili(vs.y)))
+	bg_view.size = vs
 	vig.size = vs
 	bg_mat.set_shader_parameter("res", vs)
 	vig_mat.set_shader_parameter("res", vs)

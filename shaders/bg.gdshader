@@ -5,6 +5,7 @@ uniform vec2 cam;
 uniform float tide = 0.0;
 uniform float time = 0.0;
 uniform float chap = 1.0;
+uniform float dim = 0.0;   // 试炼里把星云压暗，怪和子弹才显眼
 uniform vec2 res = vec2(640.0, 360.0);
 
 float h2(vec2 p) {
@@ -47,6 +48,7 @@ void fragment() {
 	// 第七章：墨紫配青；第八章：很暗，只剩一点金
 	if (chap > 6.5 && chap < 7.5) { if (m == 11.0) m = 2.0; }
 	if (chap > 7.5) { if (m == 9.0) m = 14.0; else if (m == 11.0) m = 13.0; }
+	l *= 1.0 - dim;
 	float li = floor(l + b - 0.5);
 	vec4 col;
 	if (tide > 0.02 && b < tide) {
