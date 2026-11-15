@@ -552,6 +552,10 @@ func draw_title() -> void:
 		text("WASD 移动 · 鼠标射击 · 空格冲刺 · X 技能 · E 工坊 · F 句子 · Q 余烬 · B 信标 · Tab 图鉴", 160, 164, 8, C_DIM, C_SH)
 	if int(save.clears):
 		text("已通关 %d 次" % int(save.clears), 160, 6, 8, C_GOLD, C_SH)
+	# 幸存者玩法试玩入口
+	var sr_ := surv_btn()
+	box(sr_.position.x, sr_.position.y, sr_.size.x, sr_.size.y, Pal.rc(WINE, 2), Pal.rc(EMBER, 5 if sin(T * 3) > 0 else 4))
+	text("暗潮试炼 (V)", sr_.get_center().x, sr_.position.y + 2, 8, C_GOLD, C_SH)
 
 func draw_intro() -> void:
 	dim(0.86)

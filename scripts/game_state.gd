@@ -972,6 +972,10 @@ func ppointer() -> Vector2:
 func fire_locked() -> bool:
 	return false
 
+## 标题右上角：幸存者玩法试玩版的入口
+func surv_btn() -> Rect2:
+	return Rect2(226, 4, 90, 14)
+
 func title_btn(i: int) -> Rect2:
 	return Rect2(84 + i * 80, 138, 72, 17)
 
