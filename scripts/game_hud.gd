@@ -555,7 +555,7 @@ func draw_title() -> void:
 	# 幸存者玩法试玩入口
 	var sr_ := surv_btn()
 	box(sr_.position.x, sr_.position.y, sr_.size.x, sr_.size.y, Pal.rc(WINE, 2), Pal.rc(EMBER, 5 if sin(T * 3) > 0 else 4))
-	text("试玩：暗潮试炼 (V)", sr_.get_center().x, sr_.position.y + 2, 8, C_GOLD, C_SH)
+	text("暗潮试炼 (V)", sr_.get_center().x, sr_.position.y + 2, 8, C_GOLD, C_SH)
 
 func draw_intro() -> void:
 	dim(0.86)
