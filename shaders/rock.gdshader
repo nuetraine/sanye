@@ -11,7 +11,7 @@ uniform float time = 0.0;
 varying vec2 wpos;
 const vec3 SUNV = vec3(-0.5496, -0.4997, 0.6695);
 // 色调表：和 rock.gd 的 TINTS 一一对应
-const float TINT[8] = { 1.0, 10.0, 15.0, 12.0, 14.0, 9.0, 13.0, 5.0 };
+const float TINT[16] = { 1.0, 10.0, 15.0, 12.0, 14.0, 9.0, 13.0, 5.0, 13.0, 9.0, 8.0, 4.0, 6.0, 7.0, 11.0, 2.0 };
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
@@ -50,9 +50,10 @@ void fragment() {
 		if (as && bs) t = a; else discard;
 	}
 	vec2 w = floor(wpos * 2.0);
-	int code = int(t.r * 255.0 / 8.0 + 0.5);
+	int code = int(t.r * 255.0 / 4.0 + 0.5);
 	int v = code & 3;
-	float tint = TINT[(code >> 2) & 7];
+	int tix = (code >> 2) & 15;
+	float tint = TINT[tix];
 	vec2 ng = t.gb;
 	if (cs && as) ng += (a.gb - c.gb) * 0.25;
 	if (cs && bs) ng += (b.gb - c.gb) * 0.25;
@@ -76,7 +77,10 @@ void fragment() {
 	if (v == 2) {
 		float p = sin(time * 2.2 + wpos.x * 0.21 + wpos.y * 0.13);
 		float e = 3.0 + (p > 0.55 ? 2.0 : (p > -0.2 ? 1.0 : 0.0));
-		col = rc(2.0, e >= lv ? e : lv);
+		float om = tix == 8 ? 13.0 : (tix == 9 ? 9.0 : 2.0);
+		if (tix == 8 && hash(w + floor(time * 3.0)) > 0.93) e = 6.0;
+		if (tix == 9) e = 3.0 + (sin(time * 3.0 + wpos.y * 0.3) > 0.0 ? 2.0 : 1.0);
+		col = rc(om, e >= lv ? e : lv);
 	} else if (v == 3) {
 		float e = max(lv, 2.0 + (sin(time * 1.3 + wpos.x * 0.3) > 0.3 ? 1.0 : 0.0));
 		col = rc(3.0, e);
