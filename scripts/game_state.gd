@@ -257,6 +257,7 @@ class Bullet:
 	var bounce := 0
 	var chain := 0
 	var refl := false
+	var src := ""
 	var mark := 0.0
 	var crit := 0.0
 

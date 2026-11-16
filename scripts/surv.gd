@@ -232,6 +232,33 @@ const RL := {
 	"candy": {"n": "余烬糖", "d": "把心回满", "c": 15, "max": 99, "once": true},
 }
 
+## 满级后的强化：笔、字、技都练满以后，升级时从这里补足三选一，全都能一直叠
+const BOON := {
+	"quick": {"n": "快手", "d": "所有笔出手快 4%（可以一直拿）", "m": 8},
+	"wide": {"n": "扩印", "d": "所有范围 +5%（可以一直拿）", "m": 2},
+	"swift": {"n": "健步", "d": "跑得快 4%（最多 5 次）", "m": 12, "max": 5},
+	"thick": {"n": "厚胎", "d": "多一颗心并回一颗（最多 4 次）", "m": 4, "max": 4},
+	"purse": {"n": "聚墨", "d": "立刻得到 30 墨滴，下一间工坊用", "m": 2},
+}
+
+## 誓约：开局三选一（也可以不立），一条规矩管一整局，有得有失
+const PACT := {
+	"solo": {"n": "独笔", "d": "伤害 +50%", "x": "最多只能带两支笔", "m": 4},
+	"glass": {"n": "薄胎", "d": "伤害 +40%", "x": "陶心上限减半", "m": 10},
+	"swarm": {"n": "群潮", "d": "页尘经验 +35%", "x": "怪多四成", "m": 11},
+	"greed": {"n": "贪墨", "d": "墨滴收入翻倍", "x": "怪的血多两成", "m": 13},
+	"scholar": {"n": "博学", "d": "多带两个字", "x": "少带一支笔", "m": 2},
+	"rush": {"n": "疾书", "d": "所有笔出手快 25%", "x": "范围 -20%", "m": 8},
+	"slow": {"n": "慢热", "d": "每打倒一个首领，伤害 +12%", "x": "开局伤害 -25%", "m": 3},
+	"dealer": {"n": "藏家", "d": "工坊打八折，每次进门送 30 墨滴", "x": "升级时少一张卡", "m": 12},
+}
+## 地图上的事件点：走进圈里站一会儿才生效，去不去自己定
+const POIK := {
+	"trial": {"n": "试炼圈", "d": "守住 7 秒，得一张散页", "r": 30.0, "need": 7.0, "m": 13},
+	"curse": {"n": "诅咒碑", "d": "招来 30 秒怪潮，换一次淬火和 30 墨滴", "r": 16.0, "need": 1.5, "m": 11},
+	"spring": {"n": "暖泉", "d": "站进去慢慢回心", "r": 22.0, "need": 1.2, "m": 3},
+	"stele": {"n": "字碑", "d": "读 2.5 秒，白拿一次升级", "r": 18.0, "need": 2.5, "m": 12},
+}
 const MAX_PENS := 4
 const MAX_WORDS := 6
 const MAX_SK := 2
@@ -260,6 +287,17 @@ var lv_q := 0                 # 还没选的升级次数
 var opts: Array = []
 var opt_sel := 0
 var rerolls := 0
+var boon := {}                # 满级强化 id -> 次数
+var pact := ""                # 这一局立的誓约
+var pact_opts: Array = []
+var pact_sel := 0
+var POI: Array = []           # 地图事件点 {k, x, y, p, life, left, on}
+var curse_t := 0.0            # 诅咒碑招来的怪潮还剩多久
+var banish := 0               # 还能封存几张卡
+var BAN := {}                 # 这一局封存掉的卡
+var ban_mode := false
+var DS := {}                  # 伤害来源 -> 总伤害（结算时看）
+var dsrc := "其他"
 var temper := 0               # 「淬火」拿了几次
 var revives := 0
 var kills2 := 0
@@ -348,6 +386,9 @@ func _ready() -> void:
 func new_world() -> void:
 	pass
 
+func bn(id: String) -> int:
+	return int(boon.get(id, 0))
+
 func rl(id: String) -> int:
 	return int(rel.get(id, 0))
 
@@ -395,6 +436,15 @@ func start_run() -> void:
 	danger = clampi(int(meta.get("dl", 0)), 0, int(meta.get("dmax", 0)))
 	revives = mu("kiln")
 	temper = 0
+	boon = {}
+	pact = ""
+	POI = []
+	curse_t = 0.0
+	banish = 2
+	BAN = {}
+	ban_mode = false
+	DS = {}
+	dsrc = "其他"
 	kills2 = 0
 	boss_kills = 0
 	earned = 0
@@ -406,8 +456,26 @@ func start_run() -> void:
 	shield_on = false
 	frz_all = 0.0
 	TIDE = 0.0
+	var ids := PACT.keys()
+	ids.shuffle()
+	pact_opts = ids.slice(0, 3)
+	pact_sel = 0
+	S = "pact"
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--pact="):
+			take_pact(a.substr(7))
+
+func take_pact(id: String) -> void:
+	pact = id if PACT.has(id) else ""
+	if pact == "glass":
+		P.maxhp = maxi(3, P.maxhp / 2)
+		P.hp = P.maxhp
 	S = "sv"
-	set_banner("暗潮试炼", "八个阶段、八个首领，撑到最后打倒「静默」", C_GOLD)
+	Sfx.play("page" if pact != "" else "ping")
+	if pact != "":
+		set_banner("誓约「%s」" % PACT[pact].n, "%s；%s" % [PACT[pact].d, PACT[pact].x], C_GOLD)
+	else:
+		set_banner("暗潮试炼", "八个阶段、八个首领，撑到最后打倒「静默」", C_GOLD)
 	if touch_mode:
 		toast("拖动屏幕移动 · 笔会自动出手", C_DIM, 6)
 	else:
@@ -418,7 +486,7 @@ func _load_meta() -> void:
 		var f := FileAccess.open("user://sanye-surv.json", FileAccess.READ)
 		var d = JSON.parse_string(f.get_as_text())
 		if d is Dictionary:
-			for k in ["pages", "up", "best", "ch", "dl", "dmax"]:
+			for k in ["pages", "up", "best", "ch", "dl", "dmax", "pw"]:
 				if d.has(k):
 					meta[k] = d[k]
 			if not (meta.up is Dictionary):
@@ -465,19 +533,30 @@ func cmb(n: String) -> bool:
 	return combos.has(n)
 
 func dmg_k() -> float:
-	return (1.0 + 0.15 * w("石")) * (1.0 + 0.06 * mu("edge")) * (1.0 + 0.05 * temper) * maxf(0.3, 1.0 + 0.12 * rl("weight") + 0.25 * rl("lead") + 0.35 * rl("gpen") - 0.04 * rl("quill"))
+	return (1.0 + 0.15 * w("石")) * (1.0 + 0.06 * mu("edge")) * (1.0 + 0.05 * temper) * maxf(0.3, 1.0 + 0.12 * rl("weight") + 0.25 * rl("lead") + 0.35 * rl("gpen") - 0.04 * rl("quill")) * pact_dmg()
+
+func pact_dmg() -> float:
+	match pact:
+		"solo": return 1.5
+		"glass": return 1.4
+		"slow": return 0.75 + 0.12 * boss_kills
+	return 1.0
+
+func max_pens() -> int:
+	return 2 if pact == "solo" else (MAX_PENS - 1 if pact == "scholar" else MAX_PENS)
 
 func area_k() -> float:
-	return (1.0 + 0.15 * w("环")) * (1.0 + 0.15 * rl("lens"))
+	return (1.0 + 0.15 * w("环")) * (1.0 + 0.15 * rl("lens")) * (1.0 + 0.05 * bn("wide")) * (0.8 if pact == "rush" else 1.0)
 
 func cd_k() -> float:
-	return pow(0.92, w("炉")) * pow(0.9, rl("quill")) * pow(0.8, rl("tissue")) * pow(1.1, rl("lead"))
+	return pow(0.92, w("炉")) * pow(0.96, bn("quick")) * pow(0.9, rl("quill")) * pow(0.8, rl("tissue")) * pow(1.1, rl("lead")) * (0.75 if pact == "rush" else 1.0)
 
 func xp_need() -> int:
-	return int(4 + lv * 3.5 + pow(maxf(0.0, lv - 8.0), 1.9) * 1.7)
+	# 12 级以后明显变慢：整套笔、字、技大约在第 11~12 分钟才练满，后半局每次升级还有分量
+	return int(4 + lv * 3.5 + pow(maxf(0.0, lv - 8.0), 1.9) * 1.7 + pow(maxf(0.0, lv - 12.0), 2.1) * 2.2)
 
 func max_words() -> int:
-	return MAX_WORDS + (1 if P.ch == 3 else 0)
+	return MAX_WORDS + (1 if P.ch == 3 else 0) + (2 if pact == "scholar" else 0)
 
 func stage_t() -> float:
 	return gt2 - stage * STAGE_LEN
@@ -583,6 +662,8 @@ func step(dt: float) -> void:
 				S = "pause"
 		"lvl":
 			upd_lvl_panel()
+		"pact":
+			upd_pact()
 		"shop":
 			upd_shop()
 		"pause":
@@ -639,6 +720,7 @@ func sv_update(dt: float) -> void:
 	upd_events()
 	upd_spawn(dt)
 	sv_player(dt)
+	upd_poi(dt)
 	build_grid()
 	upd_enemies(dt)
 	upd_pens(dt)
@@ -686,7 +768,7 @@ func sv_player(dt: float) -> void:
 		P.ay = iy / il
 		P.anim += dt * 8
 	var c: Dictionary = SCH[P.ch]
-	var spd: float = 78.0 * (1.0 + 0.1 * w("疾")) * float(c.sp) * (1.0 + 0.1 * rl("feather") - 0.05 * rl("weight"))
+	var spd: float = 78.0 * (1.0 + 0.1 * w("疾")) * float(c.sp) * (1.0 + 0.1 * rl("feather") - 0.05 * rl("weight") + 0.04 * bn("swift"))
 	P.slow_t -= dt
 	if P.slow_t > 0:
 		spd *= 0.55
@@ -711,6 +793,7 @@ func sv_player(dt: float) -> void:
 			for e: SV in near_list(P.x, P.y):
 				if not e.dead and e.blade_cd <= 0 and absf(e.x - P.x) < e.r + 6 and absf(e.y - P.y) < e.r + 6:
 					e.blade_cd = 0.3
+					dsrc = "冲撞"
 					dmg_e(e, 40.0 * dmg_k(), P.x, P.y, 120.0)
 	else:
 		var k := minf(1.0, dt * 14.0)
@@ -787,6 +870,7 @@ func hurt(n: int, sx: float, sy: float) -> void:
 				e.kx += dx / d * 220
 				e.ky += dy / d * 220
 				if big:
+					dsrc = "墨盾"
 					dmg_e(e, 40.0 * dmg_k(), P.x, P.y, 0.0)
 		return
 	if rl("jacket") > 0 and randf() < 0.15 * rl("jacket"):
@@ -798,6 +882,7 @@ func hurt(n: int, sx: float, sy: float) -> void:
 	P.hp -= n + rl("gpen")
 	P.inv = 1.3
 	if rl("thorn") > 0:
+		dsrc = "荆棘封皮"
 		boom(P.x, P.y, 46.0, 50.0 * dmg_k() * rl("thorn"), false)
 	if OS.get_cmdline_user_args().has("--hurtlog"):
 		var ne := nearest(sx, sy, 30.0)
@@ -845,6 +930,10 @@ func end_run(win: bool) -> void:
 	b.bosses = maxi(int(b.get("bosses", 0)), boss_kills)
 	if win:
 		b.wins = int(b.get("wins", 0)) + 1
+		if pact != "":
+			if not (meta.get("pw") is Dictionary):
+				meta["pw"] = {}
+			meta.pw[pact] = 1
 	_save_meta()
 	if win:
 		Sfx.play("page")
@@ -853,12 +942,13 @@ func end_run(win: bool) -> void:
 		Sfx.play("die")
 		burst(P.x, P.y, 30, CLAY, 6, 90, 1.0)
 	print("SURV END win=%s t=%.1f stage=%d bosses=%d lv=%d kills=%d pens=%s evo=%s words=%s sk=%s god_saves=%d" % [win, gt2, stage + 1, boss_kills, lv, kills2, str(pens), str(evo.keys()), str(words), str(sk), _god_saves])
+	print("   pact=%s rel=%s boon=%s dmg=%s" % [pact, str(rel), str(boon), str(ds_top(8))])
 
 # ======================================================================
 # 生物：生成、阶段、事件
 # ======================================================================
 func hp_k() -> float:
-	return (1.0 + gt2 / 90.0 + pow(gt2 / 200.0, 2.3)) * (1.0 + 0.25 * danger)
+	return (1.0 + gt2 / 90.0 + pow(gt2 / 180.0, 2.45)) * (1.0 + 0.25 * danger) * (1.2 if pact == "greed" else 1.0)
 
 func pick_type() -> String:
 	var si := stage
@@ -960,6 +1050,10 @@ func upd_spawn(dt: float) -> void:
 		rate *= 0.5 if stage > 0 else 0.25
 	if ev_tide():
 		rate *= 0.5
+	if pact == "swarm":
+		rate *= 1.4
+	if curse_t > 0:
+		rate = rate * 2.0 + 1.0 + stage * 0.5
 	spawn_acc += rate * dt
 	while spawn_acc >= 1.0:
 		spawn_acc -= 1.0
@@ -1016,6 +1110,8 @@ func upd_events() -> void:
 		var a := randf() * TAU
 		var R := 70.0 + randf() * 50
 		add_e("clam", P.x + cos(a) * R, P.y + sin(a) * R)
+	if once(sid + "poi1", t0 + 7) or once(sid + "poi2", t0 + 46):
+		add_poi()
 	if once(sid + "warn", t0 + BOSS_IN - 5):
 		set_banner("%s来了" % DEF[STAGES[stage].boss].name, BOSS_TIP[stage], C_RED)
 		Sfx.play("roar")
@@ -1203,6 +1299,7 @@ func upd_enemies(dt: float) -> void:
 			if e.burn >= 1.0:
 				var b := floorf(e.burn)
 				e.burn -= b
+				dsrc = "灼烧"
 				dmg_e(e, b, e.x, e.y, 0.0, false, false)
 				if randf() < 0.3:
 					part(e.x, e.y - 2, (randf() - 0.5) * 10, -20, 0.4, EMBER, 5, true)
@@ -1639,7 +1736,7 @@ func _trail(e: SV, dt: float, n: int) -> void:
 # ======================================================================
 # 首领：八个，各有自己的招
 # ======================================================================
-const BOSS_HP := [2600.0, 10000.0, 20000.0, 32000.0, 48000.0, 66000.0, 90000.0, 150000.0]
+const BOSS_HP := [2600.0, 10000.0, 20000.0, 32000.0, 48000.0, 76000.0, 110000.0, 200000.0]
 const BOSS_TIP := [
 	"它会停下来瞄准，然后直直撞过来",
 	"看见细线就让开，线过一会儿才落下",
@@ -2079,6 +2176,7 @@ func dmg_e(e: SV, d: float, sx: float, sy: float, kb := 40.0, proc := true, crit
 		# 镜中人：把字弹弹回来
 		var a := atan2(P.y - e.y, P.x - e.x)
 		add_sb(e.x, e.y, cos(a) * 95, sin(a) * 95, 3.0, MIRROR)
+	DS[dsrc] = float(DS.get(dsrc, 0.0)) + minf(d, e.hp)
 	e.hp -= d
 	if crit_ok:
 		e.flash = 0.08
@@ -2097,7 +2195,10 @@ func dmg_e(e: SV, d: float, sx: float, sy: float, kb := 40.0, proc := true, crit
 		if w("霜") > 0:
 			e.slow = 0.6 + 0.5 * w("霜")
 		if w("连") > 0 and randf() < 0.12 * w("连"):
+			var ks := dsrc
+			dsrc = "连"
 			chain(e, d * 0.6, 5 if cmb("连环") else 2)
+			dsrc = ks
 	if e.hp <= 0:
 		kill_e(e)
 	else:
@@ -2140,9 +2241,12 @@ func kill_e(e: SV) -> void:
 		add_pick(e.x, e.y, "mag")
 	# 成词：火石、冰裂
 	_kdepth += 1
+	var ks := dsrc
 	if _kdepth <= 2:
 		if cmb("火石") and e.burn_t > 0:
+			dsrc = "火石"
 			boom(e.x, e.y, 16.0 * area_k(), 12.0 * dmg_k(), false)
+			dsrc = ks
 		if cmb("冰裂") and e.slow > 0 and PB.size() < 110:
 			for i in 6:
 				var b := shot(e.x, e.y, i * TAU / 6 + e.ph, 9.0 * dmg_k(), 0)
@@ -2215,7 +2319,7 @@ func kill_boss(e: SV) -> void:
 	set_banner("%s安静了" % DEF[e.t].name, "炉灯工坊马上开门", C_GOLD)
 	shop_t = 1.2
 	# 首领的赏金
-	ink += 30 + 10 * boss_kills
+	ink += (30 + 10 * boss_kills) * (2 if pact == "greed" else 1)
 	add_pick(e.x, e.y, "page")
 	add_pick(e.x + 10, e.y, "kiln")
 	add_pick(e.x - 10, e.y, "ember")
@@ -2243,6 +2347,7 @@ func upd_pens(dt: float) -> void:
 		pen_cd[i] -= dt
 		if pen_cd[i] > 0:
 			continue
+		dsrc = SPENS[i].name
 		match i:
 			0: pen_cd[i] = fire_brush(l)
 			1: pen_cd[i] = fire_broom(l)
@@ -2255,6 +2360,7 @@ func upd_pens(dt: float) -> void:
 		aura_t -= dt
 		if aura_t <= 0:
 			aura_t = 0.45
+			dsrc = SPENS[6].name
 			var R := aura_r()
 			var dmg := (5.0 + 1.5 * plv(6)) * (1.5 if plv(6) >= 3 else 1.0) * (1.5 if plv(6) >= 5 else 1.0) * dmg_k()
 			if ev(6, 1):
@@ -2289,6 +2395,7 @@ func upd_pens(dt: float) -> void:
 					continue
 				if absf(e.x - bx) < e.r + 5 and absf(e.y - by) < e.r + 5:
 					e.blade_cd = 0.35
+					dsrc = SPENS[2].name
 					dmg_e(e, 22.0 * dmg_k(), P.x, P.y, 60.0)
 	# 地上的火（燎原、朱砂、炉息、风火）
 	for f in FIRE:
@@ -2297,6 +2404,7 @@ func upd_pens(dt: float) -> void:
 				continue
 			if (e.x - f.x) * (e.x - f.x) + (e.y - f.y) * (e.y - f.y) < (f.r + e.r) * (f.r + e.r):
 				e.fire_cd = 0.4
+				dsrc = "地火"
 				dmg_e(e, 7.0 * dmg_k(), e.x, e.y, 0.0, false, false)
 				e.burn_t = 2.0
 				e.burn_dps = maxf(e.burn_dps, 6.0 * dmg_k())
@@ -2317,6 +2425,7 @@ func upd_pens(dt: float) -> void:
 				e.x += dx / d * 55.0 * dt
 				e.y += dy / d * 55.0 * dt
 				if hit and d < v.r:
+					dsrc = "墨涡"
 					dmg_e(e, 9.0 * dmg_k(), e.x, e.y, 0.0, false, false)
 	VORT2 = VORT2.filter(func(v): return v.t > 0)
 	# 千钧：印章的第二圈
@@ -2332,12 +2441,14 @@ func upd_pens(dt: float) -> void:
 					var dx: float = e.x - s.x
 					var dy: float = e.y - s.y
 					if dx * dx + dy * dy < R * R:
+						dsrc = SPENS[5].name
 						dmg_e(e, s.dmg * 0.6, s.x, s.y, 160.0)
 	# 暴雨：每两秒泼一圈
 	if ev(0, 0):
 		rain_t -= dt
 		if rain_t <= 0:
 			rain_t = 2.0
+			dsrc = SPENS[0].name
 			for k in 20:
 				shot(P.x, P.y, k / 20.0 * TAU, 11.0 * dmg_k(), 0)
 	# 穿针：十字墨线扫一圈
@@ -2382,6 +2493,7 @@ func shot(x: float, y: float, a: float, dmg: float, kind: int) -> Bullet:
 	b.bounce = 3 if kind == 0 and ev(0, 1) else 0
 	b.mat = EMBER if b.burn > 0 else (ICE if b.frost > 0 else (CLAY if kind == 0 else (GOLD if kind == 1 else PAPER)))
 	b.hit = []
+	b.src = dsrc
 	# 场上字弹有上限：再多也看不清，还拖帧率
 	if PB.size() < [170, 140, 110][qual]:
 		PB.append(b)
@@ -2482,6 +2594,7 @@ func fire_inkb(l: int) -> float:
 
 func upd_inkb(dt: float) -> void:
 	var keep := []
+	dsrc = SPENS[3].name
 	for b in INKB:
 		b.t += dt
 		var k: float = minf(1.0, b.t / b.T)
@@ -2531,6 +2644,7 @@ func fire_line(l: int) -> float:
 
 func upd_beams(dt: float) -> void:
 	var keep := []
+	dsrc = SPENS[4].name
 	for b in BEAMS:
 		b.t -= dt
 		if b.t <= 0:
@@ -2635,6 +2749,7 @@ func upd_shots(dt: float) -> void:
 					if absf(e.x - b.x) > rr or absf(e.y - b.y) > rr:
 						continue
 					b.hit.append(e)
+					dsrc = b.src
 					dmg_e(e, b.crit, b.x, b.y, 35.0)
 					if b.frost > 0 and not e.boss:
 						e.frz = maxf(e.frz, 1.5)
@@ -2682,6 +2797,7 @@ func upd_skills2(dt: float) -> void:
 		if cd > 0:
 			continue
 		var base: float = SK[id].cd
+		dsrc = SK[id].name
 		match id:
 			"shield":
 				if shield_on:
@@ -2771,9 +2887,9 @@ var xp_frac := 0.0
 func collect(p: Pick) -> void:
 	match p.k:
 		"dust":
-			xp_frac += p.v * (1.0 + 0.08 * mu("wit") + 0.1 * rl("mark"))
+			xp_frac += p.v * (1.0 + 0.08 * mu("wit") + 0.1 * rl("mark")) * (1.35 if pact == "swarm" else 1.0)
 			# 墨滴按“升一级的页尘值多少墨”来折算，后期怪海再大，每间工坊的预算也差不多
-			ink_frac += float(p.v) / xp_need() * INK_PER_LV * (1.0 + 0.25 * rl("sac"))
+			ink_frac += float(p.v) / xp_need() * INK_PER_LV * (1.0 + 0.25 * rl("sac")) * (2.0 if pact == "greed" else 1.0)
 			ink += int(ink_frac)
 			ink_frac -= int(ink_frac)
 			xp += int(xp_frac)
@@ -2806,6 +2922,7 @@ func kiln_blast() -> void:
 			continue
 		if absf(e.x - P.x) < W * 0.6 and absf(e.y - P.y) < H * 0.6:
 			if e.elite or e.boss:
+				dsrc = "炉心"
 				dmg_e(e, 80.0 * dmg_k(), P.x, P.y, 0.0, false, false)
 			elif e.t != "clam" and e.t != "comet":
 				kill_e(e)
@@ -2891,12 +3008,16 @@ func gen_opts() -> Array:
 	var c := []   # [选项, 权重]
 	for i in SPENS.size():
 		var l := plv(i)
+		if BAN.has("pen%d" % i):
+			continue
 		if l > 0 and l < 5:
 			c.append([{"k": "pen", "i": i}, 10.0])
-		elif l == 0 and pens.size() < MAX_PENS:
+		elif l == 0 and pens.size() < max_pens():
 			c.append([{"k": "pen", "i": i}, 7.0])
 	for s in SW:
 		var l := w(s)
+		if BAN.has("word" + s):
+			continue
 		if l > 0 and l < SW[s].max:
 			c.append([{"k": "word", "c": s}, 8.0])
 		elif l == 0 and words.size() < max_words():
@@ -2904,11 +3025,13 @@ func gen_opts() -> Array:
 			c.append([{"k": "word", "c": s}, 5.0 + minf(6.0, 3.0 * word_links(s).size())])
 	for id in SK:
 		var l := skl(id)
+		if BAN.has("skill" + id):
+			continue
 		if l > 0 and l < 3:
 			c.append([{"k": "skill", "id": id}, 7.0])
 		elif l == 0 and sk.size() < MAX_SK:
 			c.append([{"k": "skill", "id": id}, 5.0])
-	var want := 3 + rl("clover")
+	var want := 3 + rl("clover") - (1 if pact == "dealer" else 0)
 	while out.size() < want and not c.is_empty():
 		var tot := 0.0
 		for q in c:
@@ -2920,10 +3043,23 @@ func gen_opts() -> Array:
 				out.append(c[j][0])
 				c.remove_at(j)
 				break
-	if out.size() < 3:
-		out.append({"k": "temper"})
-	if out.size() < 3:
-		out.append({"k": "heal"})
+	# 都练满了：用能一直叠的强化补足，保证每次升级都有得选
+	if out.size() < want:
+		var fill := [{"k": "temper"}]
+		if P.hp < P.maxhp:
+			fill.append({"k": "heal"})
+		var ids := BOON.keys()
+		ids.shuffle()
+		for id in ids:
+			if bn(id) < int(BOON[id].get("max", 999)):
+				fill.append({"k": "boon", "id": id})
+		# 淬火总在；其余随机
+		var first = fill.pop_front()
+		fill.shuffle()
+		fill.push_front(first)
+		for f in fill:
+			if out.size() < want:
+				out.append(f)
 	return out
 
 func open_lvl() -> void:
@@ -2953,6 +3089,8 @@ func opt_title(o: Dictionary, short := false) -> String:
 			return "余烬"
 		"temper":
 			return "淬火"
+		"boon":
+			return BOON[o.id].n
 	return ""
 
 func opt_desc(o: Dictionary) -> String:
@@ -2981,6 +3119,8 @@ func opt_desc(o: Dictionary) -> String:
 			return "回满陶心"
 		"temper":
 			return "所有伤害 +5%（可以一直拿）"
+		"boon":
+			return BOON[o.id].d
 	return ""
 
 func apply_opt(o: Dictionary) -> void:
@@ -3003,6 +3143,14 @@ func apply_opt(o: Dictionary) -> void:
 			P.hp = P.maxhp
 		"temper":
 			temper += 1
+		"boon":
+			boon[o.id] = bn(o.id) + 1
+			match o.id:
+				"thick":
+					P.maxhp += 1
+					P.hp = mini(P.maxhp, P.hp + 1)
+				"purse":
+					ink += 30
 
 func do_evo(i: int, k: int) -> void:
 	evo["%d_%d" % [i, k]] = true
@@ -3022,8 +3170,29 @@ func card_rect(i: int) -> Rect2:
 func pause_btn(i: int) -> Rect2:
 	return Rect2(88 + i * 76, 146, 68, 17)
 
+func lvl_btn(i: int) -> Rect2:
+	return Rect2(70 + i * 62, 156, 56, 13)
+
 func reroll_rect() -> Rect2:
-	return Rect2(132, 156, 56, 13)
+	return lvl_btn(0)
+
+## 封存用的名字：只有笔、字、技能封存
+func opt_key(o: Dictionary) -> String:
+	match o.k:
+		"pen": return "pen%d" % o.i
+		"word": return "word" + str(o.c)
+		"skill": return "skill" + str(o.id)
+	return ""
+
+func lvl_done() -> void:
+	lv_q -= 1
+	ban_mode = false
+	if lv_q > 0:
+		opts = gen_opts()
+		opt_sel = 0
+	else:
+		S = "sv"
+		P.inv = maxf(P.inv, 0.5)
 
 func upd_lvl_panel() -> void:
 	var n := opts.size()
@@ -3048,13 +3217,50 @@ func upd_lvl_panel() -> void:
 		rerolls -= 1
 		opts = gen_opts()
 		opt_sel = 0
+		ban_mode = false
 		Sfx.play("ping")
+		return
+	if banish > 0 and (pressed(KEY_X) or (click_q and lvl_btn(1).has_point(mp))):
+		ban_mode = not ban_mode
+		Sfx.play("ping", 0.8)
+		return
+	if pressed(KEY_C) or (click_q and lvl_btn(2).has_point(mp)):
+		# 跳过：这次不拿卡，换一点墨滴
+		ink += 15
+		Sfx.play("ping", 1.3)
+		lvl_done()
+		return
+	if ban_mode and pick >= 0:
+		var key := opt_key(opts[pick])
+		if key == "":
+			Sfx.play("deny")
+			return
+		BAN[key] = true
+		banish -= 1
+		ban_mode = false
+		Sfx.play("deny", 0.7)
+		# 只换掉这一张
+		var have := {}
+		for o in opts:
+			have[str(o)] = true
+		var put := false
+		for f in gen_opts():
+			if not have.has(str(f)):
+				opts[pick] = f
+				put = true
+				break
+		if not put:
+			opts.remove_at(pick)
+			if opts.is_empty():
+				opts = gen_opts()
+		opt_sel = mini(opt_sel, opts.size() - 1)
 		return
 	if _autoplay:
 		_lvl_wait += get_physics_process_delta_time()
 		if _lvl_wait < 0.4:
-			if not _shot_at.has("lvl") or (not _shot_at.has("evo") and opts[0].k == "evo"):
-				var nm := "evo" if opts[0].k == "evo" else "lvl"
+			var full: bool = opts[0].k == "temper"
+			if not _shot_at.has("lvl") or (not _shot_at.has("evo") and opts[0].k == "evo") or (full and not _shot_at.has("full")):
+				var nm := "evo" if opts[0].k == "evo" else ("full" if full else "lvl")
 				_shot_at[nm] = true
 				_shot(nm)
 			return
@@ -3062,14 +3268,8 @@ func upd_lvl_panel() -> void:
 		pick = _bot_pick()
 	if pick >= 0:
 		apply_opt(opts[pick])
-		lv_q -= 1
 		Sfx.play("eat")
-		if lv_q > 0:
-			opts = gen_opts()
-			opt_sel = 0
-		else:
-			S = "sv"
-			P.inv = maxf(P.inv, 0.5)
+		lvl_done()
 
 # ======================================================================
 # 一闪而过的效果
@@ -3356,6 +3556,20 @@ func _dz(c: CanvasItem) -> void:
 	for r in ER:
 		ring(r.x, r.y, r.r, SERP, 6, 1.3)
 		ring(r.x, r.y, r.r - 2.0, WINE, 5, 2.5)
+	# 地图事件点
+	for q in POI:
+		var d: Dictionary = POIK[q.k]
+		var m: int = d.m
+		var r: float = d.r
+		if q.life > 8.0 or int(T * 6) % 2 == 0:
+			ring(q.x, q.y, r, m, 5, 2.2, T * 0.5)
+		if q.p > 0:
+			disc(q.x, q.y, r * q.p, m, 3, 0.5, q.x)
+			ring(q.x, q.y, r * q.p, m, 6, 1.4)
+		ball(q.x, q.y + sin(T * 2.0) * 1.0 - 1.0, 3.5, m, 5, 0)
+		for k in 4:
+			var a := T * 1.6 + k * TAU / 4
+			sp(q.x + cos(a) * 7.0, q.y + sin(a) * 3.5 - 1.0, m, 6 if k % 2 == 0 else 4)
 	# 页尘、余烬、散页
 	var dust_s: Array = []
 	for q in 4:
@@ -3516,6 +3730,10 @@ func _dh(c: CanvasItem) -> void:
 		dim(0.55)
 		OFS = PO
 		draw_lvl()
+	elif S == "pact":
+		dim(0.72)
+		OFS = PO
+		draw_pact()
 	elif S == "shop":
 		dim(0.72)
 		OFS = PO
@@ -3539,7 +3757,7 @@ func _dh(c: CanvasItem) -> void:
 			text("陶身碎了", 160, 8, 16, C_RED, C_SH, 1.0, true)
 			text("撑了 %s，走到第%s阶段「%s」" % [fmt_t(gt2), "一二三四五六七八"[stage], STAGES[stage].name], 160, 32, 9, C_TXT, C_SH)
 		text("等级 %d · 打散 %d 只 · 首领 %d/8 · 得到书页 +%d" % [lv, kills2, boss_kills, earned], 160, 45, 9, C_GOLD, C_SH)
-		draw_build(160, 60)
+		draw_build(160, 60, true)
 		draw_btns(["再来一局", "回营地"])
 	OFS = Vector2.ZERO
 	if H > W:
@@ -3583,7 +3801,7 @@ func pen_label(i: int) -> String:
 	return SPENS[i].name
 
 ## 这一局拿到的笔、字、技、成词
-func draw_build(cx: float, y: float) -> void:
+func draw_build(cx: float, y: float, stats := false) -> void:
 	var ps := []
 	for i in pens:
 		ps.append(("「%s」" % pen_label(i)) if (ev(i, 0) or ev(i, 1)) else "%s %d" % [SPENS[i].name, plv(i)])
@@ -3602,6 +3820,21 @@ func draw_build(cx: float, y: float) -> void:
 		for ln in wrap_text("藏品：" + rel_line(), 6, 300):
 			text(ln, cx, y + 76, 6, C_TEAL, C_SH)
 			break
+	if stats:
+		# 结算：谁打了多少伤害
+		var top := ds_top(6)
+		var tot := 0.0
+		for v in DS.values():
+			tot += float(v)
+		for i in top.size():
+			var x := 44.0 + (i % 2) * 128.0
+			var yy := y + 51.0 + (i / 2) * 8.0
+			var fr: float = top[i][1] / maxf(1.0, tot)
+			text_l(str(top[i][0]), x, yy, 7, C_TXT, C_SH)
+			rect(x + 36, yy + 3, 50.0, 3, Pal.rc(RUIN, 3))
+			rect(x + 36, yy + 3, 50.0 * top[i][1] / maxf(1.0, top[0][1]), 3, Pal.rc(GOLD if i == 0 else CLAY, 5))
+			text_l("%d%%" % roundi(fr * 100), x + 89, yy, 7, C_GOLD if i == 0 else C_DIM, C_SH)
+		return
 	var hint := []
 	for i in pens:
 		for k in 2:
@@ -3631,6 +3864,11 @@ func draw_sv_hud() -> void:
 	text_l("墨滴 %d" % ink, 4, 22, 7, C_TEAL, C_SH)
 	if revives > 0:
 		text_l("余火 ×%d" % revives, 44, 22, 7, C_GOLD, C_SH)
+	if pact != "":
+		text_l("誓约 · %s" % PACT[pact].n, 4, 30, 7, C_GOLD, C_SH)
+	if curse_t > 0:
+		text_r("诅咒怪潮 %d" % ceili(curse_t), W - 4, 36, 8, C_RED, C_SH)
+	draw_poi_hud()
 	# 时间和击退数
 	var tc := C_RED if not bosses.is_empty() else C_TXT
 	text(fmt_t(gt2), W / 2.0, 5, 12, tc, C_SH, 1.0, true)
@@ -3715,8 +3953,12 @@ func kind_col(c: String) -> Color:
 	return Pal.rc(CLAY, 5)
 
 func draw_lvl() -> void:
-	text("升级！挑一个", 160, 8, 14, C_GOLD, C_SH, 1.0, true)
-	text("Lv %d" % lv, 160, 27, 8, C_DIM, C_SH)
+	if ban_mode:
+		text("封存哪一张？", 160, 8, 14, C_RED, C_SH, 1.0, true)
+		text("封存的卡这一局不会再出现", 160, 27, 8, C_DIM, C_SH)
+	else:
+		text("升级！挑一个", 160, 8, 14, C_GOLD, C_SH, 1.0, true)
+		text("Lv %d" % lv if touch_mode else "Lv %d · 点卡片，或按 1/2/3" % lv, 160, 27, 8, C_DIM, C_SH)
 	for i in opts.size():
 		var o: Dictionary = opts[i]
 		var r := card_rect(i)
@@ -3724,6 +3966,8 @@ func draw_lvl() -> void:
 		var is_evo: bool = o.k == "evo"
 		var fill := Color(0.18, 0.12, 0.04, 0.95) if is_evo else Color(0.06, 0.06, 0.12, 0.95)
 		var line := Pal.rc(GOLD, 6) if sel or is_evo else Pal.rc(RUIN, 5)
+		if ban_mode:
+			line = Pal.rc(SERP, 6) if sel and opt_key(o) != "" else Pal.rc(RUIN, 4)
 		var yy := r.position.y - (3.0 if sel else 0.0)
 		box(r.position.x, yy, r.size.x, r.size.y, fill, line)
 		if sel:
@@ -3754,6 +3998,11 @@ func draw_lvl() -> void:
 			"temper":
 				big = "淬火"
 				col = C_TEAL
+				tag = "强化 · 已拿 %d 次" % temper
+			"boon":
+				big = BOON[o.id].n
+				col = Pal.rc(int(BOON[o.id].m), 6)
+				tag = "强化 · 已拿 %d 次" % bn(o.id)
 		text(big, cx, yy + 4, 18 if big.length() <= 2 else 14, col, C_SH, 1.0, true)
 		text(tag, cx, yy + 29, 8, C_GOLD if is_evo else C_DIM, C_SH)
 		var ly := yy + 41
@@ -3767,25 +4016,31 @@ func draw_lvl() -> void:
 			ly += 1
 		if not touch_mode:
 			text(str(i + 1), r.position.x + 5, yy + 2, 8, C_DIM)
-	if rerolls > 0:
-		var rr := reroll_rect()
-		box(rr.position.x, rr.position.y, rr.size.x, rr.size.y, Pal.rc(SPACE, 2), Pal.rc(MIRROR, 5))
-		text("重掷 ×%d%s" % [rerolls, "" if touch_mode else " (R)"], rr.get_center().x, rr.position.y + 1.5, 8, C_TXT, C_SH)
-	elif not touch_mode:
-		text("点卡片，或按 1/2/3 · ←→ 加 Enter", 160, 158, 8, C_DIM, C_SH)
+	var labs := ["重掷 ×%d" % rerolls, "封存 ×%d" % banish, "跳过 +15墨"]
+	var keys := ["R", "X", "C"]
+	var live := [rerolls > 0, banish > 0, true]
+	for i in 3:
+		var rr := lvl_btn(i)
+		var on: bool = live[i]
+		var hot := i == 1 and ban_mode
+		box(rr.position.x, rr.position.y, rr.size.x, rr.size.y, Pal.rc(WINE, 3) if hot else Pal.rc(SPACE, 2), Pal.rc(SERP, 6) if hot else Pal.rc(MIRROR if on else RUIN, 5 if on else 3))
+		var lab: String = labs[i]
+		if not touch_mode and on:
+			lab += " " + keys[i]
+		text(lab, rr.get_center().x, rr.position.y + 1.5, 8, C_TXT if on else C_DIM, C_SH)
 
 # ======================================================================
 # 营地：选陶灵、买永久升级、出发
 # ======================================================================
 # ---------- 炉灯工坊：首领之间的小店 ----------
-const INK_PER_LV := 6.0
+const INK_PER_LV := 9.0
 
 func rel_cost(id: String) -> int:
 	var it: Dictionary = RL[id]
 	var k := 1.0 + 0.15 * (shop_n - 1)
 	if not it.get("once", false):
 		k *= 1.0 + 0.25 * rl(id)
-	return int(float(it.c) * k)
+	return int(float(it.c) * k * (0.8 if pact == "dealer" else 1.0))
 
 func rr_cost() -> int:
 	return 3 + 2 * shop_n + 4 * shop_rr
@@ -3808,6 +4063,8 @@ func roll_shop() -> void:
 func open_shop() -> void:
 	shop_n += 1
 	shop_rr = 0
+	if pact == "dealer":
+		ink += 30
 	roll_shop()
 	S = "shop"
 	Sfx.play("buy")
@@ -4088,6 +4345,16 @@ func _sv_bot(dt: float) -> void:
 		var L := d.length()
 		if L < a.r + 8:
 			v += (d / maxf(L, 0.1) if L > 0.5 else Vector2(1, 0)) * 4.0
+	for q in POI:
+		if P.hp < 3 or (q.k == "curse" and P.hp < P.maxhp - 1) or OS.get_cmdline_user_args().has("--nopoi"):
+			continue
+		var dv := Vector2(q.x - P.x, q.y - P.y)
+		if dv.length() < 300 and dv.length() > float(POIK[q.k].r) * 0.4:
+			v += dv.normalized() * 2.0
+	for q in POI:
+		if not _shot_at.has("poi_" + str(q.k)) and absf(q.x - P.x) < 60 and absf(q.y - P.y) < 40:
+			_shot_at["poi_" + str(q.k)] = true
+			_shot("poi_" + str(q.k))
 	var g: Pick = null
 	var gd := 150.0
 	for p in PK:
@@ -4143,3 +4410,190 @@ func _shot(name: String) -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	img.save_png("user://surv_%s.png" % name)
+
+# ======================================================================
+# 誓约：开局三选一
+# ======================================================================
+func pact_card(i: int) -> Rect2:
+	return Rect2(11 + i * 102, 42, 94, 98)
+
+func pact_none() -> Rect2:
+	return Rect2(122, 149, 76, 14)
+
+func upd_pact() -> void:
+	var pick := -1
+	for i in 3:
+		if pressed(KEY_1 + i) or pressed(KEY_KP_1 + i):
+			pick = i
+	if pressed(KEY_A) or pressed(KEY_LEFT):
+		pact_sel = (pact_sel + 2) % 3
+	if pressed(KEY_D) or pressed(KEY_RIGHT):
+		pact_sel = (pact_sel + 1) % 3
+	if pressed(KEY_ENTER) or pressed(KEY_KP_ENTER) or pressed(KEY_SPACE):
+		pick = pact_sel
+	var mp := ppointer()
+	for i in 3:
+		if pact_card(i).has_point(mp):
+			if mouse_moved:
+				pact_sel = i
+			if click_q:
+				pick = i
+	if _autoplay:
+		_lvl_wait += get_physics_process_delta_time()
+		if _lvl_wait < 0.5:
+			if not _shot_at.has("pact"):
+				_shot_at["pact"] = true
+				_shot("pact")
+			return
+		_lvl_wait = 0.0
+		take_pact("")
+		return
+	if pressed(KEY_N) or pressed(KEY_0) or pressed(KEY_ESCAPE) or (click_q and pact_none().has_point(mp)):
+		take_pact("")
+	elif pick >= 0:
+		take_pact(pact_opts[pick])
+
+func draw_pact() -> void:
+	text("立一个誓约", 160, 8, 14, C_GOLD, C_SH, 1.0, true)
+	text("一条规矩管一整局，有得有失。也可以不立。", 160, 27, 8, C_DIM, C_SH)
+	var pw: Dictionary = meta.get("pw") if meta.get("pw") is Dictionary else {}
+	for i in 3:
+		var id: String = pact_opts[i]
+		var d: Dictionary = PACT[id]
+		var r := pact_card(i)
+		var sel := i == pact_sel
+		var yy := r.position.y - (3.0 if sel else 0.0)
+		box(r.position.x, yy, r.size.x, r.size.y, Color(0.06, 0.06, 0.12, 0.95), Pal.rc(GOLD, 6) if sel else Pal.rc(RUIN, 5))
+		if sel:
+			box(r.position.x + 1, yy + 1, r.size.x - 2, r.size.y - 2, null, Pal.rc(GOLD, 4))
+		var cx := r.get_center().x
+		text(str(d.n), cx, yy + 5, 18, Pal.rc(int(d.m), 6), C_SH, 1.0, true)
+		text("通关过" if pw.has(id) else "还没用它通关", cx, yy + 30, 7, C_GOLD if pw.has(id) else C_DIM, C_SH)
+		var ly := yy + 44
+		for ln in wrap_text(str(d.d), 8, r.size.x - 8):
+			text(ln, cx, ly, 8, C_TEAL, C_SH)
+			ly += 10
+		ly += 4
+		for ln in wrap_text(str(d.x), 8, r.size.x - 8):
+			text(ln, cx, ly, 8, C_RED, C_SH)
+			ly += 10
+		if not touch_mode:
+			text(str(i + 1), r.position.x + 5, yy + 2, 8, C_DIM)
+	var nr := pact_none()
+	box(nr.position.x, nr.position.y, nr.size.x, nr.size.y, Pal.rc(SPACE, 2), Pal.rc(MIRROR, 5))
+	text("不立誓" + ("" if touch_mode else " (N)"), nr.get_center().x, nr.position.y + 2, 8, C_TXT, C_SH)
+	text("用过誓约通关 %d / %d 种" % [pw.size(), PACT.size()], 160, 167, 7, C_DIM, C_SH)
+
+# ======================================================================
+# 地图事件点
+# ======================================================================
+func add_poi() -> void:
+	var ks := ["trial", "trial", "stele", "stele"]
+	# 诅咒碑第一阶段不出：那时候还扛不住
+	if stage > 0:
+		ks += ["curse", "curse"]
+	if P.hp < P.maxhp:
+		ks += ["spring", "spring"]
+	var k: String = ks[randi() % ks.size()]
+	var a := randf() * TAU
+	if P.moving:
+		a = atan2(P.ay, P.ax) + (randf() - 0.5) * 2.4
+	var R := 120.0 + randf() * 50.0
+	POI.append({"k": k, "x": P.x + cos(a) * R, "y": P.y + sin(a) * R, "p": 0.0, "life": 55.0, "left": 3, "on": false})
+	toast("附近出现了%s：%s" % [POIK[k].n, POIK[k].d], C_GOLD, 5)
+	Sfx.play("beacon", 1.3)
+
+func poi_wave(n: int) -> void:
+	encircle(["moth", "hush"] if stage == 0 else (["moth", "chill"] if stage < 3 else ["moth", "chill", "icicle"]), n)
+
+func upd_poi(dt: float) -> void:
+	curse_t = maxf(0.0, curse_t - dt)
+	if POI.is_empty():
+		return
+	var keep := []
+	for q in POI:
+		var d: Dictionary = POIK[q.k]
+		var dx: float = P.x - q.x
+		var dy: float = P.y - q.y
+		var r: float = d.r
+		if dx * dx + dy * dy < r * r and not (q.k == "spring" and P.hp >= P.maxhp):
+			if not q.on:
+				q.on = true
+				if q.k == "trial":
+					poi_wave(18 + stage * 4)
+					Sfx.play("warn")
+					toast("守住圈子！", C_RED, 2)
+			q.p += dt / float(d.need)
+			q.life = maxf(q.life, 6.0)
+		else:
+			q.p = maxf(0.0, q.p - dt / float(d.need) * 0.5)
+			q.life -= dt
+		if q.p >= 1.0:
+			q.p = 0.0
+			if poi_done(q):
+				burst(q.x, q.y, 24, int(d.m), 6, 80, 0.8)
+				continue
+		if q.life <= 0:
+			burst(q.x, q.y, 8, int(d.m), 4, 30, 0.5)
+			continue
+		keep.append(q)
+	POI = keep
+
+## 事件点生效。返回 true = 用完了
+func poi_done(q: Dictionary) -> bool:
+	match q.k:
+		"trial":
+			add_pick(q.x, q.y, "page")
+			ink += 20
+			shk = 6
+			Sfx.play("buy")
+			set_banner("试炼完成", "一张散页，外加 20 墨滴", C_GOLD)
+		"curse":
+			temper += 1
+			ink += 30
+			curse_t = 30.0
+			poi_wave(30 + stage * 6)
+			shk = 8
+			Sfx.play("roar", 1.4)
+			set_banner("诅咒", "怪潮 30 秒。伤害 +5%，墨滴 +30", C_RED)
+		"spring":
+			heal(1)
+			Sfx.play("ember")
+			q.left = int(q.left) - 1
+			return int(q.left) <= 0
+		"stele":
+			lv_q += 1
+			Sfx.play("page")
+			set_banner("字碑", "白拿一次升级", C_GOLD)
+	return true
+
+## 事件点的名字，和不在屏幕里时指路的小标记
+func draw_poi_hud() -> void:
+	for q in POI:
+		var d: Dictionary = POIK[q.k]
+		var col := Pal.rc(int(d.m), 6)
+		var sx: float = q.x - ox
+		var sy: float = q.y - oy
+		var r: float = d.r
+		if sx > 8 and sx < W - 8 and sy > 30 and sy < H - 30:
+			text(str(d.n), sx, sy - r - 11, 8, col, C_SH)
+			if absf(P.x - q.x) < r + 45 and absf(P.y - q.y) < r + 45:
+				text(str(d.d), sx, sy + r + 2, 7, C_TXT, C_SH)
+		else:
+			var vx := sx - W / 2.0
+			var vy := sy - H / 2.0
+			var k := minf((W / 2.0 - 22.0) / maxf(1.0, absf(vx)), (H / 2.0 - 34.0) / maxf(1.0, absf(vy)))
+			var px := W / 2.0 + vx * k
+			var py := H / 2.0 + vy * k
+			var bl := 5 if int(T * 3) % 2 == 0 else 6
+			rect(px - 2, py - 2, 4, 4, C_SH)
+			rect(px - 1.5, py - 1.5, 3, 3, Pal.rc(int(d.m), bl))
+			text("%s %d步" % [d.n, int(sqrt(vx * vx + vy * vy) / 10.0)], px, py - 11, 7, col, C_SH)
+
+## 伤害最高的几个来源：[[名字, 总伤害], …]
+func ds_top(n: int) -> Array:
+	var a := []
+	for k in DS:
+		a.append([k, float(DS[k])])
+	a.sort_custom(func(x, y): return x[1] > y[1])
+	return a.slice(0, n)
