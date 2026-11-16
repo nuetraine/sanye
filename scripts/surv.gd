@@ -232,6 +232,15 @@ const RL := {
 	"candy": {"n": "余烬糖", "d": "把心回满", "c": 15, "max": 99, "once": true},
 }
 
+## 满级后的强化：笔、字、技都练满以后，升级时从这里补足三选一，全都能一直叠
+const BOON := {
+	"quick": {"n": "快手", "d": "所有笔出手快 4%（可以一直拿）", "m": 8},
+	"wide": {"n": "扩印", "d": "所有范围 +5%（可以一直拿）", "m": 2},
+	"swift": {"n": "健步", "d": "跑得快 4%（最多 5 次）", "m": 12, "max": 5},
+	"thick": {"n": "厚胎", "d": "多一颗心并回一颗（最多 4 次）", "m": 4, "max": 4},
+	"purse": {"n": "聚墨", "d": "立刻得到 30 墨滴，下一间工坊用", "m": 2},
+}
+
 const MAX_PENS := 4
 const MAX_WORDS := 6
 const MAX_SK := 2
@@ -260,6 +269,7 @@ var lv_q := 0                 # 还没选的升级次数
 var opts: Array = []
 var opt_sel := 0
 var rerolls := 0
+var boon := {}                # 满级强化 id -> 次数
 var temper := 0               # 「淬火」拿了几次
 var revives := 0
 var kills2 := 0
@@ -348,6 +358,9 @@ func _ready() -> void:
 func new_world() -> void:
 	pass
 
+func bn(id: String) -> int:
+	return int(boon.get(id, 0))
+
 func rl(id: String) -> int:
 	return int(rel.get(id, 0))
 
@@ -395,6 +408,7 @@ func start_run() -> void:
 	danger = clampi(int(meta.get("dl", 0)), 0, int(meta.get("dmax", 0)))
 	revives = mu("kiln")
 	temper = 0
+	boon = {}
 	kills2 = 0
 	boss_kills = 0
 	earned = 0
@@ -468,13 +482,14 @@ func dmg_k() -> float:
 	return (1.0 + 0.15 * w("石")) * (1.0 + 0.06 * mu("edge")) * (1.0 + 0.05 * temper) * maxf(0.3, 1.0 + 0.12 * rl("weight") + 0.25 * rl("lead") + 0.35 * rl("gpen") - 0.04 * rl("quill"))
 
 func area_k() -> float:
-	return (1.0 + 0.15 * w("环")) * (1.0 + 0.15 * rl("lens"))
+	return (1.0 + 0.15 * w("环")) * (1.0 + 0.15 * rl("lens")) * (1.0 + 0.05 * bn("wide"))
 
 func cd_k() -> float:
-	return pow(0.92, w("炉")) * pow(0.9, rl("quill")) * pow(0.8, rl("tissue")) * pow(1.1, rl("lead"))
+	return pow(0.92, w("炉")) * pow(0.96, bn("quick")) * pow(0.9, rl("quill")) * pow(0.8, rl("tissue")) * pow(1.1, rl("lead"))
 
 func xp_need() -> int:
-	return int(4 + lv * 3.5 + pow(maxf(0.0, lv - 8.0), 1.9) * 1.7)
+	# 12 级以后明显变慢：整套笔、字、技大约在第 11~12 分钟才练满，后半局每次升级还有分量
+	return int(4 + lv * 3.5 + pow(maxf(0.0, lv - 8.0), 1.9) * 1.7 + pow(maxf(0.0, lv - 12.0), 2.1) * 2.2)
 
 func max_words() -> int:
 	return MAX_WORDS + (1 if P.ch == 3 else 0)
@@ -686,7 +701,7 @@ func sv_player(dt: float) -> void:
 		P.ay = iy / il
 		P.anim += dt * 8
 	var c: Dictionary = SCH[P.ch]
-	var spd: float = 78.0 * (1.0 + 0.1 * w("疾")) * float(c.sp) * (1.0 + 0.1 * rl("feather") - 0.05 * rl("weight"))
+	var spd: float = 78.0 * (1.0 + 0.1 * w("疾")) * float(c.sp) * (1.0 + 0.1 * rl("feather") - 0.05 * rl("weight") + 0.04 * bn("swift"))
 	P.slow_t -= dt
 	if P.slow_t > 0:
 		spd *= 0.55
@@ -2920,10 +2935,23 @@ func gen_opts() -> Array:
 				out.append(c[j][0])
 				c.remove_at(j)
 				break
-	if out.size() < 3:
-		out.append({"k": "temper"})
-	if out.size() < 3:
-		out.append({"k": "heal"})
+	# 都练满了：用能一直叠的强化补足，保证每次升级都有得选
+	if out.size() < want:
+		var fill := [{"k": "temper"}]
+		if P.hp < P.maxhp:
+			fill.append({"k": "heal"})
+		var ids := BOON.keys()
+		ids.shuffle()
+		for id in ids:
+			if bn(id) < int(BOON[id].get("max", 999)):
+				fill.append({"k": "boon", "id": id})
+		# 淬火总在；其余随机
+		var first = fill.pop_front()
+		fill.shuffle()
+		fill.push_front(first)
+		for f in fill:
+			if out.size() < want:
+				out.append(f)
 	return out
 
 func open_lvl() -> void:
@@ -2953,6 +2981,8 @@ func opt_title(o: Dictionary, short := false) -> String:
 			return "余烬"
 		"temper":
 			return "淬火"
+		"boon":
+			return BOON[o.id].n
 	return ""
 
 func opt_desc(o: Dictionary) -> String:
@@ -2981,6 +3011,8 @@ func opt_desc(o: Dictionary) -> String:
 			return "回满陶心"
 		"temper":
 			return "所有伤害 +5%（可以一直拿）"
+		"boon":
+			return BOON[o.id].d
 	return ""
 
 func apply_opt(o: Dictionary) -> void:
@@ -3003,6 +3035,14 @@ func apply_opt(o: Dictionary) -> void:
 			P.hp = P.maxhp
 		"temper":
 			temper += 1
+		"boon":
+			boon[o.id] = bn(o.id) + 1
+			match o.id:
+				"thick":
+					P.maxhp += 1
+					P.hp = mini(P.maxhp, P.hp + 1)
+				"purse":
+					ink += 30
 
 func do_evo(i: int, k: int) -> void:
 	evo["%d_%d" % [i, k]] = true
@@ -3053,8 +3093,9 @@ func upd_lvl_panel() -> void:
 	if _autoplay:
 		_lvl_wait += get_physics_process_delta_time()
 		if _lvl_wait < 0.4:
-			if not _shot_at.has("lvl") or (not _shot_at.has("evo") and opts[0].k == "evo"):
-				var nm := "evo" if opts[0].k == "evo" else "lvl"
+			var full: bool = opts[0].k == "temper"
+			if not _shot_at.has("lvl") or (not _shot_at.has("evo") and opts[0].k == "evo") or (full and not _shot_at.has("full")):
+				var nm := "evo" if opts[0].k == "evo" else ("full" if full else "lvl")
 				_shot_at[nm] = true
 				_shot(nm)
 			return
@@ -3754,6 +3795,11 @@ func draw_lvl() -> void:
 			"temper":
 				big = "淬火"
 				col = C_TEAL
+				tag = "强化 · 已拿 %d 次" % temper
+			"boon":
+				big = BOON[o.id].n
+				col = Pal.rc(int(BOON[o.id].m), 6)
+				tag = "强化 · 已拿 %d 次" % bn(o.id)
 		text(big, cx, yy + 4, 18 if big.length() <= 2 else 14, col, C_SH, 1.0, true)
 		text(tag, cx, yy + 29, 8, C_GOLD if is_evo else C_DIM, C_SH)
 		var ly := yy + 41
@@ -3778,7 +3824,7 @@ func draw_lvl() -> void:
 # 营地：选陶灵、买永久升级、出发
 # ======================================================================
 # ---------- 炉灯工坊：首领之间的小店 ----------
-const INK_PER_LV := 6.0
+const INK_PER_LV := 9.0
 
 func rel_cost(id: String) -> int:
 	var it: Dictionary = RL[id]
