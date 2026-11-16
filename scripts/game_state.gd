@@ -427,6 +427,8 @@ var mouse_moved := false
 # ---------- 画面 ----------
 var camera: Camera2D
 var rock_layer: Node2D
+var bg_vp: SubViewport
+var bg_view: TextureRect
 var zone_painter: Node2D
 var ent_painter: Node2D
 var hud_painter: Node2D

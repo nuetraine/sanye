@@ -82,7 +82,7 @@ const MT := {
 	"nova": {"hp": 26.0, "sp": 40.0, "xp": 5, "dmg": 0, "r": 5.0, "ai": "boom"},
 	"twin": {"hp": 22.0, "sp": 46.0, "xp": 4, "dmg": 1, "r": 4.0, "ai": "twin"},
 	# 首领（hp 不随时间涨，按阶段另算）
-	"serp": {"hp": 1.0, "sp": 62.0, "xp": 0, "dmg": 2, "r": 8.0, "ai": "boss"},
+	"serp": {"hp": 1.0, "sp": 62.0, "xp": 0, "dmg": 1, "r": 8.0, "ai": "boss"},
 	"redact": {"hp": 1.0, "sp": 40.0, "xp": 0, "dmg": 2, "r": 11.0, "ai": "boss"},
 	"binder": {"hp": 1.0, "sp": 38.0, "xp": 0, "dmg": 2, "r": 11.0, "ai": "boss"},
 	"index": {"hp": 1.0, "sp": 26.0, "xp": 0, "dmg": 2, "r": 12.0, "ai": "boss"},
@@ -110,7 +110,7 @@ const SH := {
 
 ## 八个阶段：名字、这一阶段的生物和权重、首领
 const STAGES := [
-	{"name": "星海散页", "boss": "serp", "pool": [["moth", 6], ["hush", 3], ["folio", 2], ["leech", 3], ["mite", 1], ["snail", 1], ["borer", 1]]},
+	{"name": "星海散页", "boss": "serp", "pool": [["moth", 6], ["hush", 3], ["folio", 2], ["leech", 2], ["mite", 1], ["snail", 1], ["borer", 1]]},
 	{"name": "阅览室残骸", "boss": "redact", "pool": [["moth", 3], ["comma", 3], ["blot", 3], ["worm", 2], ["wisp", 2], ["leech", 1]]},
 	{"name": "烛芯钟楼", "boss": "binder", "pool": [["moth", 2], ["dove", 5], ["tick", 2], ["cinder", 3], ["stamp", 1], ["comma", 1]]},
 	{"name": "冰封书库", "boss": "index", "pool": [["bat", 4], ["spider", 2], ["roller", 3], ["chill", 3], ["icicle", 2], ["hush", 2]]},
@@ -189,7 +189,7 @@ const SK := {
 const SCH := [
 	{"pen": 0, "hp": 0, "sp": 1.0, "dash": 1.0, "tag": "毛笔开局 · 均衡", "d": "各项均衡，没有短处。"},
 	{"pen": 2, "hp": -2, "sp": 1.2, "dash": 0.6, "tag": "刻刀开局 · 轻快", "d": "跑得快冲得勤，少两颗心。"},
-	{"pen": 5, "hp": 2, "sp": 0.85, "dash": 1.0, "tag": "印章开局 · 结实", "d": "多两颗心但跑得慢，冲刺能撞伤敌人。"},
+	{"pen": 5, "hp": 2, "sp": 0.92, "dash": 1.0, "tag": "印章开局 · 结实", "d": "多两颗心但跑得慢，冲刺能撞伤敌人。"},
 	{"pen": 3, "hp": -1, "sp": 1.0, "dash": 1.0, "tag": "砚雷开局 · 多一个字", "d": "多带一个字，少一颗心。"},
 ]
 
@@ -203,10 +203,43 @@ const META := [
 	{"id": "kiln", "name": "余火", "d": "每局能原地复活一次", "max": 1, "cost": [120]},
 ]
 
+## 藏品：每打倒一个首领，炉灯工坊开一次门，用路上攒的墨滴买。很多是有得有失的。
+const RL := {
+	"weight": {"n": "镇纸", "d": "伤害 +12%，跑得慢 5%", "c": 30, "max": 5},
+	"quill": {"n": "羽毛笔", "d": "出手快 10%，伤害 -4%", "c": 30, "max": 5},
+	"lens": {"n": "放大镜", "d": "范围 +15%", "c": 35, "max": 4},
+	"feather": {"n": "轻羽", "d": "跑得快 10%", "c": 25, "max": 4},
+	"shard": {"n": "陶片", "d": "多一颗心", "c": 40, "max": 5},
+	"tea": {"n": "茶盏", "d": "每 40 秒回一颗心", "c": 45, "max": 3},
+	"blotter": {"n": "吸墨纸", "d": "吸页尘的范围 +30%", "c": 20, "max": 3},
+	"mark": {"n": "书签", "d": "页尘经验 +10%", "c": 30, "max": 4},
+	"redpen": {"n": "朱批", "d": "暴击率 +6%", "c": 35, "max": 5},
+	"jacket": {"n": "护封", "d": "挨打时有 15% 机会不掉心", "c": 45, "max": 3},
+	"jar": {"n": "存钱罐", "d": "离开工坊时，剩下的墨滴生两成利息（最多 40）", "c": 30, "max": 2},
+	"sand": {"n": "砂纸", "d": "精英和首领多受 20% 伤害", "c": 40, "max": 4},
+	"clip": {"n": "回形针", "d": "字弹多穿一个敌人", "c": 55, "max": 2},
+	"tape": {"n": "双面胶", "d": "立刻多两次重掷", "c": 20, "max": 9},
+	"wax": {"n": "火漆", "d": "敌人掉余烬的机会翻倍", "c": 35, "max": 2},
+	"glass": {"n": "沙漏", "d": "技能冷却快 18%", "c": 35, "max": 3},
+	"lead": {"n": "铅坠", "d": "伤害 +25%，出手慢 10%", "c": 45, "max": 3},
+	"tissue": {"n": "薄纸", "d": "出手快 20%，少一颗心", "c": 40, "max": 2},
+	"gpen": {"n": "玻璃笔", "d": "伤害 +35%，每次挨打多掉一颗心", "c": 50, "max": 1},
+	"thorn": {"n": "荆棘封皮", "d": "挨打时把周围的敌人炸一圈", "c": 35, "max": 3},
+	"core": {"n": "备用墨芯", "d": "多一次原地复活", "c": 110, "max": 1},
+	"clover": {"n": "三叶书签", "d": "升级时多一张卡可选", "c": 80, "max": 1},
+	"sac": {"n": "墨囊", "d": "墨滴收入 +25%", "c": 30, "max": 3},
+	"leaf": {"n": "残页", "d": "立刻升两级", "c": 60, "max": 99, "once": true},
+	"candy": {"n": "余烬糖", "d": "把心回满", "c": 15, "max": 99, "once": true},
+}
+
 const MAX_PENS := 4
 const MAX_WORDS := 6
 const MAX_SK := 2
-const CAP := 480              # 同屏生物上限（网页版也要跑得动）
+var CAP := 480                # 同屏生物上限（网页版也要跑得动；机器吃力时会自动调低）
+var qual := 0                 # 自动画质档：0 全开，1 少一些粒子和怪，2 再少一些
+var _q_ms := 0
+var _q_fr := 0
+var _q_low := 0
 const GCELL := 16.0
 
 var E: Array[SV] = []
@@ -264,10 +297,21 @@ var snd_t := {}
 var over_t := 0.0
 var won := false
 var earned := 0
+var ink := 0                  # 墨滴：捡页尘时顺带攒下的钱，只在工坊里花
+var ink_frac := 0.0
+var rel := {}                 # 藏品 id -> 件数
+var shop: Array = []          # 这次工坊摆出来的东西
+var shop_n := 0               # 第几间工坊
+var shop_rr := 0              # 这间工坊重掷了几次
+var shop_t := -1.0            # 首领倒下后，过一小会儿再开门
+var tea_t := 0.0
+var new_danger := false
+var danger := 0               # 暗潮等级：通关后解锁的更高难度
 var meta := {"pages": 0, "up": {}, "best": {}, "ch": 0}
 var hub_sel := 0
 var slowmo := 0.0
 var _fast := 1
+var _dr_us := {}
 var _shot_at := {}
 var _perf_n := 0
 var _perf_us := 0
@@ -288,6 +332,7 @@ func _ready() -> void:
 	LAMPS.clear()
 	INK.clear()
 	_load_meta()
+	_fx_setup()
 	var args := OS.get_cmdline_user_args()
 	for a in args:
 		if a.begins_with("--fast="):
@@ -302,6 +347,9 @@ func _ready() -> void:
 ## 试炼不需要主线的世界（省掉一秒多的生成时间）
 func new_world() -> void:
 	pass
+
+func rl(id: String) -> int:
+	return int(rel.get(id, 0))
 
 func mu(id: String) -> int:
 	return int((meta.up as Dictionary).get(id, 0))
@@ -337,6 +385,14 @@ func start_run() -> void:
 	xp = 0
 	lv_q = 0
 	rerolls = mu("roll")
+	ink = 0
+	ink_frac = 0.0
+	rel = {}
+	shop = []
+	shop_n = 0
+	shop_t = -1.0
+	tea_t = 0.0
+	danger = clampi(int(meta.get("dl", 0)), 0, int(meta.get("dmax", 0)))
 	revives = mu("kiln")
 	temper = 0
 	kills2 = 0
@@ -362,7 +418,7 @@ func _load_meta() -> void:
 		var f := FileAccess.open("user://sanye-surv.json", FileAccess.READ)
 		var d = JSON.parse_string(f.get_as_text())
 		if d is Dictionary:
-			for k in ["pages", "up", "best", "ch"]:
+			for k in ["pages", "up", "best", "ch", "dl", "dmax"]:
 				if d.has(k):
 					meta[k] = d[k]
 			if not (meta.up is Dictionary):
@@ -409,13 +465,13 @@ func cmb(n: String) -> bool:
 	return combos.has(n)
 
 func dmg_k() -> float:
-	return (1.0 + 0.15 * w("石")) * (1.0 + 0.06 * mu("edge")) * (1.0 + 0.05 * temper)
+	return (1.0 + 0.15 * w("石")) * (1.0 + 0.06 * mu("edge")) * (1.0 + 0.05 * temper) * maxf(0.3, 1.0 + 0.12 * rl("weight") + 0.25 * rl("lead") + 0.35 * rl("gpen") - 0.04 * rl("quill"))
 
 func area_k() -> float:
-	return 1.0 + 0.15 * w("环")
+	return (1.0 + 0.15 * w("环")) * (1.0 + 0.15 * rl("lens"))
 
 func cd_k() -> float:
-	return pow(0.92, w("炉"))
+	return pow(0.92, w("炉")) * pow(0.9, rl("quill")) * pow(0.8, rl("tissue")) * pow(1.1, rl("lead"))
 
 func xp_need() -> int:
 	return int(4 + lv * 3.5 + pow(maxf(0.0, lv - 8.0), 1.9) * 1.7)
@@ -471,7 +527,35 @@ func _notification(what: int) -> void:
 		if S == "sv" and not _autoplay:
 			S = "pause"
 
+## 每两秒看一次实际帧率：连续两次不到 48 帧就降一档（少粒子、少伤害数字、同屏怪上限调低），
+## 一局里只降不升，免得来回跳
+func _q_check() -> void:
+	var now := Time.get_ticks_msec()
+	if _q_ms == 0 or S != "sv":
+		_q_ms = now
+		_q_fr = Engine.get_frames_drawn()
+		return
+	if now - _q_ms < 2000:
+		return
+	var fps := (Engine.get_frames_drawn() - _q_fr) * 1000.0 / float(now - _q_ms)
+	_q_ms = now
+	_q_fr = Engine.get_frames_drawn()
+	if fps < 48.0 and gt2 > 6.0:
+		_q_low += 1
+		if _q_low >= 2 and qual < 2:
+			_q_low = 0
+			set_qual(qual + 1)
+	else:
+		_q_low = 0
+
+func set_qual(q: int) -> void:
+	qual = q
+	CAP = [480, 360, 260][q]
+	print("surv quality -> ", q)
+
 func _physics_process(dt: float) -> void:
+	if not _autoplay:
+		_q_check()
 	for i in _fast:
 		if _autoplay:
 			_sv_bot(dt)
@@ -499,6 +583,8 @@ func step(dt: float) -> void:
 				S = "pause"
 		"lvl":
 			upd_lvl_panel()
+		"shop":
+			upd_shop()
 		"pause":
 			var mp := ppointer()
 			if pressed(KEY_ESCAPE) or pressed(KEY_P) or pressed(KEY_ENTER) or pressed(KEY_SPACE) or (click_q and pause_btn(0).has_point(mp)):
@@ -545,6 +631,11 @@ func sv_update(dt: float) -> void:
 			_perf_n = 0
 	hurt_t = maxf(0.0, hurt_t - dt)
 	frz_all = maxf(0.0, frz_all - dt)
+	if shop_t > 0:
+		shop_t -= dt
+		if shop_t <= 0:
+			open_shop()
+			return
 	upd_events()
 	upd_spawn(dt)
 	sv_player(dt)
@@ -595,7 +686,7 @@ func sv_player(dt: float) -> void:
 		P.ay = iy / il
 		P.anim += dt * 8
 	var c: Dictionary = SCH[P.ch]
-	var spd: float = 78.0 * (1.0 + 0.1 * w("疾")) * float(c.sp)
+	var spd: float = 78.0 * (1.0 + 0.1 * w("疾")) * float(c.sp) * (1.0 + 0.1 * rl("feather") - 0.05 * rl("weight"))
 	P.slow_t -= dt
 	if P.slow_t > 0:
 		spd *= 0.55
@@ -653,6 +744,12 @@ func sv_player(dt: float) -> void:
 			P.y += gy / gd * 45.0 * dt
 	P.x += P.vx * dt
 	P.y += P.vy * dt
+	# 茶盏：慢慢回心
+	if rl("tea") > 0:
+		tea_t += dt * rl("tea")
+		if tea_t > 40.0:
+			tea_t = 0.0
+			heal(1)
 	# 厚土：自己回心
 	if cmb("厚土"):
 		heal_t2 += dt
@@ -680,7 +777,7 @@ func hurt(n: int, sx: float, sy: float) -> void:
 		P.inv = 0.8
 		var big := w("环") > 0
 		var R := 60.0 if big else 40.0
-		BOOMS.append({"x": P.x, "y": P.y, "r": R, "t": 0.3, "T": 0.3, "m": GRAV})
+		BOOMS.append({"x": P.x, "y": P.y, "r": R, "t": 0.3, "T": 0.3, "m": ICE})
 		Sfx.play("ping", 0.6)
 		for e in E:
 			var dx := e.x - P.x
@@ -692,8 +789,16 @@ func hurt(n: int, sx: float, sy: float) -> void:
 				if big:
 					dmg_e(e, 40.0 * dmg_k(), P.x, P.y, 0.0)
 		return
-	P.hp -= n
+	if rl("jacket") > 0 and randf() < 0.15 * rl("jacket"):
+		# 护封挡了一下
+		P.inv = 0.8
+		Sfx.play("ping", 1.6)
+		burst(P.x, P.y, 8, PAPER, 6, 50, 0.4)
+		return
+	P.hp -= n + rl("gpen")
 	P.inv = 1.3
+	if rl("thorn") > 0:
+		boom(P.x, P.y, 46.0, 50.0 * dmg_k() * rl("thorn"), false)
 	if OS.get_cmdline_user_args().has("--hurtlog"):
 		var ne := nearest(sx, sy, 30.0)
 		print("HURT t=%.1f n=%d by=%s d=%.0f hp=%d E=%d lv=%d" % [gt2, n, ne.t if ne else "?", Vector2(sx - P.x, sy - P.y).length(), P.hp, E.size(), lv])
@@ -724,9 +829,14 @@ func end_run(win: bool) -> void:
 	if S == "over":
 		return
 	won = win
+	new_danger = false
 	S = "over"
 	over_t = 0.0
-	earned = kills2 / 1000 + boss_kills * 6 + int(gt2 / 30.0) + (25 if win else 0)
+	earned = int((kills2 / 1000 + boss_kills * 6 + int(gt2 / 30.0) + (25 if win else 0)) * (1.0 + 0.3 * danger))
+	if win and danger >= int(meta.get("dmax", 0)) and danger < 5:
+		meta.dmax = danger + 1
+		meta.dl = danger + 1
+		new_danger = true
 	meta.pages = int(meta.pages) + earned
 	var b: Dictionary = meta.best
 	b.time = maxf(float(b.get("time", 0.0)), gt2)
@@ -748,7 +858,7 @@ func end_run(win: bool) -> void:
 # 生物：生成、阶段、事件
 # ======================================================================
 func hp_k() -> float:
-	return 1.0 + gt2 / 75.0 + pow(gt2 / 290.0, 2.0)
+	return (1.0 + gt2 / 90.0 + pow(gt2 / 200.0, 2.3)) * (1.0 + 0.25 * danger)
 
 func pick_type() -> String:
 	var si := stage
@@ -786,7 +896,7 @@ func add_e(t: String, x: float, y: float) -> SV:
 	e.y = y
 	e.r = d.r
 	e.ai = d.ai
-	e.spd = d.sp * (0.9 + randf() * 0.2)
+	e.spd = d.sp * (0.9 + randf() * 0.2) * (1.0 + 0.04 * danger)
 	e.mhp = d.hp * hp_k()
 	e.hp = e.mhp
 	e.xp = d.xp
@@ -846,7 +956,8 @@ func upd_spawn(dt: float) -> void:
 	if E.size() < want:
 		rate += (want - E.size()) * 0.6
 	if not bosses.is_empty():
-		rate *= 0.5
+		# 首领战时小怪少一半；第一个首领再少一些，让新手能专心看招
+		rate *= 0.5 if stage > 0 else 0.25
 	if ev_tide():
 		rate *= 0.5
 	spawn_acc += rate * dt
@@ -1000,7 +1111,23 @@ func nearest(x: float, y: float, maxd: float, excl: Array = []) -> SV:
 			best_e = e
 	return best_e
 
-## 子弹用的“附近最近的敌人”：只查周围 5×5 个格子，不扫全场
+## 圆内的敌人：小范围查格子，大范围才扫全场
+func in_radius(x: float, y: float, r: float) -> Array:
+	if r > 56.0:
+		return E
+	var out := []
+	var c0 := floori((x - r - 12.0) / GCELL)
+	var c1 := floori((x + r + 12.0) / GCELL)
+	var r0 := floori((y - r - 12.0) / GCELL)
+	var r1 := floori((y + r + 12.0) / GCELL)
+	for j in range(r0, r1 + 1):
+		for i in range(c0, c1 + 1):
+			var a = G.get((i + 4096) * 8192 + (j + 4096))
+			if a != null:
+				out.append_array(a)
+	return out
+
+## 子弹用的“附近最近的敌人"：只查周围 5×5 个格子，不扫全场
 func near_e(x: float, y: float, excl: Array) -> SV:
 	var bd := 1e9
 	var best_e: SV = null
@@ -1284,7 +1411,7 @@ func upd_enemies(dt: float) -> void:
 						if nova:
 							ER.append({"x": e.x, "y": e.y, "r": 6.0, "v": 85.0, "max": 55.0})
 						else:
-							BOOMS.append({"x": e.x, "y": e.y, "r": 24.0, "t": 0.3, "T": 0.3, "m": EMBER})
+							BOOMS.append({"x": e.x, "y": e.y, "r": 24.0, "t": 0.3, "T": 0.3, "m": SERP})
 							if d < 26:
 								hurt(1, e.x, e.y)
 						burst(e.x, e.y, 10, GOLD if nova else EMBER, 6, 70, 0.5)
@@ -1512,7 +1639,7 @@ func _trail(e: SV, dt: float, n: int) -> void:
 # ======================================================================
 # 首领：八个，各有自己的招
 # ======================================================================
-const BOSS_HP := [5000.0, 10000.0, 17000.0, 26000.0, 37000.0, 50000.0, 68000.0, 110000.0]
+const BOSS_HP := [2600.0, 10000.0, 20000.0, 32000.0, 48000.0, 66000.0, 90000.0, 150000.0]
 const BOSS_TIP := [
 	"它会停下来瞄准，然后直直撞过来",
 	"看见细线就让开，线过一会儿才落下",
@@ -1529,7 +1656,7 @@ func spawn_boss(t: String, i: int) -> void:
 	var e := add_e(t, p.x, p.y)
 	e.boss = true
 	e.elite = true
-	e.mhp = BOSS_HP[i]
+	e.mhp = BOSS_HP[i] * (1.0 + 0.25 * danger)
 	e.hp = e.mhp
 	e.st = "fight"
 	e.ha = atan2(P.y - p.y, P.x - p.x)
@@ -1586,7 +1713,7 @@ func upd_boss(e: SV, dt: float, d: float, ux: float, uy: float) -> void:
 						Sfx.play("warn", 1.4)
 					if e.burst_t <= 0:
 						e.burst_t = 2.6 if rage else 3.6
-						b_ring(e, 16 if rage else 12, 58, SERP, e.age)
+						b_ring(e, 12 if rage else 8, 54, SERP, e.age)
 						Sfx.play("note", 0.7)
 				"aim":
 					e.tm -= dt
@@ -1879,7 +2006,7 @@ func upd_hazards(dt: float) -> void:
 			var dy: float = a.y - py
 			if dx * dx + dy * dy < a.r * a.r:
 				hurt(1, a.x, a.y)
-			BOOMS.append({"x": a.x, "y": a.y, "r": a.r, "t": 0.25, "T": 0.25, "m": EMBER if a.fire else SERP})
+			BOOMS.append({"x": a.x, "y": a.y, "r": a.r, "t": 0.25, "T": 0.25, "m": SERP})
 			if a.fire and EF.size() < 70:
 				EF.append({"x": a.x, "y": a.y, "r": a.r * 0.8, "t": 2.0, "ink": false})
 			snd("rock", 0.7, 0.08)
@@ -1927,11 +2054,13 @@ func dmg_e(e: SV, d: float, sx: float, sy: float, kb := 40.0, proc := true, crit
 	if e.t == "mimic" and e.st == "idle":
 		e.st = "bite"
 	var crit := false
-	if crit_ok and (force_crit or (w("暴") > 0 and randf() < 0.1 * w("暴"))):
+	if crit_ok and (force_crit or randf() < 0.1 * w("暴") + 0.06 * rl("redpen")):
 		d *= 4.0 if cmb("锋芒") else 2.5
 		crit = true
 	if e.frz > 0 or frz_all > 0:
 		d *= 1.6 if w("霜") > 0 else 1.25
+	if (e.elite or e.boss) and rl("sand") > 0:
+		d *= 1.0 + 0.2 * rl("sand")
 	if e.t == "mite":
 		# 镜螨的正面打不动
 		var fx := cos(e.ang)
@@ -1959,7 +2088,7 @@ func dmg_e(e: SV, d: float, sx: float, sy: float, kb := 40.0, proc := true, crit
 		var kl := maxf(0.01, sqrt(kx * kx + ky * ky))
 		e.kx += kx / kl * kb
 		e.ky += ky / kl * kb
-	if NUMS.size() < 60 and crit_ok and d >= 1.0:
+	if NUMS.size() < [36, 18, 10][qual] and crit_ok and d >= 1.0 and (qual < 2 or crit):
 		NUMS.append({"x": e.x + (randf() - 0.5) * 4, "y": e.y - e.r - 2, "v": roundi(d), "t": 0.6, "c": crit})
 	if proc:
 		if w("火") > 0:
@@ -2005,14 +2134,16 @@ func kill_e(e: SV) -> void:
 	snd("kill", 0.8 + randf() * 0.5, 0.045)
 	if e.xp > 0:
 		drop_gem(e.x, e.y, e.xp)
-	if randf() < 0.02:
+	if randf() < 0.02 * (1 + rl("wax")):
 		add_pick(e.x, e.y, "ember")
+	if randf() < 0.002:
+		add_pick(e.x, e.y, "mag")
 	# 成词：火石、冰裂
 	_kdepth += 1
 	if _kdepth <= 2:
 		if cmb("火石") and e.burn_t > 0:
 			boom(e.x, e.y, 16.0 * area_k(), 12.0 * dmg_k(), false)
-		if cmb("冰裂") and e.slow > 0 and PB.size() < 220:
+		if cmb("冰裂") and e.slow > 0 and PB.size() < 110:
 			for i in 6:
 				var b := shot(e.x, e.y, i * TAU / 6 + e.ph, 9.0 * dmg_k(), 0)
 				b.small = true
@@ -2026,6 +2157,7 @@ func kill_e(e: SV) -> void:
 		return
 	if e.elite:
 		add_pick(e.x, e.y, "page")
+		add_pick(e.x + 8, e.y, "mag")
 		for i in 6:
 			drop_gem(e.x + (randf() - 0.5) * 16, e.y + (randf() - 0.5) * 16, 5)
 		shk = 6
@@ -2080,7 +2212,10 @@ func kill_boss(e: SV) -> void:
 		set_banner("宇宙安静了下来", "", C_GOLD)
 		get_tree().create_timer(2.4).timeout.connect(func(): if S == "sv": end_run(true))
 		return
-	set_banner("%s安静了" % DEF[e.t].name, "掉了一张散页和一颗炉心", C_GOLD)
+	set_banner("%s安静了" % DEF[e.t].name, "炉灯工坊马上开门", C_GOLD)
+	shop_t = 1.2
+	# 首领的赏金
+	ink += 30 + 10 * boss_kills
 	add_pick(e.x, e.y, "page")
 	add_pick(e.x + 10, e.y, "kiln")
 	add_pick(e.x - 10, e.y, "ember")
@@ -2190,7 +2325,7 @@ func upd_pens(dt: float) -> void:
 			s.wave -= dt
 			if s.wave <= 0:
 				var R: float = s.r * 1.9
-				BOOMS.append({"x": s.x, "y": s.y, "r": R, "t": 0.3, "T": 0.3, "m": WINE})
+				BOOMS.append({"x": s.x, "y": s.y, "r": R, "t": 0.3, "T": 0.3, "m": GOLD})
 				for e in E:
 					if e.dead:
 						continue
@@ -2237,7 +2372,7 @@ func shot(x: float, y: float, a: float, dmg: float, kind: int) -> Bullet:
 	b.max_life = b.life
 	b.dmg = 0
 	b.crit = dmg
-	b.pierce = w("穿") + (1 if kind >= 1 else 0)
+	b.pierce = w("穿") + (1 if kind >= 1 else 0) + rl("clip")
 	b.home = 0.0 if kind == 1 else (3.0 * w("寻") if kind == 0 else 6.0)
 	b.split = w("裂") if kind == 0 else 0
 	b.small = kind == 1
@@ -2247,7 +2382,9 @@ func shot(x: float, y: float, a: float, dmg: float, kind: int) -> Bullet:
 	b.bounce = 3 if kind == 0 and ev(0, 1) else 0
 	b.mat = EMBER if b.burn > 0 else (ICE if b.frost > 0 else (CLAY if kind == 0 else (GOLD if kind == 1 else PAPER)))
 	b.hit = []
-	PB.append(b)
+	# 场上字弹有上限：再多也看不清，还拖帧率
+	if PB.size() < [170, 140, 110][qual]:
+		PB.append(b)
 	return b
 
 func fire_brush(l: int) -> float:
@@ -2289,7 +2426,7 @@ func fire_broom(l: int) -> float:
 	return (1.15 if l < 5 else 0.85) * cd_k()
 
 func fire_knife(l: int) -> float:
-	var R := (34.0 + (8 if l >= 2 else 0) + (8 if l >= 5 else 0)) * area_k()
+	var R := (40.0 + (8 if l >= 2 else 0) + (8 if l >= 5 else 0)) * area_k()
 	var dmg := 20.0 * (1.4 if l >= 4 else 1.0) * dmg_k()
 	var a0 := target_angle(R + 40)
 	var dirs := [a0]
@@ -2298,9 +2435,9 @@ func fire_knife(l: int) -> float:
 	if ev(2, 0):
 		dirs = [a0, a0 + PI * 2 / 3, a0 + PI * 4 / 3]
 	for a in dirs:
-		slash_at(a, R, dmg, 1.25)
+		slash_at(a, R, dmg, 1.9)
 	snd("hit", 0.6, 0.1)
-	return (1.0 if l < 5 else 0.8) * cd_k()
+	return (0.8 if l < 5 else 0.65) * cd_k()
 
 func slash_at(a: float, R: float, dmg: float, arc: float) -> void:
 	SL.append({"x": P.x, "y": P.y, "a": a, "arc": arc, "r": R, "t": 0.16})
@@ -2364,14 +2501,14 @@ func upd_inkb(dt: float) -> void:
 
 func boom(x: float, y: float, r: float, dmg: float, proc := true) -> void:
 	if BOOMS.size() < 50:
-		BOOMS.append({"x": x, "y": y, "r": r, "t": 0.3, "T": 0.3, "m": GRAV})
+		BOOMS.append({"x": x, "y": y, "r": r, "t": 0.3, "T": 0.3, "m": ICE})
 	snd("rock", 0.6 + randf() * 0.2, 0.06)
 	shk = maxf(shk, 2.5)
 	if PT.size() < 600:
 		for i in 8:
 			var a := randf() * TAU
 			part(x + cos(a) * r * 0.5, y + sin(a) * r * 0.5, cos(a) * 40, sin(a) * 40, 0.5, GRAV, 4)
-	for e in E:
+	for e: SV in in_radius(x, y, r):
 		if e.dead:
 			continue
 		var dx := e.x - x
@@ -2479,41 +2616,56 @@ func upd_shots(dt: float) -> void:
 		b.x += b.vx * dt
 		b.y += b.vy * dt
 		var dead := false
-		for e: SV in near_list(b.x, b.y):
-			if e.dead or b.hit.has(e):
-				continue
-			var rr := e.r + (2.5 if not b.small else 2.0)
-			if absf(e.x - b.x) > rr or absf(e.y - b.y) > rr:
-				continue
-			b.hit.append(e)
-			dmg_e(e, b.crit, b.x, b.y, 35.0)
-			if b.frost > 0 and not e.boss:
-				e.frz = maxf(e.frz, 1.5)
-			if b.split > 0 and not b.small and randf() < 0.2 * b.split and PB.size() < 260:
-				var a := atan2(b.vy, b.vx)
-				for s in [-0.6, 0.6]:
-					var nb := shot(b.x, b.y, a + s, b.crit * 0.5, 0)
-					nb.small = true
-					nb.split = 0
-					nb.bounce = 0
-					nb.life = 0.35
-					nb.hit = [e]
-			if b.burn > 0:
-				add_fire(b.x, b.y, 9.0 * area_k(), 2.6)
-				b.burn = 0.0
-			if b.bounce > 0:
-				b.bounce -= 1
-				if not retarget(b):
-					b.bounce = 0
+		var stop := false
+		var bcx := floori(b.x / GCELL)
+		var bcy := floori(b.y / GCELL)
+		for cj in range(-1, 2):
+			if stop:
 				break
-			elif b.pierce > 0:
-				b.pierce -= 1
-				if cmb("追魂"):
-					retarget(b)
+			for ci in range(-1, 2):
+				if stop:
 					break
-			else:
-				dead = true
-				break
+				var cell = G.get((bcx + ci + 4096) * 8192 + (bcy + cj + 4096))
+				if cell == null:
+					continue
+				for e: SV in cell:
+					if e.dead or b.hit.has(e):
+						continue
+					var rr := e.r + (2.5 if not b.small else 2.0)
+					if absf(e.x - b.x) > rr or absf(e.y - b.y) > rr:
+						continue
+					b.hit.append(e)
+					dmg_e(e, b.crit, b.x, b.y, 35.0)
+					if b.frost > 0 and not e.boss:
+						e.frz = maxf(e.frz, 1.5)
+					if b.split > 0 and not b.small and randf() < 0.2 * b.split and PB.size() < 130:
+						var a := atan2(b.vy, b.vx)
+						for s in [-0.6, 0.6]:
+							var nb := shot(b.x, b.y, a + s, b.crit * 0.5, 0)
+							nb.small = true
+							nb.split = 0
+							nb.bounce = 0
+							nb.life = 0.35
+							nb.hit = [e]
+					if b.burn > 0:
+						add_fire(b.x, b.y, 9.0 * area_k(), 2.6)
+						b.burn = 0.0
+					if b.bounce > 0:
+						b.bounce -= 1
+						if not retarget(b):
+							b.bounce = 0
+						stop = true
+						break
+					elif b.pierce > 0:
+						b.pierce -= 1
+						if cmb("追魂"):
+							retarget(b)
+							stop = true
+							break
+					else:
+						dead = true
+						stop = true
+						break
 		if not dead:
 			keep.append(b)
 	PB = keep
@@ -2525,7 +2677,7 @@ func upd_shots(dt: float) -> void:
 func upd_skills2(dt: float) -> void:
 	for id in sk:
 		var l := skl(id)
-		var cd: float = float(sk_cd.get(id, 2.0)) - dt
+		var cd: float = float(sk_cd.get(id, 2.0)) - dt * (1.0 + 0.18 * rl("glass"))
 		sk_cd[id] = cd
 		if cd > 0:
 			continue
@@ -2576,20 +2728,30 @@ func upd_skills2(dt: float) -> void:
 # 掉落：页尘（经验）、余烬（回心）、炉心（清屏）、散页（宝箱）
 # ======================================================================
 func mag_r() -> float:
-	return 26.0 * (1.0 + 0.5 * w("重")) * (1.0 + 0.2 * mu("pull"))
+	return 26.0 * (1.0 + 0.5 * w("重")) * (1.0 + 0.2 * mu("pull")) * (1.0 + 0.3 * rl("blotter"))
 
 func upd_gems(dt: float) -> void:
 	var keep: Array[Pick] = []
 	var mr := mag_r()
+	var damp := exp(-4 * dt)
 	for p in PK:
 		p.age += dt
 		var dx := P.x - p.x
 		var dy := P.y - p.y
+		if not p.gold and p.vx == 0.0 and p.vy == 0.0 and (absf(dx) > mr or absf(dy) > mr):
+			# 躺在地上没动的页尘：不用算
+			if (absf(dx) > 600 or absf(dy) > 600) and p.k == "dust":
+				continue
+			keep.append(p)
+			continue
 		var d := sqrt(dx * dx + dy * dy)
 		var pull := d < mr or p.gold
 		if not pull:
-			p.vx *= exp(-4 * dt)
-			p.vy *= exp(-4 * dt)
+			p.vx *= damp
+			p.vy *= damp
+			if absf(p.vx) < 1.0 and absf(p.vy) < 1.0:
+				p.vx = 0.0
+				p.vy = 0.0
 		else:
 			var sp := 120.0 + p.age * 40.0 if not p.gold else 260.0
 			p.vx += (dx / maxf(d, 0.1) * sp - p.vx) * minf(1.0, dt * 8)
@@ -2609,7 +2771,11 @@ var xp_frac := 0.0
 func collect(p: Pick) -> void:
 	match p.k:
 		"dust":
-			xp_frac += p.v * (1.0 + 0.08 * mu("wit"))
+			xp_frac += p.v * (1.0 + 0.08 * mu("wit") + 0.1 * rl("mark"))
+			# 墨滴按“升一级的页尘值多少墨”来折算，后期怪海再大，每间工坊的预算也差不多
+			ink_frac += float(p.v) / xp_need() * INK_PER_LV * (1.0 + 0.25 * rl("sac"))
+			ink += int(ink_frac)
+			ink_frac -= int(ink_frac)
 			xp += int(xp_frac)
 			xp_frac -= int(xp_frac)
 			chime_i = (chime_i + 1) % 8
@@ -2623,6 +2789,12 @@ func collect(p: Pick) -> void:
 			kiln_blast()
 		"page":
 			open_page()
+		"mag":
+			for q in PK:
+				if q.k == "dust":
+					q.gold = true
+			toast("吸页石：地上的页尘全飞过来", C_TEAL, 2)
+			Sfx.play("beacon")
 
 ## 炉心：一圈热浪，屏幕上的小东西全散掉，页尘都吸过来
 func kiln_blast() -> void:
@@ -2736,7 +2908,8 @@ func gen_opts() -> Array:
 			c.append([{"k": "skill", "id": id}, 7.0])
 		elif l == 0 and sk.size() < MAX_SK:
 			c.append([{"k": "skill", "id": id}, 5.0])
-	while out.size() < 3 and not c.is_empty():
+	var want := 3 + rl("clover")
+	while out.size() < want and not c.is_empty():
 		var tot := 0.0
 		for q in c:
 			tot += q[1]
@@ -2841,8 +3014,8 @@ func do_evo(i: int, k: int) -> void:
 
 func card_rect(i: int) -> Rect2:
 	var n := opts.size()
-	var cw := 94.0
-	var gap := 8.0
+	var cw := 94.0 if n <= 3 else 73.0
+	var gap := 8.0 if n <= 3 else 5.0
 	var x0 := 160.0 - (n * cw + (n - 1) * gap) / 2.0
 	return Rect2(x0 + i * (cw + gap), 40, cw, 112)
 
@@ -2927,39 +3100,218 @@ func shift_at(_x: float, _y: float) -> int:
 
 func present() -> void:
 	bg_mat.set_shader_parameter("chap", float(stage + 1) if S != "hub" else 1.0)
+	bg_mat.set_shader_parameter("dim", 0.0 if S == "hub" else 0.5)
+	fx_mat.set_shader_parameter("time", T)
 	super.present()
+	fx_lo.queue_redraw()
+	fx_hi.queue_redraw()
+
+# ---------- 特效：交给 fx.gdshader，一个特效只画一个四边形 ----------
+var fx_mat: ShaderMaterial
+var fx_lo: Node2D             # 在怪下面的一层（地上的火、预告圈、光圈）
+var fx_hi: Node2D             # 在怪上面的一层（爆炸圈、光束、护盾）
+var FXQ_LO: Array = []
+var FXQ_HI: Array = []
+var _fxq: Array = []
+
+func _fx_setup() -> void:
+	fx_mat = ShaderMaterial.new()
+	fx_mat.shader = load("res://shaders/fx.gdshader")
+	fx_mat.set_shader_parameter("pal", Pal.pal_tex)
+	fx_lo = PAINTER.new()
+	fx_lo.fn = _draw_fx.bind(false)
+	fx_lo.material = fx_mat
+	add_child(fx_lo)
+	move_child(fx_lo, zone_painter.get_index() + 1)
+	fx_hi = PAINTER.new()
+	fx_hi.fn = _draw_fx.bind(true)
+	fx_hi.material = fx_mat
+	add_child(fx_hi)
+	move_child(fx_hi, ent_painter.get_index() + 1)
+
+func _draw_fx(c: CanvasItem, hi: bool) -> void:
+	if S == "hub":
+		return
+	for q in (FXQ_HI if hi else FXQ_LO):
+		c.draw_primitive(q[0], q[1], q[2])
+
+func _fx_col(m: int, l: float, ty: int, si: int, r: float, a: float) -> Color:
+	return Color((m + 16 * si) / 128.0, (_lv(l) + 8 * ty) / 64.0, r / 512.0, a)
+
+func _fx_quad(x: float, y: float, h: float, col: Color) -> void:
+	if _fxq.size() > 160:
+		return
+	x = snap(x)
+	y = snap(y)
+	_fxq.append([
+		PackedVector2Array([Vector2(x - h, y - h), Vector2(x + h, y - h), Vector2(x + h, y + h), Vector2(x - h, y + h)]),
+		PackedColorArray([col, col, col, col]),
+		PackedVector2Array([Vector2(-h, -h), Vector2(h, -h), Vector2(h, h), Vector2(-h, h)])])
+
+## 一条从 (x, y) 朝 a 方向、长 len、半宽 hw 的带子
+func _fx_strip(x: float, y: float, a: float, len_: float, hw: float, col: Color) -> void:
+	if _fxq.size() > 160:
+		return
+	var f := Vector2(cos(a), sin(a))
+	var n := Vector2(-f.y, f.x)
+	var o := Vector2(x, y)
+	var w := hw + 1.0
+	_fxq.append([
+		PackedVector2Array([o - n * w, o + f * len_ - n * w, o + f * len_ + n * w, o + n * w]),
+		PackedColorArray([col, col, col, col]),
+		PackedVector2Array([Vector2(0, -w), Vector2(len_, -w), Vector2(len_, w), Vector2(0, w)])])
 
 ## 一圈点
 func ring(x: float, y: float, r: float, m: int, l: float, step := 1.6, ph := 0.0) -> void:
-	if not on_screen(x, y, r + 4):
+	if r < 1.0 or not on_screen(x, y, r + 4):
 		return
-	var n := maxi(8, int(r * TAU / step))
-	for i in n:
-		var a := float(i) / n * TAU + ph
-		sp(x + cos(a) * r, y + sin(a) * r, m, l, 0, 1.0 if i % 2 == 0 else 0.5)
+	_fx_quad(x, y, r + 1.0, _fx_col(m, l, 0, clampi(roundi((step - 1.0) / 0.5), 0, 7), r, fposmod(ph / TAU, 1.0)))
 
 ## 一个圆里稀疏地撒点（地上的火、墨、预告圈的底）
-func disc(x: float, y: float, r: float, m: int, l: float, k: float, seed_ := 0.0) -> void:
+func disc(x: float, y: float, r: float, m: int, l: float, k: float, _seed := 0.0) -> void:
 	if not on_screen(x, y, r + 4):
 		return
-	var n := int(r * r * 0.12 * k) + 4
-	for i in n:
-		var a: float = i * 2.39996 + seed_
-		var rr: float = r * sqrt(float(i) / n)
-		var fl := sin(T * 9 + i) > 0
-		sp(x + cos(a) * rr, y + sin(a) * rr * 0.8, m, l if fl else l - 2, 0, 1.0)
+	_fx_quad(x, y, r + 1.0, _fx_col(m, l, 1, 0, r, clampf(0.07 * k, 0.0, 1.0)))
+
+## 光束：ours = 我方（青白芯），否则敌方（白芯）
+func beam_fx(x: float, y: float, a: float, len_: float, hw: float, m: int, l: float, ours: bool) -> void:
+	_fx_strip(x, y, a, len_, hw, _fx_col(m, l, 2 if ours else 4, 0, hw, 0.0))
+
+## 预告用的流动虚线
+func dash_fx(x: float, y: float, a: float, len_: float, m: int, l: float) -> void:
+	_fx_strip(x, y, a, len_, 0.5, _fx_col(m, l, 3, 0, 0.0, 0.0))
+
+func _p_dust(big: bool, tw: bool) -> void:
+	var m := GOLD if big else ORE
+	var s := 2 if big else 1
+	for q in s:
+		for r in s:
+			ipx(q, r, m, 6 if tw else 5)
+			ipx(q - s, r, m, 4)
+			ipx(q + s, r, m, 4)
+			ipx(q, r - s, m, 4)
+			ipx(q, r + s, m, 3)
+
+## 我方字弹：细长、青白色、偏暗，一眼看得出不是冲着自己来的
+func _p_shot(ai: int, kind: int, mat: int) -> void:
+	var a := ai * TAU / 16.0
+	var ux := cos(a)
+	var uy := sin(a)
+	var tail := 5 if kind == 1 else 9
+	var tm := ORE if mat == CLAY or mat == PAPER or mat == GOLD else mat
+	for k in range(tail, 0, -1):
+		ip(-ux * k * 0.5, -uy * k * 0.5, tm, 4.5 - k * 0.4)
+	if kind == 2:
+		for q in [[0, 0], [-1, 0], [0, -1], [-1, -1]]:
+			ipx(q[0], q[1], ICE, 6, true)
+		for q in [[1, 0], [1, -1], [-2, 0], [-2, -1], [0, 1], [-1, 1], [0, -2], [-1, -2]]:
+			ipx(q[0], q[1], ORE, 4)
+	else:
+		ipx(0, 0, ICE, 6, true)
+		if kind == 0:
+			ip(ux * 0.5, uy * 0.5, PAPER, 6, true)
+
+var _shot_sprs := {}
+
+func draw_shots() -> void:
+	for b in PB:
+		if not on_screen(b.x, b.y, 6):
+			continue
+		var ai := posmod(roundi(atan2(b.vy, b.vx) / TAU * 16.0), 16)
+		var kind := 2 if b.big else (1 if b.small else 0)
+		var id: int = ai + kind * 16 + b.mat * 64
+		var s: Spr = _shot_sprs.get(id)
+		if s == null:
+			s = bake("svshot|%d" % id, 5, 5, _p_shot.bind(ai, kind, b.mat))
+			_shot_sprs[id] = s
+		sd(s, b.x, b.y)
+
+## 敌方子弹：统一成大一号的品红圆球，白芯、黑边，会闪
+func _p_eb(fr: int) -> void:
+	for j in range(-3, 4):
+		for i in range(-3, 4):
+			var d := i * i + j * j
+			if d <= 2:
+				ipx(i, j, PAPER, 6, true)
+			elif d <= 6:
+				ipx(i, j, SERP, 6 if fr == 0 else 5, true)
+			elif d <= 10:
+				ipx(i, j, WINE if fr == 0 else SERP, 4, true)
+			elif d <= 13:
+				ipx(i, j, SPACE, 0, true)
+
+func draw_eb() -> void:
+	if EB.is_empty():
+		return
+	var e0 := bake("sveb|0", 2, 2, _p_eb.bind(0))
+	var e1 := bake("sveb|1", 2, 2, _p_eb.bind(1))
+	for b in EB:
+		if not on_screen(b.x, b.y, 6):
+			continue
+		sd(e0 if int(T * 8 + b.x * 0.1) % 2 == 0 else e1, b.x, b.y)
+
+## 试炼的字：宽度查缓存、阴影只描一遍（主线是三遍），每帧能少画一半的字
+var _tw_cache := {}
+
+func text(s: String, cx: float, y: float, size: int, col: Color, sh = null, alpha := 1.0, bold := false) -> void:
+	if alpha <= 0:
+		return
+	var f: Font = font_b if bold else font
+	var key := "%s|%d|%s" % [s, size, bold]
+	var tw = _tw_cache.get(key)
+	if tw == null:
+		if _tw_cache.size() > 3000:
+			_tw_cache.clear()
+		tw = text_w(s, size, bold)
+		_tw_cache[key] = tw
+	var x: float = (cx - float(tw) / 2.0 + OFS.x) * U
+	var base := (y + OFS.y) * U + f.get_ascent(size * U)
+	if sh != null:
+		var c2: Color = sh
+		c2.a = alpha
+		cv.draw_string(f, Vector2(x + 1, base + 1), s, HORIZONTAL_ALIGNMENT_LEFT, -1, size * U, c2)
+	col.a = alpha
+	cv.draw_string(f, Vector2(x, base), s, HORIZONTAL_ALIGNMENT_LEFT, -1, size * U, col)
+
+## 粒子有上限：怪海里一秒几十次命中，满了就不再加
+func part(x: float, y: float, vx: float, vy: float, life: float, m: int, l: float, emit := false) -> void:
+	if PT.size() >= [260, 130, 60][qual]:
+		return
+	super.part(x, y, vx, vy, life, m, l, emit)
+
+func upd_particles(dt: float) -> void:
+	var keep: Array[Part] = []
+	var damp := exp(-1.8 * dt)
+	for p in PT:
+		p.life -= dt
+		if p.life <= 0:
+			continue
+		p.vx *= damp
+		p.vy *= damp
+		p.x += p.vx * dt
+		p.y += p.vy * dt
+		keep.append(p)
+	PT = keep
 
 func _draw_zones(c: CanvasItem) -> void:
+	var t0 := Time.get_ticks_usec()
+	_dz(c)
+	_dr_us["dz"] = int(_dr_us.get("dz", 0)) + Time.get_ticks_usec() - t0
+	_dr_us["n_dz"] = int(_dr_us.get("n_dz", 0)) + 1
+
+func _dz(c: CanvasItem) -> void:
 	cv = c
+	FXQ_LO = []
+	_fxq = FXQ_LO
 	if S == "hub":
 		return
 	# 我方地上的火
 	for f in FIRE:
-		disc(f.x, f.y, f.r, EMBER, 5, 1.0, f.x)
+		disc(f.x, f.y, f.r, EMBER, 4, 0.8, f.x)
 	# 墨涡
 	for v in VORT2:
 		for k in 3:
-			ring(v.x, v.y, v.r * (1.0 - k * 0.3), GRAV, 5 - k, 2.4, -T * (3.0 + k))
+			ring(v.x, v.y, v.r * (1.0 - k * 0.3), ORE, 4 - k, 2.4, -T * (3.0 + k))
 	# 印章的印子
 	for s in SEALS:
 		var k: float = s.t / 0.5
@@ -2967,54 +3319,47 @@ func _draw_zones(c: CanvasItem) -> void:
 		var q := -r
 		while q <= r:
 			if Pal.bay(int(q), 0) < k + 0.2:
-				sp(s.x + q, s.y - r, WINE, 6, 0, 1.0)
-				sp(s.x + q, s.y + r, WINE, 6, 0, 1.0)
-				sp(s.x - r, s.y + q, WINE, 6, 0, 1.0)
-				sp(s.x + r, s.y + q, WINE, 6, 0, 1.0)
+				sp(s.x + q, s.y - r, GOLD, 6, 0, 1.0)
+				sp(s.x + q, s.y + r, GOLD, 6, 0, 1.0)
+				sp(s.x - r, s.y + q, GOLD, 6, 0, 1.0)
+				sp(s.x + r, s.y + q, GOLD, 6, 0, 1.0)
 			q += 1.5
 		if k > 0.4:
 			for i in 5:
-				sp(s.x - r * 0.5 + i * r * 0.25, s.y, WINE, 5, 0, 1.0)
-				sp(s.x, s.y - r * 0.5 + i * r * 0.25, WINE, 5, 0, 1.0)
+				sp(s.x - r * 0.5 + i * r * 0.25, s.y, GOLD, 5, 0, 1.0)
+				sp(s.x, s.y - r * 0.5 + i * r * 0.25, GOLD, 5, 0, 1.0)
 	# 烛台的光圈
 	if plv(6) > 0:
 		var R := aura_r()
 		ring(P.x, P.y, R, ICE if ev(6, 1) else GOLD, 4, 2.6, T * 0.6)
-		ring(P.x, P.y, R * 0.6, ICE if ev(6, 1) else EMBER, 3, 4.0, -T * 0.4)
+		ring(P.x, P.y, R * 0.6, ICE if ev(6, 1) else GOLD, 3, 4.0, -T * 0.4)
 	# 敌方：地上的火和墨
 	for f in EF:
 		if f.ink:
-			disc(f.x, f.y, f.r, GRAV, 4, 0.8, f.x)
-			ring(f.x, f.y, f.r, GRAV, 5, 2.5)
+			disc(f.x, f.y, f.r, WINE, 4, 0.9, f.x)
+			ring(f.x, f.y, f.r, SERP, 6, 1.5)
 		else:
-			disc(f.x, f.y, f.r, EMBER, 6, 1.2, f.x)
-			ring(f.x, f.y, f.r, SERP, 5, 2.5)
+			disc(f.x, f.y, f.r, WINE, 6, 1.2, f.x)
+			ring(f.x, f.y, f.r, SERP, 6, 1.5)
 	# 敌方：预告圈
 	for a in EA:
 		var k: float = 1.0 - a.t / a.T
 		ring(a.x, a.y, a.r, SERP, 6 if a.t < 0.25 or int(T * 10) % 2 == 0 else 4, 1.4)
-		ring(a.x, a.y, a.r * k, EMBER if a.fire else SERP, 4, 2.2)
+		ring(a.x, a.y, a.r * k, WINE, 5, 2.0)
 	# 敌方：预告线
 	for l in EL:
-		var fx := cos(l.a)
-		var fy := sin(l.a)
-		var hot: bool = l.t <= 0
-		var s := 0.0
-		while s < l.len:
-			var px: float = l.x + fx * s
-			var py: float = l.y + fy * s
-			if on_screen(px, py, 4):
-				if hot:
-					for q in range(-int(l.w), int(l.w) + 1, 2):
-						sp(px - fy * q * 0.5, py + fx * q * 0.5, PAPER if absi(q) < 2 else SERP, 6, 0, 1.0)
-				elif int(s / 3.0 + T * 12) % 3 != 0:
-					sp(px, py, SERP, 6 if l.t < 0.3 else 4, 0, 0.5)
-			s += 2.0 if hot else 1.5
+		if l.t <= 0:
+			beam_fx(l.x, l.y, l.a, l.len, maxf(1.5, l.w * 0.5), SERP, 6, false)
+		else:
+			dash_fx(l.x, l.y, l.a, l.len, SERP, 6 if l.t < 0.3 else 4)
 	# 敌方：扩散的圈
 	for r in ER:
 		ring(r.x, r.y, r.r, SERP, 6, 1.3)
-		ring(r.x, r.y, r.r - 2.0, GOLD, 4, 2.6)
+		ring(r.x, r.y, r.r - 2.0, WINE, 5, 2.5)
 	# 页尘、余烬、散页
+	var dust_s: Array = []
+	for q in 4:
+		dust_s.append(bake("svdust|%d" % q, 2, 2, _p_dust.bind(q >= 2, q % 2 == 1)))
 	for p in PK:
 		if not on_screen(p.x, p.y):
 			continue
@@ -3022,17 +3367,16 @@ func _draw_zones(c: CanvasItem) -> void:
 		match p.k:
 			"dust":
 				var big := p.v >= 5
-				var m := GOLD if big else ORE
-				var s := 1.0 if big else 0.5
-				sp(p.x - s * 0.5, p.y - s * 0.5, m, 6 if tw else 5, 0, s)
-				sp(p.x - s * 0.5 - s, p.y - s * 0.5, m, 4, 0, s)
-				sp(p.x - s * 0.5 + s, p.y - s * 0.5, m, 4, 0, s)
-				sp(p.x - s * 0.5, p.y - s * 0.5 - s, m, 4, 0, s)
-				sp(p.x - s * 0.5, p.y - s * 0.5 + s, m, 3, 0, s)
+				sd(dust_s[(2 if big else 0) + (1 if tw else 0)], p.x, p.y)
 			"ember":
 				sp(p.x - 1, p.y - 1, EMBER, 4, 0, 2.0)
 				sp(p.x - 0.5, p.y - 1, EMBER, 6, 0, 1.0)
 				sp(p.x, p.y, GOLD, 6 if tw else 5)
+			"mag":
+				ball(p.x, p.y + sin(T * 3) * 1.0, 2.5, ICE, 5, 0)
+				for k in 4:
+					var a := -T * 3 + k * TAU / 4
+					sp(p.x + cos(a) * 4.5, p.y + sin(a) * 4.5, ORE, 6 if tw else 5)
 			"kiln":
 				ball(p.x, p.y + sin(T * 3) * 1.0, 3.0, GOLD, 5, 0)
 				for k in 8:
@@ -3048,34 +3392,29 @@ func _draw_zones(c: CanvasItem) -> void:
 		if e.dead:
 			continue
 		if (e.t == "serp" or e.t == "eel") and e.st == "aim":
-			var s := 6.0
-			var L := 220.0 if e.t == "serp" else 170.0
-			while s < L:
-				if int(s / 3.0 + T * 20) % 3 != 0:
-					sp(e.x + cos(e.ha) * s, e.y + sin(e.ha) * s, SERP if e.t == "serp" else GOLD, 6 if e.tm < 0.3 else 4, 0, 1.0 if e.t == "serp" else 0.5)
-				s += 1.5
+			dash_fx(e.x + cos(e.ha) * 6.0, e.y + sin(e.ha) * 6.0, e.ha, 214.0 if e.t == "serp" else 164.0, SERP, 6 if e.tm < 0.3 else 4)
 		elif e.t == "wick" and e.sing > 0:
 			for q in 2:
 				var a := e.ang + q * PI
-				var s := 12.0
-				while s < 240:
-					var px := e.x + cos(a) * s
-					var py := e.y + sin(a) * s
-					if on_screen(px, py, 4):
-						sp(px - 1, py - 1, EMBER, 5, 0, 2.0)
-						sp(px - 0.5, py - 0.5, GOLD if int(s + T * 30) % 3 else PAPER, 6, 0, 1.0)
-					s += 2.0
+				beam_fx(e.x + cos(a) * 12.0, e.y + sin(a) * 12.0, a, 228.0, 1.5, SERP, 6, false)
 
 func _draw_world(c: CanvasItem) -> void:
+	var t0 := Time.get_ticks_usec()
+	_dw(c)
+	_dr_us["dw"] = int(_dr_us.get("dw", 0)) + Time.get_ticks_usec() - t0
+	_dr_us["n_dw"] = int(_dr_us.get("n_dw", 0)) + 1
+
+func _dw(c: CanvasItem) -> void:
 	cv = c
+	FXQ_HI = []
+	_fxq = FXQ_HI
 	if S == "hub":
 		return
 	for e in E:
 		if e.dead or not on_screen(e.x, e.y, 40):
 			continue
-		var sh := shift_at(e.x, e.y)
-		if e.flash > 0:
-			sh = 2
+		# 试炼里不按光照压暗：离得远的怪也要看得清
+		var sh := 2 if e.flash > 0 else 0
 		draw_creature(e, sh)
 		if e.elite and not e.boss:
 			# 精英头上一圈金点
@@ -3090,7 +3429,7 @@ func _draw_world(c: CanvasItem) -> void:
 			sp(e.x - 0.5, e.y + e.r - 1, ICE, 6)
 		elif e.slow > 0 and int(T * 6 + e.ph) % 4 == 0:
 			sp(e.x + 2, e.y - e.r, ICE, 6)
-	draw_bullets()
+	draw_shots()
 	# 飞行中的墨团
 	for b in INKB:
 		ball(b.x, b.y, 2.5, GRAV, 3, 0)
@@ -3126,16 +3465,9 @@ func _draw_world(c: CanvasItem) -> void:
 			ball(b.x, b.y, minf(6.0, b.r * 0.3) * (1.0 - k), b.m, 3, 0, 0.6)
 	# 墨线
 	for b in BEAMS:
-		var fx := cos(b.a)
-		var fy := sin(b.a)
 		var k: float = b.t / b.max
 		var wd: float = b.w * (0.4 + 0.6 * minf(1.0, k * 3.0))
-		var s := 4.0
-		while s < b.len:
-			for q in range(-int(wd), int(wd) + 1, 2):
-				var core := absi(q) <= 1
-				sp(b.x + fx * s - fy * q * 0.5, b.y + fy * s + fx * q * 0.5, PAPER if core else GRAV, 6 if core else 4, 0, 1.0)
-			s += 2.0
+		beam_fx(b.x + cos(b.a) * 4.0, b.y + sin(b.a) * 4.0, b.a, b.len - 4.0, maxf(1.0, wd * 0.5), ORE, 4, true)
 	# 电弧
 	for z in ZAPS:
 		var L := Vector2(z.bx - z.ax, z.by - z.ay)
@@ -3144,18 +3476,25 @@ func _draw_world(c: CanvasItem) -> void:
 			var t := float(i) / maxf(1, n)
 			sp(z.ax + L.x * t + (randf() - 0.5) * 3, z.ay + L.y * t + (randf() - 0.5) * 3, MIRROR, 6, 0, 1.0)
 	draw_particles()
+	draw_eb()
 	# 陶灵画在最上面，怪再多也找得到自己
 	if S != "over" or won:
 		if P.inv <= 0 or int(T * 16) % 2 == 0 or P.inv > 0.6:
 			draw_player()
 		if shield_on:
-			ring(P.x, P.y, 9.0, GRAV, 6, 1.5, T * 2.0)
+			ring(P.x, P.y, 9.0, ICE, 6, 1.5, T * 2.0)
 			ring(P.x, P.y, 10.5, MIRROR, 5, 3.0, -T * 1.5)
 		if P.slow_t > 0:
 			for k in 4:
 				sp(P.x - 4 + k * 2.5, P.y + 5, ICE, 5, 0, 1.0)
 
 func _draw_hud(c: CanvasItem) -> void:
+	var t0 := Time.get_ticks_usec()
+	_dh(c)
+	_dr_us["dh"] = int(_dr_us.get("dh", 0)) + Time.get_ticks_usec() - t0
+	_dr_us["n_dh"] = int(_dr_us.get("n_dh", 0)) + 1
+
+func _dh(c: CanvasItem) -> void:
 	cv = c
 	OFS = Vector2.ZERO
 	if S == "hub":
@@ -3167,7 +3506,7 @@ func _draw_hud(c: CanvasItem) -> void:
 	# 伤害数字（世界坐标换成屏幕坐标）
 	for n in NUMS:
 		var a: float = minf(1.0, n.t * 3.0)
-		text(str(n.v), n.x - ox, n.y - oy, 9 if n.c else 7, C_GOLD if n.c else C_TXT, C_SH, a, n.c)
+		text(str(n.v), n.x - ox, n.y - oy, 9 if n.c else 7, C_GOLD if n.c else C_TXT, C_SH if n.c else null, a, n.c)
 	if hurt_t > 0:
 		rect(0, 0, W, H, Color(0.8, 0.1, 0.1, hurt_t * 0.5))
 	if frz_all > 0:
@@ -3177,6 +3516,10 @@ func _draw_hud(c: CanvasItem) -> void:
 		dim(0.55)
 		OFS = PO
 		draw_lvl()
+	elif S == "shop":
+		dim(0.72)
+		OFS = PO
+		draw_shop()
 	elif S == "pause":
 		dim(0.7)
 		OFS = PO
@@ -3188,7 +3531,10 @@ func _draw_hud(c: CanvasItem) -> void:
 		OFS = PO
 		if won:
 			text("炉灯重新亮了", 160, 8, 16, C_GOLD, C_SH, 1.0, true)
-			text("你撑过了 %s，打倒了全部八个首领" % fmt_t(gt2), 160, 32, 9, C_TXT, C_SH)
+			if new_danger:
+				text("八个首领全倒了。解锁暗潮等级 %d：怪更硬更快，书页更多" % int(meta.dmax), 160, 32, 9, C_RED, C_SH)
+			else:
+				text("你撑过了 %s，打倒了全部八个首领" % fmt_t(gt2), 160, 32, 9, C_TXT, C_SH)
 		else:
 			text("陶身碎了", 160, 8, 16, C_RED, C_SH, 1.0, true)
 			text("撑了 %s，走到第%s阶段「%s」" % [fmt_t(gt2), "一二三四五六七八"[stage], STAGES[stage].name], 160, 32, 9, C_TXT, C_SH)
@@ -3252,6 +3598,10 @@ func draw_build(cx: float, y: float) -> void:
 	text("技：" + ("  ".join(ss) if not ss.is_empty() else "（还没有）"), cx, y + 26, 9, C_TXT, C_SH)
 	if not combos.is_empty():
 		text("成词：" + "  ".join(combos.keys()), cx, y + 39, 9, C_GOLD, C_SH)
+	if not rel.is_empty():
+		for ln in wrap_text("藏品：" + rel_line(), 6, 300):
+			text(ln, cx, y + 76, 6, C_TEAL, C_SH)
+			break
 	var hint := []
 	for i in pens:
 		for k in 2:
@@ -3278,8 +3628,9 @@ func draw_sv_hud() -> void:
 	# 生命
 	for i in P.maxhp:
 		icon(HEART, 4 + i * 6.5, 16, Pal.rc(CLAY, 5) if i < P.hp else Pal.rc(RUIN, 5))
+	text_l("墨滴 %d" % ink, 4, 22, 7, C_TEAL, C_SH)
 	if revives > 0:
-		text_l("余火 ×%d" % revives, 4, 22, 7, C_GOLD, C_SH)
+		text_l("余火 ×%d" % revives, 44, 22, 7, C_GOLD, C_SH)
 	# 时间和击退数
 	var tc := C_RED if not bosses.is_empty() else C_TXT
 	text(fmt_t(gt2), W / 2.0, 5, 12, tc, C_SH, 1.0, true)
@@ -3426,11 +3777,175 @@ func draw_lvl() -> void:
 # ======================================================================
 # 营地：选陶灵、买永久升级、出发
 # ======================================================================
+# ---------- 炉灯工坊：首领之间的小店 ----------
+const INK_PER_LV := 6.0
+
+func rel_cost(id: String) -> int:
+	var it: Dictionary = RL[id]
+	var k := 1.0 + 0.15 * (shop_n - 1)
+	if not it.get("once", false):
+		k *= 1.0 + 0.25 * rl(id)
+	return int(float(it.c) * k)
+
+func rr_cost() -> int:
+	return 3 + 2 * shop_n + 4 * shop_rr
+
+func roll_shop() -> void:
+	var c := []
+	for id in RL:
+		if rl(id) >= int(RL[id].max):
+			continue
+		if id == "candy" and P.hp >= P.maxhp:
+			continue
+		if id == "tissue" and P.maxhp <= 3:
+			continue
+		c.append(id)
+	c.shuffle()
+	shop = []
+	for i in mini(4, c.size()):
+		shop.append({"id": c[i], "cost": rel_cost(c[i]), "sold": false})
+
+func open_shop() -> void:
+	shop_n += 1
+	shop_rr = 0
+	roll_shop()
+	S = "shop"
+	Sfx.play("buy")
+	for p in PK:
+		if p.k == "dust":
+			p.gold = true
+	if _autoplay:
+		print("SHOP %d t=%d ink=%d lv=%d" % [shop_n, int(gt2), ink, lv])
+
+func buy_rel(i: int) -> void:
+	if i < 0 or i >= shop.size():
+		return
+	var it: Dictionary = shop[i]
+	if it.sold:
+		return
+	if ink < int(it.cost):
+		Sfx.play("deny")
+		return
+	ink -= int(it.cost)
+	it.sold = true
+	Sfx.play("eat")
+	var id: String = it.id
+	match id:
+		"leaf":
+			lv += 2
+			lv_q += 2
+			return
+		"candy":
+			P.hp = P.maxhp
+			return
+		"shard":
+			P.maxhp += 1
+			P.hp += 1
+		"tissue":
+			P.maxhp = maxi(1, P.maxhp - 1)
+			P.hp = mini(P.hp, P.maxhp)
+		"tape":
+			rerolls += 2
+		"core":
+			revives += 1
+	rel[id] = rl(id) + 1
+
+func close_shop() -> void:
+	if rl("jar") > 0:
+		ink += mini(40 * rl("jar"), int(ink * 0.2 * rl("jar")))
+	S = "sv"
+	P.inv = maxf(P.inv, 1.2)
+
+func shop_card(i: int) -> Rect2:
+	return Rect2(7 + i * 77, 36, 72, 98)
+
+func shop_rr_rect() -> Rect2:
+	return Rect2(62, 140, 92, 15)
+
+func shop_go_rect() -> Rect2:
+	return Rect2(166, 140, 92, 15)
+
+func upd_shop() -> void:
+	var mp := ppointer()
+	for i in shop.size():
+		if pressed(KEY_1 + i) or pressed(KEY_KP_1 + i) or (click_q and shop_card(i).has_point(mp)):
+			buy_rel(i)
+	if pressed(KEY_R) or (click_q and shop_rr_rect().has_point(mp)):
+		if ink >= rr_cost():
+			ink -= rr_cost()
+			shop_rr += 1
+			roll_shop()
+			Sfx.play("ping")
+		else:
+			Sfx.play("deny")
+	if _autoplay:
+		_lvl_wait += get_physics_process_delta_time()
+		if _lvl_wait < 0.5:
+			if not _shot_at.has("shop%d" % shop_n) and (shop_n == 1 or shop_n == 4):
+				_shot_at["shop%d" % shop_n] = true
+				_shot("shop%d" % shop_n)
+			return
+		_lvl_wait = 0.0
+		for i in shop.size():
+			buy_rel(i)
+		close_shop()
+		return
+	if pressed(KEY_ENTER) or pressed(KEY_KP_ENTER) or pressed(KEY_SPACE) or pressed(KEY_ESCAPE) or (click_q and shop_go_rect().has_point(mp)):
+		close_shop()
+
+func rel_line() -> String:
+	var a := []
+	for id in rel:
+		a.append("%s×%d" % [RL[id].n, rl(id)] if rl(id) > 1 else str(RL[id].n))
+	return "  ".join(a)
+
+func draw_shop() -> void:
+	text("炉灯工坊", 160, 4, 14, C_GOLD, C_SH, 1.0, true)
+	text("首领倒下，炉灯亮一会儿。用路上攒的墨滴换点东西再走。", 160, 23, 7, C_DIM, C_SH)
+	text_r("墨滴 %d" % ink, 312, 8, 10, C_TEAL, C_SH)
+	text_l("第 %d 间" % shop_n, 8, 9, 8, C_DIM, C_SH)
+	var mp := ppointer()
+	for i in shop.size():
+		var it: Dictionary = shop[i]
+		var d: Dictionary = RL[it.id]
+		var r := shop_card(i)
+		var can: bool = not it.sold and ink >= int(it.cost)
+		var hov: bool = r.has_point(mp) and not it.sold
+		box(r.position.x, r.position.y, r.size.x, r.size.y, Color(0.1, 0.09, 0.05, 0.95) if hov else Color(0.06, 0.06, 0.12, 0.95), Pal.rc(GOLD, 6 if hov else 5) if can else Pal.rc(RUIN, 4))
+		var cx := r.get_center().x
+		var a: float = 0.35 if it.sold else 1.0
+		text(d.n, cx, r.position.y + 4, 11, C_GOLD if can else C_TXT, C_SH, a, true)
+		if rl(it.id) > 0:
+			text("已有 %d" % rl(it.id), cx, r.position.y + 20, 6, C_DIM, null, a)
+		var ly := r.position.y + 30
+		for ln in wrap_text(d.d, 7, r.size.x - 6):
+			text(ln, cx, ly, 7, C_TXT, C_SH, a)
+			ly += 9
+		if it.sold:
+			text("已买", cx, r.position.y + r.size.y - 14, 9, C_DIM, C_SH)
+		else:
+			text("%d 墨" % int(it.cost), cx, r.position.y + r.size.y - 14, 9, C_TEAL if can else C_RED, C_SH, 1.0, true)
+		if not touch_mode:
+			text(str(i + 1), r.position.x + 5, r.position.y + 2, 8, C_DIM)
+	var rr := shop_rr_rect()
+	box(rr.position.x, rr.position.y, rr.size.x, rr.size.y, Pal.rc(SPACE, 2), Pal.rc(MIRROR, 5) if ink >= rr_cost() else Pal.rc(RUIN, 4))
+	text("换一批 %d 墨%s" % [rr_cost(), "" if touch_mode else " (R)"], rr.get_center().x, rr.position.y + 2.5, 8, C_TXT if ink >= rr_cost() else C_DIM, C_SH)
+	var g := shop_go_rect()
+	box(g.position.x, g.position.y, g.size.x, g.size.y, Pal.rc(CLAY, 2), Pal.rc(GOLD, 5 if sin(T * 3) > 0 else 6))
+	text("继续上路" if touch_mode else "继续上路 (Enter)", g.get_center().x, g.position.y + 2.5, 8, C_GOLD, C_SH, 1.0, true)
+	if not rel.is_empty():
+		for ln in wrap_text("藏品：" + rel_line(), 6, 300):
+			text(ln, 160, 160, 6, C_DIM, C_SH)
+			break
+
 func hub_char(i: int) -> Rect2:
 	return Rect2(9 + i * 76, 28, 72, 56)
 
 func hub_shop(i: int) -> Rect2:
 	return Rect2(9 + (i % 3) * 102, 90 + (i / 3) * 25, 98, 22)
+
+func hub_dl() -> Rect2:
+	return Rect2(214, 139, 98, 10)
 
 func hub_go() -> Rect2:
 	return Rect2(112, 143, 96, 18)
@@ -3470,6 +3985,15 @@ func upd_hub() -> void:
 	for i in 4:
 		if click_q and hub_char(i).has_point(mp):
 			meta.ch = i
+			Sfx.play("ping")
+	var dmax := int(meta.get("dmax", 0))
+	if dmax > 0:
+		var dl := int(meta.get("dl", 0))
+		if pressed(KEY_E) or (click_q and hub_dl().has_point(mp)):
+			meta.dl = (dl + 1) % (dmax + 1)
+			Sfx.play("ping")
+		elif pressed(KEY_Q):
+			meta.dl = (dl + dmax) % (dmax + 1)
 			Sfx.play("ping")
 	if pressed(KEY_ENTER) or pressed(KEY_KP_ENTER) or pressed(KEY_SPACE) or (click_q and hub_go().has_point(mp)):
 		_save_meta()
@@ -3512,7 +4036,12 @@ func draw_hub() -> void:
 	var bs: Dictionary = meta.best
 	text("最好成绩：%s · 等级 %d · 首领 %d/8 · 通关 %d 次" % [fmt_t(float(bs.get("time", 0.0))), int(bs.get("lv", 0)), int(bs.get("bosses", 0)), int(bs.get("wins", 0))], 160, 164, 7, C_DIM, C_SH)
 	if not touch_mode:
-		text("←→ 换陶灵 · 1~6 买升级", 262, 148, 7, C_DIM, C_SH)
+		text("←→ 换陶灵 · 1~6 买升级", 262, 152, 7, C_DIM, C_SH)
+	if int(meta.get("dmax", 0)) > 0:
+		var dr := hub_dl()
+		var dl := int(meta.get("dl", 0))
+		box(dr.position.x, dr.position.y, dr.size.x, dr.size.y, Color(0.05, 0.05, 0.1, 0.85), Pal.rc(SERP, 5) if dl > 0 else Pal.rc(RUIN, 4))
+		text("暗潮等级 %d/%d%s" % [dl, int(meta.dmax), "" if touch_mode else "（Q/E）"], dr.get_center().x, dr.position.y + 0.5, 7, C_RED if dl > 0 else C_TXT, C_SH)
 	var ty := 76.0
 	for t in toasts:
 		text(t.s, 160, ty, 9, t.c, C_SH, minf(1.0, t.t))
@@ -3547,8 +4076,8 @@ func _sv_bot(dt: float) -> void:
 	for e in E:
 		var d := Vector2(P.x - e.x, P.y - e.y)
 		var L := d.length()
-		if L < 48 and L > 0.1:
-			v += d / L * pow((48 - L) / 48, 2.0) * (5.0 if e.elite or e.boss else 2.5)
+		if L < 56 and L > 0.1:
+			v += d / L * pow((56 - L) / 56, 2.0) * (6.0 if e.elite or e.boss else 3.5)
 	for b in EB:
 		var d := Vector2(P.x - b.x, P.y - b.y)
 		var L := d.length()
@@ -3567,7 +4096,7 @@ func _sv_bot(dt: float) -> void:
 			gd = L
 			g = p
 	if g:
-		v += Vector2(g.x - P.x, g.y - P.y).normalized() * 1.6
+		v += Vector2(g.x - P.x, g.y - P.y).normalized() * 1.2
 	_bot_mv = v.normalized() if v.length() > 0.2 else v
 	for i in 40:
 		var t := 20.0 + i * 52.5
@@ -3579,6 +4108,9 @@ func _sv_bot(dt: float) -> void:
 			_perf_max = 0
 			_perf_us = 0
 			_perf_n = 0
+			var dn := maxf(1.0, float(_dr_us.get("n_dw", 1)))
+			print("   DRAW ms zones=%.2f world=%.2f hud=%.2f items=%d" % [float(_dr_us.get("dz", 0)) / dn / 1000.0, float(_dr_us.get("dw", 0)) / dn / 1000.0, float(_dr_us.get("dh", 0)) / dn / 1000.0, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))])
+			_dr_us = {}
 			var hist := {}
 			for e in E:
 				hist[e.t] = int(hist.get(e.t, 0)) + 1
